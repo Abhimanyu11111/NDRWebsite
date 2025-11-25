@@ -97,7 +97,7 @@ const Home2 = () => {
               </div>
 
               <div>
-                <a target="_blank" href="https://www.ndrdgh.gov.in/NDR/?page_id=6">About NDR ▾</a>
+                <a target="_blank" href="https://www.ndrdgh.gov.in/NDR/?page_id=6">About NDR </a>
               </div>
 
 
