@@ -92,10 +92,45 @@ const Home2 = () => {
         <div className="container">
           <div className={styles.searchandnavbarbox}>
             <nav className={styles.navBar}>
-              <a href="#">Home</a>
-              <a href="#">About NDR ▾</a>
-              <a href="#">Related Portals ▾</a>
-              <a href="#">Contact</a>
+              <div>
+                <a href="#">Home</a>
+              </div>
+
+              <div>
+                <a target="_blank" href="https://www.ndrdgh.gov.in/NDR/?page_id=6">About NDR ▾</a>
+              </div>
+
+
+              {/* <a href="#">Related Portals ▾</a> */}
+
+
+
+
+              <div className={styles.dropdown}>
+                {/* <button className={styles.dropBtn}>Related Portals ▾</button> */}
+                <a href="#">Related Portals ▾</a>
+
+                <div className={styles.dropdownContent}>
+
+                  <a href="http://dghindia.gov.in/" target="_blank">Directorate General of Hydrocarbons</a>
+                  <a href="http://india.gov.in" target="_blank">National Portal of India</a>
+                  <a href="http://mopng.gov.in/en" target="_blank">Ministry of Petroleum and Natural Gas</a>
+                  <a href="https://www.oisd.gov.in/" target="_blank">Oil Industry Safety Directorate</a>
+                  <a href="http://www.moef.gov.in/" target="_blank">Ministry of Environment, Forest and Climate Change</a>
+                  <a href="http://dgms.gov.in/" target="_blank">Directorate General of Mines Safety</a>
+                  <a href="http://ppac.org.in/" target="_blank">Petroleum Planning & Analysis Cell</a>
+
+                </div>
+              </div>
+
+
+              <div>
+                <a target="_blank" href="https://www.ndrdgh.gov.in/NDR/?page_id=8">Contact</a>
+              </div>
+
+
+
+
             </nav>
 
             <div className={styles.rightSection}>
@@ -104,8 +139,8 @@ const Home2 = () => {
                 type="text"
                 placeholder="Search"
               />
-              <button className={styles.loginBtn}>Log in</button>
-              <button className={styles.registerBtn}>Register</button>
+              <button className={styles.loginBtn}> <a target="_blank" style={{ color: "white", textDecoration: "none" }} href="https://www.ndrdgh.gov.in/NDRTWS/system/mainframe.asp">Log in</a></button>
+              <button className={styles.registerBtn}> <a target="_blank" style={{ color: "white", textDecoration: "none" }} href="https://www.ndrdgh.gov.in/NDR/?page_id=1486">Register</a></button>
             </div>
           </div>
 
@@ -181,22 +216,22 @@ const Home2 = () => {
 
 
 
-       
+
 
         {/* <div className={styles.cards}> */}
-          {cards.map((item, index) => (
-            <div className={styles.card} key={index}>
+        {cards.map((item, index) => (
+          <div className={styles.card} key={index}>
 
-              <img src={item.img} className={styles.cardImg} />
-              <h3>{item.title}</h3>
+            <img src={item.img} className={styles.cardImg} />
+            <h3>{item.title}</h3>
 
-              <ul>
-                {item.points.map((p, i) => (
-                  <li style={{fontWeight : "600" , fontSize : "17px"}} key={i}>{p}</li>
-                ))}
-              </ul>
-            </div>
-          ))}
+            <ul>
+              {item.points.map((p, i) => (
+                <li style={{ fontWeight: "600", fontSize: "17px" }} key={i}>{p}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
         {/* </div> */}
 
 
