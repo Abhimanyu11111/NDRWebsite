@@ -4,7 +4,6 @@ import styles from "../Pages/Styles/Home.module.css";
 import Logo from "../assets/Images/Emblem.png";
 import { Link } from "react-router-dom";
 
-
 const Header = () => {
   return (
     <header className={styles.headerWrapper}>
@@ -55,59 +54,25 @@ const Header = () => {
         <div className={styles.searchandnavbarbox}>
           <nav className={styles.navBar}>
             <div>
-              <a
-               href="/"
-               target="_blank"
-               
-               >
-                
-                Home</a>
+              <Link to="/">Home</Link>
             </div>
 
             <div>
-              <a
-                target="_blank"
-                href="/about"
-              >
-                About NDR
-              </a>
+              <Link to="/about">About NDR</Link>
             </div>
 
             <div className={styles.dropdown}>
-              <a href="#">Related Pages ▾</a>
+              <span>Related Pages ▾</span>
 
               <div className={styles.dropdownContent}>
-                <a href="/Objective" target="_blank">
-                  Objective
-                </a>
-                <a href="/OperationalModel" target="_blank">
-                  Operational Model
-                </a>
-                <a href="/SalientFeatures" target="_blank">
-                  Salient Features
-                </a>
-                {/* <a href="https://www.oisd.gov.in/" target="_blank">
-                  Oil Industry Safety Directorate
-                </a> */}
-                {/* <a href="http://www.moef.gov.in/" target="_blank">
-                  Ministry of Environment, Forest and Climate Change
-                </a> */}
-                {/* <a href="http://dgms.gov.in/" target="_blank">
-                  Directorate General of Mines Safety
-                </a> */}
-                {/* <a href="http://ppac.org.in/" target="_blank">
-                  Petroleum Planning & Analysis Cell
-                </a> */}
+                <Link to="/objective">Objective</Link>
+                <Link to="/operationalModel">Operational Model</Link>
+                <Link to="/salientFeatures">Salient Features</Link>
               </div>
             </div>
 
             <div>
-              <a
-                target="_blank"
-                href="/contact"
-              >
-                Contact
-              </a>
+              <Link to="/contact">Contact</Link>
             </div>
           </nav>
 
@@ -117,6 +82,7 @@ const Header = () => {
               type="text"
               placeholder="Search"
             />
+
             <button className={styles.loginBtn}>
               <a
                 target="_blank"
@@ -126,6 +92,7 @@ const Header = () => {
                 Log in
               </a>
             </button>
+
             <button className={styles.registerBtn}>
               <a
                 target="_blank"
