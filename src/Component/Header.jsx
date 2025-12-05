@@ -65,6 +65,9 @@ const Header = () => {
                 <Link to="/objective">Objective</Link>
                 <Link to="/operationalModel">Operational Model</Link>
                 <Link to="/salientFeatures">Salient Features</Link>
+                <Link to="/policies">Policies</Link>
+                <Link to="/sedimentaryBasins">Sedimentary Basins</Link>
+                <Link to="/help">Help</Link>
               </div>
             </div>
 

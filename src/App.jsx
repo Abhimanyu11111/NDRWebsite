@@ -8,6 +8,7 @@ import OperationalModel from './Pages/OperationalModel';
 import SalientFeatures from './Pages/SalientFeatures';
 import PoliciesPage from './Pages/PoliciesPage';
 import SedimentaryBasins from './Pages/SedimentaryBasins';
+import HelpPage from './Pages/HelpPage';
 import './App.css'
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/salientFeatures" element={<SalientFeatures />} />
         <Route path="/policies" element={<PoliciesPage />} />
         <Route path="/sedimentaryBasins" element={<SedimentaryBasins />} />
+        <Route path ="/help" element={<HelpPage />} />
       </Routes>
     </>
   )
