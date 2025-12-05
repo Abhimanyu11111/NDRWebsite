@@ -1,0 +1,40 @@
+.policy-container {
+  /* background-color: #fbd195; */
+  /* min-height: 100vh; */
+  display: flex;
+  justify-content: center;
+  padding: 30px 15px;
+}
+
+.policy-card {
+  background-color: #fecb76;
+  width: 100%;
+  max-width: 900px;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+}
+
+.policy-list {
+  list-style: decimal;
+  padding-left: 20px;
+  font-size: 15px;
+  color: #000;
+  line-height: 1.6;
+}
+
+.nested-list {
+  list-style: disc;
+  padding-left: 20px;
+  margin-top: 8px;
+}
+
+.policy-link {
+  color: #0056d6;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.policy-link:hover {
+  opacity: 0.7;
+}

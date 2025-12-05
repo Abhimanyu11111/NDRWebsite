@@ -1,0 +1,47 @@
+.sedimentary-container {
+  /* background-color: #fbd195; */
+  padding: 40px 20px;
+}
+
+.sedimentary-card {
+  background-color: #fecb76;
+  max-width: 1100px;
+  margin: auto;
+  padding: 25px;
+  border-radius: 8px;
+}
+
+/* h2, h3 {
+  margin: 18px 0 10px;
+  color: #000;
+} */
+
+p {
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+  background: #fff6d8;
+}
+
+th, td {
+  border: 1px solid #d7ba7a;
+  padding: 8px;
+  text-align: center;
+  font-size: 14px;
+}
+
+th {
+  background: #e2aa50;
+  color: #000;
+  font-weight: 600;
+}
+
+tbody tr:nth-child(even) {
+  background: #ffeebc;
+}

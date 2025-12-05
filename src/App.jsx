@@ -6,6 +6,8 @@ import Objective from "./Pages/Objective"
 import Contact from './Pages/Contact';
 import OperationalModel from './Pages/OperationalModel';
 import SalientFeatures from './Pages/SalientFeatures';
+import PoliciesPage from './Pages/PoliciesPage';
+import SedimentaryBasins from './Pages/SedimentaryBasins';
 import './App.css'
 
 export default function App() {
@@ -18,6 +20,8 @@ export default function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/operationalModel" element={<OperationalModel />} />
         <Route path="/salientFeatures" element={<SalientFeatures />} />
+        <Route path="/policies" element={<PoliciesPage />} />
+        <Route path="/sedimentaryBasins" element={<SedimentaryBasins />} />
       </Routes>
     </>
   )
