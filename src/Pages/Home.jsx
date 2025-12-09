@@ -58,7 +58,7 @@ const Home2 = () => {
                   Explore Data <span>→</span>
                 </button>
 
-                <button className={styles.learnBtn}>Learn more</button>
+                <button className={styles.learnBtn}>Research And Invest</button>
               </div>
             </div>
 

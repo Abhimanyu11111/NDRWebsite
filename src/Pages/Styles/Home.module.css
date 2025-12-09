@@ -123,6 +123,12 @@
   font-size: 14px;
 }
 
+.navSearchWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+}
 /* ======================================================
    🟪 HOME HERO SECTION (Big heading + text + image)
    ======================================================*/

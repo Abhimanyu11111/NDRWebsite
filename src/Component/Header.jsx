@@ -8,28 +8,22 @@ import { FiSearch } from "react-icons/fi";
 const Header = () => {
   return (
     <header className={styles.headerWrapper}>
-      {/* Top Blue Bar */}
+      
+      {/* Top Bar */}
       <div className={styles.topBar}>
         <div className="container">
           <div className={styles.navbarnew}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "0px 0.8rem",
-              }}
-            >
+            <div className={styles.govTextBox}>
               <span>
                 An Official website of <strong>Government of India</strong>
               </span>
               <ReactCountryFlag
                 countryCode="IN"
                 svg
-                style={{ width: "2em", height: "2em" }}
+                className={styles.flagIcon}
               />
             </div>
-            <div className={styles.langBtn}>English</div>
+            <button className={styles.langBtn}>English</button>
           </div>
         </div>
       </div>
@@ -52,15 +46,24 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* Navigation + Search */}
       <div className="container">
-        <div className={styles.searchandnavbarbox}>
-          <nav className={styles.navBar}>
-            <div><Link to="/">Home</Link></div>
-            <div><Link to="/about">About NDR</Link></div>
+        <div className={styles.navSearchWrapper}>
 
+          <nav className={styles.navBar}>
+            <div>
+    <Link to="/">Home</Link>
+            </div>
+
+            <div>
+   <Link to="/about">About NDR</Link>
+            </div>
+        
+         
+
+            {/* Dropdown - Pages */}
             <div className={styles.dropdown}>
-              <span>Related Pages ▾</span>
+              <span>Pages ▾</span>
               <div className={styles.dropdownContent}>
                 <Link to="/objective">Objective</Link>
                 <Link to="/operationalModel">Operational Model</Link>
@@ -71,14 +74,35 @@ const Header = () => {
               </div>
             </div>
 
-            <div><Link to="/contact">Contact</Link></div>
+            {/* Dropdown - Important Links */}
+            <div className={styles.dropdown}>
+              <span>Important Links ▾</span>
+              <div className={styles.dropdownContent}>
+                <a href="https://dghindia.gov.in/" target="_blank">Directorate General Of HydroCarbons</a>
+                <a href="https://india.gov.in/" target="_blank">National Portal Of India</a>
+                <a href="https://mopng.gov.in/en" target="_blank">Ministry Of Petroleum & Natural Gas</a>
+                <a href="https://www.oisd.gov.in/" target="_blank">Oil Industry Safety Directorate</a>
+                <a href="http://www.moef.gov.in/" target="_blank">MoEF & CC</a>
+                <a href="http://dgms.gov.in/" target="_blank">DGMS</a>
+                <a href="http://ppac.org.in/" target="_blank">PPAC</a>
+              </div>
+            </div>
+
+            {/* Dropdown - Download */}
+            <div className={styles.dropdown}>
+              <span>Download ▾</span>
+              <div className={styles.dropdownContent}>
+                <a href="https://www.ndrdgh.gov.in/NDR/?page_id=11708/" target="_blank">
+                  Data Price List & Policies
+                </a>
+              </div>
+            </div>
+
+            <Link to="/contact">Contact</Link>
           </nav>
 
-
+          {/* Search + Login/Register */}
           <div className={styles.searchandlogin}>
-
-          {/* Search Icon + Input */}
-          <div className={styles.rightSection}>
             <div className={styles.searchBox}>
               <input
                 type="text"
@@ -87,29 +111,24 @@ const Header = () => {
               />
               <FiSearch className={styles.searchIcon} />
             </div>
-          </div>
 
-          {/* Buttons */}
-          <button className={styles.loginBtn}>
             <a
-              target="_blank"
-              style={{ color: "white", textDecoration: "none" }}
               href="https://www.ndrdgh.gov.in/NDRTWS/system/mainframe.asp"
+              target="_blank"
+              className={styles.loginBtn}
             >
               Log in
             </a>
-          </button>
 
-          <button className={styles.registerBtn}>
             <a
-              target="_blank"
-              style={{ color: "white", textDecoration: "none" }}
               href="https://www.ndrdgh.gov.in/NDR/?page_id=1486"
+              target="_blank"
+              className={styles.registerBtn}
             >
               Register
             </a>
-          </button>
           </div>
+
         </div>
       </div>
     </header>
