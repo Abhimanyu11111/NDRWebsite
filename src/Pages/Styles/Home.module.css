@@ -385,9 +385,10 @@
    🟧 ALT HERO STYLE (Overlay-based hero – if used later)
    ======================================================*/
 .hero {
-  background-size: cover;
+  /* background-size: cover;
   background-position: center;
-  background-image: url("");
+  background-image: url(""); */
+  padding: 2rem 0px;
 }
 
 .content {
