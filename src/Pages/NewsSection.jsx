@@ -87,7 +87,7 @@ export default function NewsSection() {
             <div className={styles.card} role="region" aria-label="Maps and Statistics">
               <div className={styles.cardHeader}>
                 <span className={styles.icon} aria-hidden>
-                  🗺️
+                  🗺
                 </span>
                 <h3 className={styles.cardTitle}>Map &amp; Statistics</h3>
               </div>
