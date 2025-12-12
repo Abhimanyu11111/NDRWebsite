@@ -104,7 +104,7 @@ National Data Repository (NDR) is an integrated data repository of Exploration a
 
         <div className={styles.statItem}>
           <IoCheckmarkCircle style={{ fontSize: "2rem", color: "green" }} />
-          <h3>X+ TB</h3>
+          <h3>5+ PB</h3>
           <p>Of seismic and well data</p>
         </div>
 
@@ -112,7 +112,7 @@ National Data Repository (NDR) is an integrated data repository of Exploration a
 
         <div className={styles.statItem}>
           <IoCheckmarkCircle style={{ fontSize: "2rem", color: "green" }} />
-          <h3>10,000+</h3>
+          <h3>20,000+</h3>
           <p>wells with digital data</p>
         </div>
       </section>
@@ -210,7 +210,7 @@ National Data Repository (NDR) is an integrated data repository of Exploration a
               </p>
 
               <div className={styles.buttons}>
-                <Link to="/technologyBehindNDR"> <button className={styles.exploreBtn}>
+                <Link to="https://www.halliburton.com/en/software/national-digital-resource"> <button className={styles.exploreBtn}>
                   Technology Behind NDR <span>→</span>
                 </button> </Link>
                

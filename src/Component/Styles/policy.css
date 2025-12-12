@@ -7,9 +7,9 @@
 }
 
 .policy-card {
-  background-color: #fecb76;
+  /* background-color: #fecb76; */
   width: 100%;
-  max-width: 75rem;
+  max-width: 83rem;
   padding: 25px;
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
@@ -18,9 +18,9 @@
 .policy-list {
   list-style: decimal;
   padding-left: 20px;
-  font-size: 15px;
+  font-size: 16px;
   color: #000;
-  line-height: 1.6;
+  line-height: 2.1;
 }
 
 .nested-list {
