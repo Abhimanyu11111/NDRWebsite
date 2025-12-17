@@ -1,0 +1,38 @@
+.archiveWrapper {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 30px;
+  /* background-color: #f7caa2; */
+  border-radius: 10px;
+  margin: 30px;
+}
+
+.archiveBox {
+  flex: 1;
+}
+
+.archiveBox h2 {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.archiveBox ul {
+  list-style: disc;
+  padding-left: 20px;
+}
+
+.subList {
+  list-style: circle;
+  padding-left: 20px;
+}
+
+.archiveBox a {
+  color: #0066ff;
+  text-decoration: none;
+}
+
+.archiveBox a:hover {
+  text-decoration: underline;
+}

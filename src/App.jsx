@@ -25,6 +25,7 @@ import HyperlinkingPolicy from './Pages/HyperlinkingPolicy';
 import PrivacyPolicy from './Pages/PrivacyPolicy';
 import TermsConditions from './Pages/TermsConditions';
 import WebsitePolicies from './Pages/WebsitePolicies';
+import Archives from './Pages/Archives';
 import './App.css'
 
 export default function App() {
@@ -56,6 +57,7 @@ export default function App() {
        <Route path="/privacyPolicy" element={<PrivacyPolicy />} />
        <Route path="/termsConditions" element={<TermsConditions />} />
        <Route path="/websitePolicies" element={<WebsitePolicies />} />
+       <Route path="/archives" element={<Archives />} />
 
 
       </Routes>

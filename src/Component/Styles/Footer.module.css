@@ -142,3 +142,38 @@
   opacity: .85;
   color: white;
 }
+
+.visitorSample {
+  background: #fff;
+  text-align: center;
+  padding: 15px 10px;
+  border-top: 1px solid #ddd;
+}
+
+.visitorBox {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  /* margin-bottom: 6px; */
+  margin-top: 2rem;
+}
+
+.visitorLabel {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.visitorCount {
+  font-family: "Courier New", monospace;
+  font-size: 14px;
+  background: #000;
+  color: #fff;
+  padding: 4px 10px;
+  letter-spacing: 2px;
+}
+
+.lastUpdated {
+  font-size: 14px;
+  color: #333;
+}

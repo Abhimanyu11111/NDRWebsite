@@ -175,7 +175,7 @@ const ResearchInvest = () => {
           <section className={styles.contactBox}>
             <h2>Enquiries:</h2>
             <p>
-              General/ Data enquiries — indr[at]dghindia[dot]gov[dot]in <br />
+              General/ Data enquiries — indr@dghindia.gov.in <br />
               HoD-NDR: +91-120-247-2578 <br />
               NDR Reception: +91-120-247-2548 <br />
               DGH Reception: +91-120-247-2000

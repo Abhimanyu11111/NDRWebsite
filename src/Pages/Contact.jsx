@@ -70,7 +70,7 @@ const Contact = () => {
 
               <div className="info-item">
                 <label>Email</label>
-                <p>indr[at]dghindia[dot]gov[dot]in</p>
+                <p>indr@dghindia.gov.in</p>
               </div>
 
               <div className="info-item">
