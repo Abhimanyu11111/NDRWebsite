@@ -65,13 +65,13 @@ export default function Footer() {
                             <div className={styles.social}>
                                 <span>Social</span>
                                 <div className={styles.icons}>
-                                    <a target="_blank" href="Thttps://x.com/DghIndia?t=N3r07WrkdbmP96Rb5U7nrg&s=08">
+                                    {/* <a target="_blank" href="Thttps://x.com/DghIndia?t=N3r07WrkdbmP96Rb5U7nrg&s=08"> */}
                                         <FaXTwitter className={styles.icon} />
-                                    </a>
+                                    {/* </a> */}
 
-                                    <a target="_blank" href="https://www.facebook.com/DGHIndiaOfficial?rdid=yhlxnSkALiMrOc08&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1ZijaHFMGG%2F#">
+                                    {/* <a target="_blank" href="https://www.facebook.com/DGHIndiaOfficial?rdid=yhlxnSkALiMrOc08&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1ZijaHFMGG%2F#"> */}
                                         <FaFacebookF className={styles.icon} />
-                                    </a>
+                                    {/* </a> */}
 
 
                                 </div>
