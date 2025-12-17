@@ -73,10 +73,13 @@ const Home2 = () => {
 
 
               <div className={styles.buttons}>
-                <button className={styles.exploreBtn}>
-                  Explore Data <span>→</span>
-                </button>
-                
+
+                <Link to="/sedimentaryBasins">
+                  <button className={styles.exploreBtn}>
+                    Explore Data <span>→</span>
+                  </button>
+                </Link>
+
                 <Link to="/researchInvest">
                   <button className={styles.learnBtn}>Research and Invest in India</button>
 
