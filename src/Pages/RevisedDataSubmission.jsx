@@ -22,7 +22,7 @@ const RevisedDataSubmission = () => {
             Revised &amp; updated data submission guideline is uploaded and can
             be downloaded through{" "}
             <a
-              href="/download/revised-data-submission-guidelines"
+              href="/DownloadDataPriceListPolicies"
               className={styles.link}
             >
               Revised Data Submission Guidelines

@@ -1,0 +1,28 @@
+.pageWrapper {
+  /* background-color: #e58a1f; outer orange */
+  padding: 35px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.page {
+  width: 794px;              /* A4 width */
+  min-height: 1123px;        /* A4 height */
+  /* background-color: #ffd9b8; inner peach */
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.imageBox {
+  background: #ffffff;
+  padding: 12px;
+  /* border: 2px solid #1e40ff; blue border */
+  display: flex;
+  justify-content: center;
+}
+
+.image {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}

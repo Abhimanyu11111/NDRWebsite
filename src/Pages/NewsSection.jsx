@@ -38,12 +38,12 @@ export default function NewsSection() {
     {
       title:
         "New 2D Seismic Data acquired under EEZ Survey campaign (2023-2024) covering 79,539 LKM are available in NDR",
-      href: "#",
+      href: "newSeismicData",
     },
     {
       title:
         "Revised & updated data submission guideline is uploaded and can be downloaded through download section.",
-      href: "#",
+      href: "revisedDataSubmission",
     },
   ];
 
@@ -198,7 +198,7 @@ export default function NewsSection() {
 
 
             <div style={{ display: "flex", justifyContent: "center" }}>
-              <a className={styles.viewAllBtn} href="#/events">
+              <a className={styles.viewAllBtn} href="/SeismicAndWellData">
                 Maps and Statistics
                 <span className={styles.chev} aria-hidden>
                   ›
