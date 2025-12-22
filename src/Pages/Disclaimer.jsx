@@ -28,10 +28,10 @@ const Disclaimer = () => {
             site. For any clarification/ authenticity of data the concern group
             of DGH may be contacted at{" "}
             <a
-              href="mailto:indr[at]dghindia[dot]gov[dot]in"
+              href="mailto:indr@dghindia.gov.in"
               className={styles.link}
             >
-              indr[at]dghindia[dot]gov[dot]in
+              indr@dghindia.gov.in
             </a>
           </p>
         </div>

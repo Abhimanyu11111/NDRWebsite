@@ -31,7 +31,7 @@ const DownloadDataPriceListPolicies = () => {
           </li>
 
           <li>
-            Confidentiality agreement is required to be filled out, signed and a soft copy is to be sent to indr[at]dghindia[dot]gov[dot]in for data purchase only  
+            Confidentiality agreement is required to be filled out, signed and a soft copy is to be sent to indr@dghindia.gov.in for data purchase only  
             <a href="https://www.ndrdgh.gov.in/NDR/pdf/confidentiality_agreement.pdf" className={styles.link}> Download Confidentiality Agreement </a>
           </li>
 
