@@ -97,14 +97,14 @@ const PoliciesPage = () => {
               <strong>E&P Data Policy:</strong> E&P Data policy is for E&P data
               assimilation, disclosure, sharing, accessibility and dissemination
               through NATIONAL DATA REPOSITORY(NDR){" "}
-              <a href="#" className="policy-link">
+              <a href="/DownloadDataPriceListPolicies" className="policy-link">
                 E&P Data Policy
               </a>
             </li>
 
             <li>
               <strong>Data Submission Guidelines:</strong>{" "}
-              <a href="#" className="policy-link">
+              <a href="/DownloadDataPriceListPolicies" className="policy-link">
                 Data Submission Guidelines
               </a>
             </li>

@@ -12,23 +12,23 @@ export default function NewsSection() {
     {
       title:
         "Seismic-Sequence Stratigraphy and Paleo-Structure Analysis of Proterozoic Sediment within Ganga Basin, India",
-      href: "#",
+      href: "https://www.ndrdgh.gov.in/NDR/pdf/04.pdf",
     },
     {
       title:
         "Prediction of Facies & Reservoir Properties in Carbonate Reservoir through Geo-body Modelling: Mumbai Offshore Case Study",
-      href: "#",
+      href: "https://www.ndrdgh.gov.in/NDR/pdf/05.pdf",
     },
     {
       title:
         "Application of paleo-structural and seismic sequence stratigraphy analysis to determine potential plays within the Proterozoic sequence of the Ganga Basin, India",
-      href: "#",
+      href: "https://www.ndrdgh.gov.in/NDR/pdf/06.pdf",
     },
 
      {
       title:
         "Illumination of Subsurface Geological Elements using New Seismic Data in the East of Andaman Basin with Promising Prospects for Oil and Gas Exploration",
-      href: "#",
+      href: "https://www.ndrdgh.gov.in/NDR/pdf/07.pdf",
     },
 
 
