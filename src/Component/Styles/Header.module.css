@@ -1,0 +1,246 @@
+/* =========================
+   GOV TOP STRIP (MOBILE)
+========================= */
+.govTopStrip {
+  background: #0b2c46; /* official govt blue */
+  color: #ffffff;
+  padding: 6px 10px;
+  font-size: 11px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.govStripLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.govStripLeft span,
+.govStripLeft strong {
+  color: #ffffff;
+}
+
+.flagIcon {
+  width: 18px;
+}
+
+/* Right side search */
+.govStripRight {
+  display: flex;
+  align-items: center;
+}
+
+.searchBox {
+  position: relative;
+}
+
+.search {
+  padding: 6px 8px 6px 28px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: none;
+  width: 130px;
+}
+
+.search::placeholder {
+  color: #666;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: #555;
+}
+
+/* =========================
+   MAIN MOBILE HEADER
+========================= */
+.topBarMobile {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #ffffff;
+  border-bottom: 1px solid #dcdcdc;
+}
+
+/* Hamburger */
+.hamburgerBtn {
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: #000;
+}
+
+/* Title (Govt style) */
+.mobileTitle {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+  color: #000;
+  flex: 1;
+  text-align: center;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Logo */
+.logoBox {
+  width: 30px;
+}
+
+.logoBox img {
+  width: 100%;
+  height: auto;
+  filter: grayscale(100%);
+}
+
+/* =========================
+   SIDEBAR OVERLAY
+========================= */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 999;
+}
+
+/* =========================
+   MOBILE SIDEBAR
+========================= */
+.mobileSidebar {
+  position: fixed;
+  top: 0;
+  left: -280px;
+  width: 280px;
+  height: 100vh;
+  background: #ffffff;
+  z-index: 1000;
+  padding: 18px;
+  transition: left 0.3s ease;
+  overflow-y: auto;
+}
+
+.mobileSidebar.show {
+  left: 0;
+}
+
+.sidebarHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.sidebarNav {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sidebarNav a {
+  text-decoration: none;
+  color: #000;
+  font-size: 15px;
+}
+
+.sidebarNav details summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.sidebarNav details a {
+  padding-left: 14px;
+  font-size: 14px;
+}
+
+/* Sidebar buttons */
+.sidebarBtn {
+  background: #0b2c46;
+  color: #ffffff;
+  padding: 10px;
+  border-radius: 6px;
+  text-align: center;
+  margin-top: 12px;
+  text-decoration: none;
+}
+
+/* =========================
+   VISIBILITY CONTROL
+========================= */
+@media (max-width: 768px) {
+  .desktopHeader {
+    display: none;
+  }
+
+  .mobileHeader {
+    display: block;
+  }
+}
+/* =========================
+   SIDEBAR DROPDOWN (CLEAN)
+========================= */
+
+/* Remove default marker */
+.sidebarNav details summary {
+  list-style: none;
+}
+
+.sidebarNav details summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Summary row */
+.sidebarNav details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #f5f5f5;
+}
+
+/* Arrow */
+.sidebarNav details summary::after {
+  content: "▾";
+  font-size: 14px;
+  transition: transform 0.2s ease;
+}
+
+/* Rotate arrow when open */
+.sidebarNav details[open] summary::after {
+  transform: rotate(180deg);
+}
+
+/* Dropdown links container */
+.sidebarNav details > a {
+  display: block;
+  padding: 8px 20px;
+  font-size: 14px;
+  color: #000;
+  text-decoration: none;
+  background: #ffffff;
+}
+
+/* Hover effect */
+.sidebarNav details > a:hover {
+  background: #f0f0f0;
+}
+
+/* Spacing fix */
+.sidebarNav details {
+  border-radius: 6px;
+  overflow: hidden;
+}

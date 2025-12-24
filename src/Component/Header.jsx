@@ -41,6 +41,7 @@ const Header = () => {
       {/* Main Header */}
       <div className="container">
         <div className={styles.mainHeader}>
+
           <div className={styles.leftSection}>
             <img src={Logo} alt="Government Emblem" className={styles.logo} />
             <div>
@@ -53,8 +54,6 @@ const Header = () => {
               </p>
             </div>
           </div>
-
-        
         </div>
       </div>
 

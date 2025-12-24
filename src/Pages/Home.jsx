@@ -11,6 +11,7 @@ import Footer from "../Component/Footer";
 import Header from "../Component/Header";
 import { Link } from "react-router-dom";
 import NewsSection from "./NewsSection";
+import HeaderWrapper from "../Component/HeaderWrapper";
 
 const Home2 = () => {
   const cards = [
@@ -40,9 +41,16 @@ const Home2 = () => {
   return (
     <>
       {/*  HEADER COMPONENT */}
-      <Header />
+      {/* <Header /> */}
+      {/* <MobileSidebar />   */}
+      {/* <MobileHeader/>     */}
 
-      <div className="orangegradinet">
+      {/* <Header /> */}
+
+      <HeaderWrapper/>
+
+
+      <div   className="orangegradinet">
         <div className="container">
           <section className={styles.hero}>
             <div className={styles.left}>
@@ -137,6 +145,14 @@ const Home2 = () => {
           </div>
         ))}
       </section>
+
+
+
+
+
+
+
+      
 
       {/* <div className="container">
         <section className={styles.wrapper}>
