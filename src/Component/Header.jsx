@@ -21,6 +21,7 @@ const Header = () => {
                 countryCode="IN"
                 svg
                 className={styles.flagIcon}
+                style={{height : "2em" , width : "2em" , margin : "0px 5px"}}
               />
             </div>
             <div className={styles.topRightButtons}>

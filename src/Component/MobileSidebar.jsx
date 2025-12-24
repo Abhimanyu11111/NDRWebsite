@@ -11,13 +11,13 @@ const MobileSidebar = ({ isOpen, onClose }) => {
 
       <div className={`${styles.mobileSidebar} ${isOpen ? styles.show : ""}`}>
         <div className={styles.sidebarHeader}>
-          <span>Menu</span>
+          {/* <span>Menu</span> */}
           <FiX onClick={onClose} />
         </div>
 
         <nav className={styles.sidebarNav}>
-          <Link to="/" onClick={onClose}>Home</Link>
-          <Link to="/about" onClick={onClose}>About NDR</Link>
+          <Link className={styles.sidebarNavLink} to="/" onClick={onClose}>Home</Link>
+          <Link className={styles.sidebarNavLink} to="/about" onClick={onClose}>About NDR</Link>
 
           <details>
             <summary>Pages</summary>
@@ -29,15 +29,15 @@ const MobileSidebar = ({ isOpen, onClose }) => {
 
           <details>
             <summary>Important Links</summary>
-            <a href="https://dghindia.gov.in/" target="_blank">DGH</a>
-            <a href="https://india.gov.in/" target="_blank">India.gov.in</a>
-            <a href="https://mopng.gov.in/en" target="_blank">MoPNG</a>
+            <a className={styles.sidebarNavLink} href="https://dghindia.gov.in/" target="_blank">DGH</a>
+            <a className={styles.sidebarNavLink} href="https://india.gov.in/" target="_blank">India.gov.in</a>
+            <a className={styles.sidebarNavLink} href="https://mopng.gov.in/en" target="_blank">MoPNG</a>
           </details>
 
-          <Link to="/contact" onClick={onClose}>Contact</Link>
+          <Link className={styles.sidebarNavLink} to="/contact" onClick={onClose}>Contact</Link>
 
-          <a className={styles.sidebarBtn}>Log in</a>
-          <a className={styles.sidebarBtn}>Register</a>
+          <a className={styles.buttonText} className={styles.sidebarBtn}>Log in</a>
+          <a className={styles.buttonText} className={styles.sidebarBtn}>Register</a>
         </nav>
       </div>
     </>

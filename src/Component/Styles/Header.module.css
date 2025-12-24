@@ -5,7 +5,7 @@
   background: #0b2c46; /* official govt blue */
   color: #ffffff;
   padding: 6px 10px;
-  font-size: 11px;
+  font-size: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -23,7 +23,8 @@
 }
 
 .flagIcon {
-  width: 18px;
+  width: 30px;
+
 }
 
 /* Right side search */
@@ -147,10 +148,11 @@
   gap: 14px;
 }
 
-.sidebarNav a {
+.sidebarNavLink  {
   text-decoration: none;
   color: #000;
   font-size: 15px;
+  text-decoration: none;
 }
 
 .sidebarNav details summary {
