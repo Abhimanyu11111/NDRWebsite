@@ -34,3 +34,32 @@
 .link:hover {
   text-decoration: underline;
 }
+@media (max-width: 768px) {
+
+  .pageWrapper {
+    padding: 20px 16px;
+    margin: 12px;
+    min-height: auto;
+    border-radius: 8px;
+  }
+
+  .title {
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+
+  .list {
+    padding-left: 18px;
+  }
+
+  .list li {
+    font-size: 15px;
+    margin-bottom: 14px;
+    line-height: 1.55;
+  }
+
+  .link {
+    font-size: 14px;
+    word-break: break-word;
+  }
+}

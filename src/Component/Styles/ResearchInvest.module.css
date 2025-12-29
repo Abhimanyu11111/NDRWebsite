@@ -36,3 +36,40 @@ ul {
   padding: 20px;
   border-radius: 8px;
 }
+@media (max-width: 768px) {
+
+  .pageWrapper {
+    padding: 20px 14px;
+    border-left: 4px solid #d16800;
+    border-right: 4px solid #d16800;
+  }
+
+  .pageWrapper h1 {
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+
+  .pageWrapper h2 {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+
+  .pageWrapper section {
+    margin-bottom: 25px;
+  }
+
+  .pageWrapper p,
+  .pageWrapper ul li {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  ul {
+    padding-left: 18px;
+  }
+
+  .contactBox {
+    padding: 16px;
+    border-radius: 6px;
+  }
+}
