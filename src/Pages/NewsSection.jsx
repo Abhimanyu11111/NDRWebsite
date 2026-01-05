@@ -194,7 +194,7 @@ export default function NewsSection() {
                 <img style={{width : "100%"}} src={mapi} alt="" />
               </div> */}
 
-            <div style={{ width: "90%", height: "19rem", borderRadius: "5px", margin: "0px auto" , display : "flex" , justifyContent : "center" }}>
+            <div className={styles.mapContainer}>
 
               <img style={{ width: "100%" }} src={mapi} alt="" />
             </div>

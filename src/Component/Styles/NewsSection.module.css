@@ -207,6 +207,15 @@ height: 28rem;
   transform: translateY(-1px);
 }
 
+.mapContainer {
+  width: 68%;
+  border-radius: 5px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+}
+
+
 @media (min-width: 860px) {
   .innerGrid {
     /* grid-template-columns: 360px 360px 1fr; */
