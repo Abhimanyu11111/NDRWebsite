@@ -51,11 +51,11 @@
   border: 2px solid #dddddd;
 }
 
-.rightColumn:hover,
-.card:hover {
+/* .rightColumn:hover,
+.card:hover { */
   /* transform: translateY(-4px); */
   /* box-shadow: 0 12px 30px rgba(17, 24, 39, 0.06); */
-}
+/* } */
 
 .card {
   background: var(--bg);
