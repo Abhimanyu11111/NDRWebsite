@@ -24,7 +24,7 @@ const SalientFeatures = () => {
 
   return (
     <>
-      <HeaderWrapper/>
+      <HeaderWrapper />
 
       <div className="salient-wrapper">
         <div className="salient-container">

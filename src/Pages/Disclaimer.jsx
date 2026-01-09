@@ -8,7 +8,7 @@ import HeaderWrapper from "../Component/HeaderWrapper";
 const Disclaimer = () => {
   return (
     <>
-     <HeaderWrapper/>
+      <HeaderWrapper />
       <main className={styles.wrapper}>
         <div className={styles.card}>
           <h2 className={styles.title}>Disclaimer</h2>

@@ -15,7 +15,7 @@ const OperationalModel = () => {
 
   return (
     <>
-      <HeaderWrapper/>
+      <HeaderWrapper />
 
       <div className="operational-wrapper">
         <div className="operational-container">

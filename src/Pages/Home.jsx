@@ -47,10 +47,10 @@ const Home2 = () => {
 
       {/* <Header /> */}
 
-      <HeaderWrapper/>
+      <HeaderWrapper />
 
 
-      <div   className="orangegradinet">
+      <div className="orangegradinet">
         <div className="container">
           <section className={styles.hero}>
             <div className={styles.left}>
@@ -146,13 +146,6 @@ const Home2 = () => {
         ))}
       </section>
 
-
-
-
-
-
-
-      
 
       {/* <div className="container">
         <section className={styles.wrapper}>

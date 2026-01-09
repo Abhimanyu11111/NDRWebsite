@@ -7,11 +7,11 @@ function HeaderWrapper() {
   return (
     <>
       <div className={StyleSheet.desktopNav}>
-       <Header />
+        <Header />
       </div>
 
       <div className={StyleSheet.mobileNav}>
-       <MobileHeader/>
+        <MobileHeader />
       </div>
     </>
   );

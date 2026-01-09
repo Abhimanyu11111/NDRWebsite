@@ -8,7 +8,7 @@ import HeaderWrapper from "../Component/HeaderWrapper";
 const SedimentaryBasins = () => {
   return (
     <>
-      <HeaderWrapper/>
+      <HeaderWrapper />
 
       <div className={styles.pageWrapper}>
         <div className={styles.container}>

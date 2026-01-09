@@ -13,7 +13,7 @@ const Header = () => {
 
 
 
-  
+
 
   // Govt-style language toggle (cookie + reload)
   const toggleLanguage = () => {
@@ -47,7 +47,7 @@ const Header = () => {
                 Help
               </Link>
 
-              {/* 🌐 Language Toggle (FINAL) */}
+              {/*  Language Toggle  */}
               <button onClick={toggleLanguage} className={styles.langBtn}>
                 <span className={styles.langIcon}>अ / A</span>
                 {lang === "en" ? " हिंदी" : " English"}

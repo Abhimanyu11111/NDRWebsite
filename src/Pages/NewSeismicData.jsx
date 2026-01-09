@@ -9,7 +9,7 @@ import HeaderWrapper from "../Component/HeaderWrapper";
 const NewSeismicData = () => {
   return (
     <>
-      <HeaderWrapper/>
+      <HeaderWrapper />
 
       <main className={styles.pageWrapper}>
         <div className={styles.page}>

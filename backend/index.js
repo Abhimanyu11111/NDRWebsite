@@ -119,7 +119,7 @@ app.get("/api/visitor", (req, res) => {
 });
 
 
-// 🟢 SAVE VISITOR DETAILS (IP + GEO + DEVICE + BROWSER)
+//  SAVE VISITOR DETAILS (IP + GEO + DEVICE + BROWSER)
 app.post("/api/visitor/log", async (req, res) => {
   try {
     // Get IP

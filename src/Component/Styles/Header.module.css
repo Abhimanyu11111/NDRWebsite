@@ -2,7 +2,8 @@
    GOV TOP STRIP (MOBILE)
 ========================= */
 .govTopStrip {
-  background: #0b2c46; /* official govt blue */
+  background: #0b2c46;
+  /* official govt blue */
   color: #ffffff;
   padding: 6px 10px;
   font-size: 12px;
@@ -148,7 +149,7 @@
   gap: 14px;
 }
 
-.sidebarNavLink  {
+.sidebarNavLink {
   text-decoration: none;
   color: #000;
   font-size: 15px;
@@ -188,6 +189,7 @@
     display: block;
   }
 }
+
 /* =========================
    SIDEBAR DROPDOWN (CLEAN)
 ========================= */
@@ -227,7 +229,7 @@
 }
 
 /* Dropdown links container */
-.sidebarNav details > a {
+.sidebarNav details>a {
   display: block;
   padding: 8px 20px;
   font-size: 14px;
@@ -237,7 +239,7 @@
 }
 
 /* Hover effect */
-.sidebarNav details > a:hover {
+.sidebarNav details>a:hover {
   background: #f0f0f0;
 }
 

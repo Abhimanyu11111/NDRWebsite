@@ -46,9 +46,9 @@
   /* transition: transform 240ms ease, box-shadow 240ms ease; */
   /* height: 450px; */
   overflow-y: auto;
-height: 28rem;
+  height: 28rem;
 
- border: 2px solid #dddddd;
+  border: 2px solid #dddddd;
 }
 
 .rightColumn:hover,
@@ -66,9 +66,9 @@ height: 28rem;
   /* transition: transform 240ms ease, box-shadow 240ms ease; */
   overflow-y: auto;
   /* height: 30%; */
-height: 28rem;
+  height: 28rem;
 
- border: 2px solid #dddddd;
+  border: 2px solid #dddddd;
 }
 
 .card2 {
@@ -80,9 +80,9 @@ height: 28rem;
   /* transition: transform 240ms ease, box-shadow 240ms ease; */
   overflow-y: auto;
   /* height: 70%; */
-height: 28rem;
+  height: 28rem;
 
- border: 2px solid #dddddd;
+  border: 2px solid #dddddd;
 }
 
 .cardHeader {
@@ -111,9 +111,10 @@ height: 28rem;
   color: var(--accent-dark);
   font-weight: 600;
   text-decoration: none;
-  border-bottom: 2px dashed rgba(109,40,217,0.12);
+  border-bottom: 2px dashed rgba(109, 40, 217, 0.12);
   padding-bottom: 2px;
 }
+
 .mapsLink:hover {
   color: var(--accent);
 }
@@ -126,23 +127,26 @@ height: 28rem;
   flex-direction: column;
   gap: 12px;
 }
+
 .articleItem {
   line-height: 1.35;
 }
+
 .articleLink {
   /* color: #5b21b6; */
   text-decoration: none;
   font-weight: 600;
-  color:  #f97316;
+  color: #f97316;
 }
+
 .articleLink:hover {
   text-decoration: underline;
 }
 
 .rightTitle {
- 
+
   font-size: 1.05rem;
-  
+
   /* margin: 0 0 14px 0; */
   color: #0f172a;
   font-weight: 700;
@@ -156,16 +160,19 @@ height: 28rem;
   flex-direction: column;
   gap: 14px;
 }
+
 .eventItem {
   display: flex;
   gap: 12px;
   align-items: flex-start;
 }
+
 .bullet {
   color: var(--orange);
   font-weight: 700;
   margin-top: 2px;
 }
+
 .eventLink {
   /* color: #4b0082; */
   text-decoration: none;
@@ -173,9 +180,10 @@ height: 28rem;
   line-height: 1.4;
   /* color: #ff7722;
    */
-   color:  #f97316;
-   font-weight: 600;
+  color: #f97316;
+  font-weight: 600;
 }
+
 .eventLink:hover {
   text-decoration: underline;
 }
@@ -185,6 +193,7 @@ height: 28rem;
   display: flex;
   justify-content: center;
 }
+
 .viewAllBtn {
   display: inline-flex;
   align-items: center;
@@ -193,13 +202,14 @@ height: 28rem;
   border-radius: 10px;
   background: transparent;
   color: var(--orange);
-  border: 2px solid rgba(249,115,22,0.12);
+  border: 2px solid rgba(249, 115, 22, 0.12);
   text-decoration: none;
   font-weight: 700;
 }
+
 .viewAllBtn:hover {
-  background: rgba(249,115,22,0.06);
-  border-color: rgba(249,115,22,0.22);
+  background: rgba(249, 115, 22, 0.06);
+  border-color: rgba(249, 115, 22, 0.22);
 }
 
 .chev {
@@ -219,7 +229,7 @@ height: 28rem;
 @media (min-width: 860px) {
   .innerGrid {
     /* grid-template-columns: 360px 360px 1fr; */
-     grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
   }
 
   .leftColumn {
@@ -235,9 +245,12 @@ height: 28rem;
   .wrapper {
     padding: 14px;
   }
-  .card, .rightColumn {
+
+  .card,
+  .rightColumn {
     padding: 14px;
   }
+
   .rightTitle {
     font-size: 1.2rem;
   }

@@ -8,7 +8,7 @@ import HeaderWrapper from "../Component/HeaderWrapper";
 const TermsConditions = () => {
   return (
     <>
-      <HeaderWrapper/>
+      <HeaderWrapper />
 
       <main className={styles.wrapper}>
         <div className={styles.card}>

@@ -74,7 +74,7 @@
 }
 
 .linkList li a {
-  color: rgba(255,255,255,0.85);
+  color: rgba(255, 255, 255, 0.85);
   font-size: 14px;
   text-decoration: none;
   transition: 0.2s ease;
@@ -124,7 +124,7 @@
   color: #d6e2ff;
   margin-top: 20px;
   margin-bottom: 10px;
-  border-top: 1px solid rgba(255,255,255,0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
   padding-top: 15px;
   font-size: 14px;
   line-height: 1.5;
@@ -179,7 +179,7 @@
 }
 
 .medialinks {
-  color : white;
+  color: white;
   text-decoration: none;
 }
 
@@ -195,12 +195,6 @@
   width: 100%;
   filter: brightness(0) invert(1);
 }
-
-
-
-
-
-
 
 @media (max-width: 700px) {
 
@@ -240,7 +234,7 @@
     gap: 20px;
     padding-left: 0;
     border-left: none;
-    border-top: 1px solid rgba(255,255,255,0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
     padding-top: 20px;
   }
 
@@ -254,7 +248,7 @@
 
   /* RIGHT SECTION */
   .right {
-    border-top: 1px solid rgba(255,255,255,0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
     padding-top: 20px;
   }
 

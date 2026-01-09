@@ -6,7 +6,8 @@
 }
 
 .page {
-  width: 794px;              /* A4 width */
+  width: 794px;
+  /* A4 width */
   /* min-height: 1123px;        A4 height */
   /* background-color: #ffe0c2; inner peach */
   padding: 30px;

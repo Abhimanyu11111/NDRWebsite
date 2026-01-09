@@ -7,7 +7,7 @@ import HeaderWrapper from "../Component/HeaderWrapper";
 const ContentArchivalPolicy = () => {
   return (
     <>
-      <HeaderWrapper/>
+      <HeaderWrapper />
 
       <main className={styles.wrapper}>
         <div className={styles.card}>

@@ -6,8 +6,10 @@
 }
 
 .page {
-  width: 794px;              /* A4 width */
-  min-height: 1123px;        /* A4 height */
+  width: 794px;
+  /* A4 width */
+  min-height: 1123px;
+  /* A4 height */
   /* background-color: #ffd9b8; inner peach */
   padding: 20px;
   border-radius: 12px;
@@ -26,6 +28,7 @@
   height: auto;
   object-fit: contain;
 }
+
 @media (max-width: 900px) {
 
   .pageWrapper {
@@ -34,7 +37,8 @@
 
   .page {
     width: 100%;
-    min-height: auto;       /* mobile pe A4 height force mat karo */
+    min-height: auto;
+    /* mobile pe A4 height force mat karo */
     padding: 14px;
     border-radius: 10px;
   }

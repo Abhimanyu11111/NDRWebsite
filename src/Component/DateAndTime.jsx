@@ -13,5 +13,5 @@ export default function DateAndTime() {
     hour12: true,
   });
 
-  return <div style={{fontSize : "14px"}}>Last Updated – {formatted}</div>;
+  return <div style={{ fontSize: "14px" }}>Last Updated – {formatted}</div>;
 }

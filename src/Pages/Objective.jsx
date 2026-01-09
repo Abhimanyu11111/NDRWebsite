@@ -20,7 +20,7 @@ const Objective = () => {
 
     return (
         <>
-            <HeaderWrapper/>
+            <HeaderWrapper />
 
             <div className="container">
                 <div className="objective-wrapper">

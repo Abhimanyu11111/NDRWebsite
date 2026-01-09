@@ -39,12 +39,12 @@
 
 
 
-@media (max-width: 700px)
-{
+@media (max-width: 700px) {
   .archiveWrapper {
     flex-direction: column;
     padding: 15px;
     margin: 15px;
   }
 }
+
 /* archiveWrapper */

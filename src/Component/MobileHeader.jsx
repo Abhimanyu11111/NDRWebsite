@@ -17,7 +17,7 @@ const MobileHeader = () => {
           <span>
             An Official website of <strong>Government of India</strong>
           </span>
-          <ReactCountryFlag  countryCode="IN" svg   style={{margin : "0px 2px" ,width : "2em" , height : "2em"}} />
+          <ReactCountryFlag countryCode="IN" svg style={{ margin: "0px 2px", width: "2em", height: "2em" }} />
         </div>
 
         <div className={styles.govStripRight}>

@@ -8,7 +8,7 @@ import HeaderWrapper from "../Component/HeaderWrapper";
 const ResearchInvest = () => {
   return (
     <>
-      <HeaderWrapper/>
+      <HeaderWrapper />
 
       <div className="container">
         <div className={styles.pageWrapper}>

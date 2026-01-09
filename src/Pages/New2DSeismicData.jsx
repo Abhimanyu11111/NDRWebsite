@@ -8,7 +8,7 @@ import HeaderWrapper from "../Component/HeaderWrapper";
 const New2DSeismicData = () => {
   return (
     <>
-     <HeaderWrapper/>
+      <HeaderWrapper />
 
       <main className={styles.pageWrapper}>
         <div className={styles.page}>

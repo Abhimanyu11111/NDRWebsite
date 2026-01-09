@@ -9,7 +9,7 @@ import HeaderWrapper from "../Component/HeaderWrapper";
 const HelpPage = () => {
   return (
     <>
-      <HeaderWrapper/>
+      <HeaderWrapper />
 
       <main className={styles.helpWrapper}>
         <div className="container">

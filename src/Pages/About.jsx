@@ -19,7 +19,7 @@ const About = () => {
     return (
         <>
             {/* <Header /> */}
-             <HeaderWrapper/>
+            <HeaderWrapper />
 
             <div className="about-wrapper">
                 <div className="about-container">

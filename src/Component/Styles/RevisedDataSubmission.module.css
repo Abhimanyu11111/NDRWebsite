@@ -1,12 +1,14 @@
 .pageWrapper {
-  background-color: #e58a1f; /* outer dark orange */
+  background-color: #e58a1f;
+  /* outer dark orange */
   padding: 35px 0;
   display: flex;
   justify-content: center;
 }
 
 .page {
-  width: 794px;              /* A4 width */
+  width: 794px;
+  /* A4 width */
   /* min-height: 1123px;        A4 height /
   background-color: #ffd9b8; /* inner light peach */
   padding: 30px 35px;
@@ -16,7 +18,8 @@
 .title {
   font-size: 26px;
   font-weight: 500;
-  color: #4aa3df; /* blue heading */
+  color: #4aa3df;
+  /* blue heading */
   line-height: 1.4;
   margin-bottom: 20px;
 }

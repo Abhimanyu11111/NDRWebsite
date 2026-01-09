@@ -11,7 +11,7 @@ import HeaderWrapper from "../Component/HeaderWrapper";
 export default function TechnologyBehindNDR() {
   return (
     <>
-      <HeaderWrapper/>
+      <HeaderWrapper />
 
       <div className={styles.container}>
         <h2 className={styles.title}>Technology Behind the NDR</h2>

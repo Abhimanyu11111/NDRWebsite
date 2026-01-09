@@ -26,7 +26,7 @@ export default function NewsSection() {
       href: "https://www.ndrdgh.gov.in/NDR/pdf/06.pdf",
     },
 
-     {
+    {
       title:
         "Illumination of Subsurface Geological Elements using New Seismic Data in the East of Andaman Basin with Promising Prospects for Oil and Gas Exploration",
       href: "https://www.ndrdgh.gov.in/NDR/pdf/07.pdf",
@@ -56,7 +56,7 @@ export default function NewsSection() {
          
           <div className={styles.rightColumn} role="region" aria-labelledby="news-title">
             <h2 id="news-title" className={styles.rightTitle}>
-              🔔 What's new &amp; Upcoming Events
+               What's new &amp; Upcoming Events
             </h2>
 
             <ul className={styles.eventList}>

@@ -9,7 +9,7 @@ import HeaderWrapper from "../Component/HeaderWrapper";
 const Archives = () => {
   return (
     <>
-      <HeaderWrapper/>
+      <HeaderWrapper />
 
       <div className={styles.archiveWrapper}>
         {/* Archives by Month */}
