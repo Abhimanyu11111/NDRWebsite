@@ -1,12 +1,35 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import styles from "./Styles/Footer.module.css";
 import emblem from "../assets/images/emblem1.png";
 import { FaXTwitter, FaLinkedin } from "react-icons/fa6";
 import DateAndTime from "./DateAndTime";
-import hl from "../assets/images/hl.png"
+import hl from "../assets/images/hl.png";
 
 export default function Footer() {
+    const [visitor, setVisitor] = useState(0);
+
+    // Update visitor counter in DB + get total
+    useEffect(() => {
+        fetch("http://localhost:5000/api/visitor/increment", {
+            method: "POST",
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.success) {
+                    setVisitor(data.total);
+                }
+            })
+            .catch((err) => console.log(err));
+    }, []);
+
+    // Log visitor info (IP, Location, Browser, Device)
+    useEffect(() => {
+        fetch("http://localhost:5000/api/visitor/log", {
+            method: "POST",
+        }).catch((err) => console.log(err));
+    }, []);
+
     return (
         <>
             <footer className={styles.footer}>
@@ -28,8 +51,6 @@ export default function Footer() {
                                     Ministry of Petroleum and Natural Gas, Government of India
                                 </p>
                             </div>
-
-
                         </div>
 
                         <p className={styles.desc}>
@@ -42,7 +63,9 @@ export default function Footer() {
 
                         <div className={styles.visitorBox}>
                             <span className={styles.visitorLabel}>Visitor No:</span>
-                            <span className={styles.visitorCount}>000796653</span>
+                            <span className={styles.visitorCount}>
+                                {visitor.toString().padStart(8, "0")}
+                            </span>
                             <DateAndTime />
                         </div>
                     </div>
@@ -55,8 +78,6 @@ export default function Footer() {
                             <h3 className={styles.colTitle}>Useful links</h3>
                             <ul className={styles.linkList}>
                                 <li><Link to="/about">About NDR</Link></li>
-                                {/* <li><Link to="/securityPolicy">Data access policy</Link></li> */}
-                                {/* <li><Link to="/data-packages">Data packages</Link></li> */}
                                 <li><Link to="/help">Help & support</Link></li>
                                 <li><Link to="/archives">Archives</Link></li>
                                 <li><Link to="/faq">Photo Gallery</Link></li>
@@ -65,15 +86,25 @@ export default function Footer() {
                             <div className={styles.social}>
                                 <span>Social</span>
                                 <div className={styles.icons}>
-                                    <a className={styles.medialinks} style={{ fontSize: "1.8rem" }} target="_blank" rel="noopener noreferrer"href="https://x.com/DghIndia">
+                                    <a
+                                        className={styles.medialinks}
+                                        style={{ fontSize: "1.8rem" }}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        href="https://x.com/DghIndia"
+                                    >
                                         <FaXTwitter className={styles.icon} />
                                     </a>
 
-                                    <a className={styles.medialinks} style={{ fontSize: "1.8rem" }} target="_blank" rel="noopener noreferrer" href="https://www.linkedin.com/in/dgh-india-826855120">
+                                    <a
+                                        className={styles.medialinks}
+                                        style={{ fontSize: "1.8rem" }}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        href="https://www.linkedin.com/in/dgh-india-826855120"
+                                    >
                                         <FaLinkedin className={styles.icon} />
                                     </a>
-
-
                                 </div>
                             </div>
                         </div>
@@ -83,7 +114,6 @@ export default function Footer() {
                             <h3 className={styles.colTitle}>Legal</h3>
                             <ul className={styles.linkList}>
                                 <li><Link to="/websitePolicies">Website Policies</Link></li>
-                                {/* <li><Link to="/TermsCondition">Terms of use</Link></li> */}
                                 <li><Link to="/disclaimer">Disclaimer</Link></li>
                                 <li><Link to="/comapPolicy">Copyright</Link></li>
                             </ul>
@@ -101,37 +131,13 @@ export default function Footer() {
                             Phone: +91-120-2472000<br />
                             Email: ndr@dgh.gov.in
                         </p>
-                        {/* <div style={{ marginTop: "2rem", width: "15vw", marginLeft: "3px" , position : "absolute" , right : "20px"}}>
-                            <img style={{ width: "100%", filter: "brightness(0) invert(1)" }} src={hl} alt="" />
-                        </div> */}
-
 
                         <div className={styles.hauliLogoBox}>
                             <img className={styles.hauliLogo} src={hl} alt="Halliburton Logo" />
                         </div>
                     </div>
-
                 </div>
-
-                {/* NEW GOVERNMENT INFO BLOCK */}
-                {/* <div className={styles.extraInfo}>
-                    <p>Content Owned by DGH and Powered by Halliburton</p>
-                    <p>Next Gen NDR is hosted on Public Cloud</p>
-                </div> */}
-
             </footer>
-
-            {/* VISITOR INFO SAMPLE (CLIENT DEMO) */}
-            {/* <div className={styles.visitorSample}>
-                <div className={styles.visitorBox}>
-                    <span className={styles.visitorLabel}>Visitor No:</span>
-                    <span className={styles.visitorCount}>000796653</span>
-                    <DateAndTime/>
-                </div>
-                <div className={styles.lastUpdated}>
-                    Last Updated – Wednesday 17th December 2025
-                </div>
-            </div> */}
 
             {/* COPYRIGHT BAR */}
             <div className={styles.copyBar}>
@@ -141,8 +147,6 @@ export default function Footer() {
                     </div>
                 </div>
             </div>
-
-
         </>
     );
 }
