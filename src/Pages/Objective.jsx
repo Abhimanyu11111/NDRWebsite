@@ -9,13 +9,14 @@ import "../Component/Styles/Objective.css";
 
 const Objective = () => {
     const points = [
-        "To validate, store, maintain and reproduce high quality and reliable Geo-scientific data",
-        "To facilitate efficient data reporting, data exchange, and data trading between DGH and existing players including all Geo-scientific agencies and academia",
-        "To improve DGH’s ability to monitor and control the E&P activities and reporting",
-        "To encourage new E & P activities by providing high quality and reliable data",
-        "To strengthen overall Geo-scientific activities in India",
-        "To support an open acreage system for an improved Global E & P Business environment in India",
-        "To provide quality E & P data for Processing, Interpretation and Visualisation Centres at DGH",
+        "To preserve national E&P data assets in a standardised, secure, and reusable form with long-term integrity and availability",
+        "To improve data quality, metadata consistency, and discoverability through defined standards and governed workflows",
+        "To enable efficient data submission, validation, cataloguing, access, and dissemination for authorised users",
+        "To strengthen DGH's capability for regulatory monitoring, reporting, and oversight of E&P activities",
+        "To support licensing rounds and investment decisions by providing timely access to high-quality, trusted data",
+        "To facilitate data sharing in accordance with Government of India policies",
+        "To leverage cloud infrastructure for scalability, resilience, cybersecurity, and operational efficiency",
+        "To enable advanced data analytics and visualisation by industry and research communities",
     ];
 
     return (
@@ -28,8 +29,7 @@ const Objective = () => {
                         <h1>Objective / Goals of National Data Repository (NDR)</h1>
 
                         <p className="intro-text">
-                            The main objective is to setup National Data Repository of reliable exploration and production data
-                            for India with provisions for seamless access and online data management. Specific goals are:
+                            The primary objective of NDR is to establish a secure, reliable, and cloud-enabled national repository for India's exploration and production data, ensuring seamless access and efficient online data management. The specific objectives are:
                         </p>
 
                         <ul className="objective-list">

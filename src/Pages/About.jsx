@@ -26,10 +26,7 @@ const About = () => {
                     <h1>National Data Repository (NDR)</h1>
 
                     <p>
-                        National Data Repository (NDR) is a government-sponsored E&P data bank with
-                        state-of-the-art facilities for preservation, upkeep and dissemination of data
-                        to enable its systematic use for future exploration and development. Operational
-                        since 28th July 2017, NDR functions on a turnkey model of Build, Populate and Operate.
+                        National Data Repository (NDR) is a cloud-based national E&P data platform established by the Government of India and operated under the aegis of the Directorate General of Hydrocarbons (DGH) for the systematic preservation, management, and dissemination of India's upstream oil and gas data. The platform represents the modernisation of India's national data infrastructure into a scalable, secure, and resilient cloud-enabled ecosystem aligned with national data policies and global best practices.
                     </p>
 
                     <h3 className="section-title">Types of Data Stored in NDR</h3>
@@ -57,24 +54,18 @@ const About = () => {
                         </div>
                     </div>
 
-                    <p>
-                        NDR safeguards national E&P data assets by promoting exploration and production
-                        activities in India. It has streamlined associated procedures, policies and workflows
-                        relating to data submission, cataloguing, viewing, retrieval and trading for all
-                        stakeholders including industries, government agencies, academia and research communities.
+                    <p>NDR hosts exploration and production data acquired over several decades by public and private operators, constituting a strategic national asset owned by the Government of India. The repository enables centralised data assimilation, standardised metadata management, governed access, and digital delivery of seismic, well, geological, geophysical, drilling, production, and related E&P data, along with associated reports and documents.
                     </p>
 
                     <p>
-                        It stores and maintains hydrocarbon exploration and production data in a safe and
-                        reusable manner for long-term use. The data is preserved as per accepted NDR standards
-                        and made available to entitled users.
+                        Built on cloud infrastructure, NDR provides high availability, disaster recovery, enhanced cybersecurity, and elastic scalability to support licensing rounds, regulatory oversight, and long-term data stewardship. It serves as the single, authoritative source of trusted E&P data for government, industry, academia, and research institutions, supporting informed decision-making across the hydrocarbon value chain.
                     </p>
 
-                    <p>
+                    {/* <p>
                         NDR has significantly enhanced India’s petroleum exploration prospects and supported
                         Bidding Rounds by increasing the availability of quality data. This places India
                         among the nations with a modern NDR capable of competing globally in the E&P sector.
-                    </p>
+                    </p> */}
                 </div>
             </div>
 
