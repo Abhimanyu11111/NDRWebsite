@@ -82,9 +82,9 @@ const Home2 = () => {
 
               <div className={styles.buttons}>
 
-                <Link to="https://enterprise-search.dsif.nicmeghrajprj1.ienergycloud.solutions/">
+                <Link to="/book-vdr">
                   <button className={styles.exploreBtn}>
-                    Explore Data <span>→</span>
+                    Login VDR <span>→</span>
                   </button>
                 </Link>
 

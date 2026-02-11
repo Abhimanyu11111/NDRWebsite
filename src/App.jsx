@@ -7,11 +7,7 @@ import "./App.css";
    ACCESSIBLE LOADER
 ========================= */
 const Loader = () => (
-  <div
-    role="status"
-    aria-live="polite"
-    style={{ padding: "2rem", textAlign: "center" }}
-  >
+  <div role="status" aria-live="polite" style={{ padding: "2rem", textAlign: "center" }}>
     Loading content, please wait…
   </div>
 );
@@ -37,7 +33,12 @@ const PaymentSuccess = lazy(() => import("./Pages/PaymentSuccess"));
 const PaymentFailed = lazy(() => import("./Pages/PaymentFailed"));
 const Dashboard = lazy(() => import("./Pages/admin/Dashboard"));
 const ManageBookings = lazy(() => import("./Pages/admin/ManageBookings"));
+const BookingDetails = lazy(() => import("./Pages/admin/BookingDetails"));
+const ManageData = lazy(() => import("./Pages/admin/ManageData"));
+const ManageUsers = lazy(() =>import("./Pages/admin/ManageUsers"));
 const BookVDR = lazy(() => import("./Pages/BookVDR"));
+const Login = lazy(() => import("./Pages/Login"));
+const Register = lazy(() => import("./Pages/Register"));
 const RegistrationPage = lazy(() => import("./Pages/RegistrationPage"));
 const CopyrightPolicy = lazy(() => import("./Pages/CopyrightPolicy"));
 const Disclaimer = lazy(() => import("./Pages/Disclaimer"));
@@ -47,9 +48,7 @@ const ContentArchivalPolicy = lazy(() => import("./Pages/ContentArchivalPolicy")
 const ContingencyManagementPlan = lazy(() =>
   import("./Pages/ContingencyManagementPlan")
 );
-const WebsiteMonitoringPolicy = lazy(() =>
-  import("./Pages/WebsiteMonitoringPolicy")
-);
+const WebsiteMonitoringPolicy = lazy(() => import("./Pages/WebsiteMonitoringPolicy"));
 const SecurityPolicy = lazy(() => import("./Pages/SecurityPolicy"));
 const HyperlinkingPolicy = lazy(() => import("./Pages/HyperlinkingPolicy"));
 const PrivacyPolicy = lazy(() => import("./Pages/PrivacyPolicy"));
@@ -64,9 +63,8 @@ const New2DSeismicData = lazy(() => import("./Pages/New2DSeismicData"));
 const IndiaStatsMap = lazy(() => import("./Pages/SeismicAndWellData"));
 const NotFound = lazy(() => import("./Pages/NotFound"));
 
-// ⭐ Admin Login page (normal import)
+// Normal imports (not lazy)
 import LoginAdmin from "./Pages/admin/LoginAdmin";
-// ⭐ Admin Route Guard
 import AdminRoute from "./utils/AdminRoute";
 
 /* =========================
@@ -75,11 +73,11 @@ import AdminRoute from "./utils/AdminRoute";
 export default function App() {
   return (
     <>
-      {/* SEO HANDLER */}
       <SeoRouteHandler />
 
       <Suspense fallback={<Loader />}>
         <Routes>
+          {/* PUBLIC ROUTES */}
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/objective" element={<Objective />} />
@@ -113,10 +111,14 @@ export default function App() {
           <Route path="/paymentsuccess" element={<PaymentSuccess />} />
           <Route path="/paymentfailed" element={<PaymentFailed />} />
           <Route path="/book-vdr" element={<BookVDR />} />
+          <Route path="/Login" element={<Login />} />
+          <Route path="/Register" element={<Register />} />
 
-          {/* ⭐⭐ ADMIN ROUTES START ⭐⭐ */}
+          {/* ADMIN LOGIN (PUBLIC) */}
           <Route path="/admin/login" element={<LoginAdmin />} />
+          
 
+          {/* PROTECTED ADMIN ROUTES */}
           <Route
             path="/admin/dashboard"
             element={
@@ -134,8 +136,37 @@ export default function App() {
               </AdminRoute>
             }
           />
-          {/* ⭐⭐ ADMIN ROUTES END ⭐⭐ */}
 
+          <Route
+            path="/admin/bookingdetails/:id"
+            element={
+              <AdminRoute>
+                <BookingDetails />
+              </AdminRoute>
+            }
+          />
+
+          <Route
+           path="/admin/managedata"
+           element={
+            <AdminRoute>
+              <ManageData />
+            </AdminRoute>
+           }
+           
+           />
+
+           <Route
+           path="/admin/manageusers"
+           element={
+            <AdminRoute>
+              <ManageUsers />
+            </AdminRoute>
+           }
+           
+           />
+
+          {/* 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

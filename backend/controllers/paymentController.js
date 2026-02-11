@@ -1,96 +1,91 @@
-import CryptoJS from "crypto-js";
-import dotenv from "dotenv";
-dotenv.config();
+import Payment from "../models/Payment.js";
+import Booking from "../models/Booking.js";
+import { encrypt, decrypt } from "../utils/ccavenue.js";
+import qs from "querystring";
+import { generateInvoicePDF } from "../utils/invoiceGenerator.js";
+import User from "../models/User.js";
+import Room from "../models/room.js";
+
 
 export const initiatePayment = async (req, res) => {
-    try {
-        const { bookingId, amount } = req.body;
+  const { bookingId, amount } = req.body;
 
-        if (!bookingId || !amount) {
-            return res.status(400).json({ error: "Missing fields" });
-        }
+  const orderId = "ORD_" + Date.now();
 
-        // 1️⃣ Payment parameters
-        const orderParams = {
-            merchant_id: process.env.CCA_MERCHANT_ID,
-            order_id: bookingId,
-            currency: "INR",
-            amount,
-            redirect_url: process.env.CCA_REDIRECT_URL,
-            cancel_url: process.env.CCA_CANCEL_URL,
-            language: "EN"
-        };
+  await Payment.create({
+    order_id: orderId,
+    booking_id: bookingId,
+    user_id: req.user.id,
+    amount,
+    status: "INITIATED",
+  });
 
-        // 2️⃣ Convert to key=value form
-        let formData = "";
-        for (let key in orderParams) {
-            formData += `${key}=${orderParams[key]}&`;
-        }
+  const params = {
+    merchant_id: process.env.CCAVENUE_MERCHANT_ID,
+    order_id: orderId,
+    currency: "INR",
+    amount,
+    redirect_url: process.env.CCAVENUE_REDIRECT_URL,
+    cancel_url: process.env.CCAVENUE_CANCEL_URL,
+    language: "EN",
+  };
 
-        // 3️⃣ Encrypt using working key
-        const encryptedData = CryptoJS.AES.encrypt(
-            formData,
-            CryptoJS.enc.Utf8.parse(process.env.CCA_WORKING_KEY),
-            {
-                mode: CryptoJS.mode.ECB,
-                padding: CryptoJS.pad.Pkcs7,
-            }
-        ).toString();
+  const encryptedData = encrypt(
+    qs.stringify(params),
+    process.env.CCAVENUE_WORKING_KEY
+  );
 
-        // 4️⃣ Return to frontend
-        res.json({
-            success: true,
-            paymentUrl: `https://test.ccavenue.com/transaction/transaction.do?command=initiateTransaction&encRequest=${encryptedData}&access_code=${process.env.CCA_ACCESS_CODE}`
-        });
-
-
-    } catch (err) {
-        console.log(err);
-        res.status(500).json({ error: "Payment init failed" });
-    }
+  res.json({
+    encRequest: encryptedData,
+    accessCode: process.env.CCAVENUE_ACCESS_CODE,
+    paymentUrl:
+      "https://secure.ccavenue.com/transaction/transaction.do?command=initiateTransaction",
+  });
 };
-import { db } from "../src/config/db.js";
 
-export const handleCallback = async (req, res) => {
-    try {
-        const encResponse = req.body.encResp;
-        const workingKey = process.env.CCA_WORKING_KEY;
+export const paymentResponse = async (req, res) => {
+  const encryptedResponse = req.body.encResp;
 
-        // 1️⃣ Decrypt
-        const decoded = CryptoJS.AES.decrypt(
-            encResponse,
-            CryptoJS.enc.Utf8.parse(workingKey),
-            {
-                mode: CryptoJS.mode.ECB,
-                padding: CryptoJS.pad.Pkcs7,
-            }
-        ).toString(CryptoJS.enc.Utf8);
+  const decrypted = decrypt(
+    encryptedResponse,
+    process.env.CCAVENUE_WORKING_KEY
+  );
 
-        console.log("DECRYPTED:", decoded);
+  const responseData = qs.parse(decrypted);
 
-        // 2️⃣ Extract booking id + status
-        const parts = decoded.split("&");
-        let order_id = null;
-        let status = null;
+  const payment = await Payment.findOne({
+    where: { order_id: responseData.order_id },
+  });
 
-        parts.forEach(p => {
-            if (p.startsWith("order_id")) order_id = p.split("=")[1];
-            if (p.startsWith("order_status")) status = p.split("=")[1];
-        });
+  if (responseData.order_status === "Success") {
+    payment.status = "SUCCESS";
 
-        if (!order_id) return res.send("No booking found");
+    const booking = await Booking.findOne({
+      where: { booking_id: payment.booking_id },
+    });
 
-        // 3️⃣ Update booking
-        if (status === "Success") {
-            await db.query("UPDATE bookings SET status='paid' WHERE id=?", [order_id]);
-            return res.redirect("http://localhost:3000/payment-success");
-        } else {
-            await db.query("UPDATE bookings SET status='cancelled' WHERE id=?", [order_id]);
-            return res.redirect("http://localhost:3000/payment-failed");
-        }
+    const user = await User.findByPk(booking.user_id);
+    const room = await Room.findByPk(booking.room_id);
 
-    } catch (err) {
-        console.log(err);
-        res.send("Error handling callback");
-    }
+    await generateInvoicePDF({ booking, user, room });
+
+    await Booking.update(
+      { status: "CONFIRMED" },
+      { where: { booking_id: payment.booking_id } }
+    );
+  } else {
+    payment.status = "FAILED";
+
+    await Booking.update(
+      { status: "CANCELLED" },
+      { where: { booking_id: payment.booking_id } }
+    );
+  }
+
+  payment.ccavenue_response = decrypted;
+  await payment.save();
+
+  res.redirect(
+    `${process.env.FRONTEND_URL}/payment-status?status=${payment.status}`
+  );
 };

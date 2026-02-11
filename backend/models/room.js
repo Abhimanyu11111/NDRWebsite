@@ -1,17 +1,60 @@
-import { db } from "../src/config/db.js";
+import { DataTypes } from "sequelize";
+import sequelize from "../src/config/db.js";
 
-export const getAllRooms = async () => {
-  try {
-    // 🔍 DEBUG START
-    console.log("TEST DB QUERY RUNNING...");
-    const [countRows] = await db.query("SELECT COUNT(*) AS total FROM rooms");
-    console.log("ROOM COUNT:", countRows);
-    // 🔍 DEBUG END
+const Room = sequelize.define(
+  "Room",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
 
-    const [rows] = await db.query("SELECT * FROM rooms");
-    return rows;
-  } catch (err) {
-    console.log("ROOM DB ERROR:", err);
-    throw err;
+    title: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+    },
+
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+
+    capacity: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+
+    hourly_rate: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
+
+    half_day_rate: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
+
+    full_day_rate: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
+
+    is_active: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+  },
+  {
+    tableName: "rooms",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
   }
-};
+);
+
+export default Room;

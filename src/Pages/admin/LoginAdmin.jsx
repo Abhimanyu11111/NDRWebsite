@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "../../api/axiosClient";
+import api from "../../api/axiosClient";
 
 export default function LoginAdmin() {
   const [email, setEmail] = useState("");
@@ -11,10 +11,11 @@ export default function LoginAdmin() {
 
   const handleLogin = async () => {
     try {
-      const res = await axios.post("/auth/admin-login", { email, password });
+      setError("");
+      const res = await api.post("/auth/admin-login", { email, password });
       localStorage.setItem("admin", JSON.stringify(res.data));
       navigate("/admin/dashboard");
-    } catch {
+    } catch (err) {
       setError("Invalid credentials");
     }
   };
@@ -58,7 +59,7 @@ export default function LoginAdmin() {
               fontSize: '16px',
               boxSizing: 'border-box'
             }}
-          /><br/>
+          /><br />
           <div style={{
             position: 'relative',
             marginBottom: '20px'
