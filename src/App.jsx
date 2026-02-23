@@ -35,7 +35,7 @@ const Dashboard = lazy(() => import("./Pages/admin/Dashboard"));
 const ManageBookings = lazy(() => import("./Pages/admin/ManageBookings"));
 const BookingDetails = lazy(() => import("./Pages/admin/BookingDetails"));
 const ManageData = lazy(() => import("./Pages/admin/ManageData"));
-const ManageUsers = lazy(() =>import("./Pages/admin/ManageUsers"));
+const ManageUsers = lazy(() => import("./Pages/admin/ManageUsers"));
 const BookVDR = lazy(() => import("./Pages/BookVDR"));
 const Login = lazy(() => import("./Pages/Login"));
 const Register = lazy(() => import("./Pages/Register"));
@@ -62,6 +62,16 @@ const RevisedDataSubmission = lazy(() =>
 const New2DSeismicData = lazy(() => import("./Pages/New2DSeismicData"));
 const IndiaStatsMap = lazy(() => import("./Pages/SeismicAndWellData"));
 const NotFound = lazy(() => import("./Pages/NotFound"));
+
+// User Account & Payment Pages
+const Account = lazy(() => import("./Component/Account"));
+const PaymentSuccessPage = lazy(() => import("./Component/PaymentSuccess"));
+const PaymentFailurePage = lazy(() => import("./Component/PaymentFailure"));
+
+//  ADMIN PAGES
+const PaymentLogs = lazy(() => import("./Pages/paymentlogs"));
+const NotificationsPage = lazy(() => import("./Pages/Notificationpage"));
+const DatasetAccessPage = lazy(() => import("./Pages/Datasetaccess"));
 
 // Normal imports (not lazy)
 import LoginAdmin from "./Pages/admin/LoginAdmin";
@@ -110,13 +120,19 @@ export default function App() {
           <Route path="/SeismicAndWellData" element={<IndiaStatsMap />} />
           <Route path="/paymentsuccess" element={<PaymentSuccess />} />
           <Route path="/paymentfailed" element={<PaymentFailed />} />
+
+          {/* USER ROUTES */}
           <Route path="/book-vdr" element={<BookVDR />} />
           <Route path="/Login" element={<Login />} />
           <Route path="/Register" element={<Register />} />
 
+          {/* ✅ NEW USER ACCOUNT & PAYMENT ROUTES */}
+          <Route path="/account" element={<Account />} />
+          <Route path="/payment-success" element={<PaymentSuccessPage />} />
+          <Route path="/payment-failure" element={<PaymentFailurePage />} />
+
           {/* ADMIN LOGIN (PUBLIC) */}
           <Route path="/admin/login" element={<LoginAdmin />} />
-          
 
           {/* PROTECTED ADMIN ROUTES */}
           <Route
@@ -147,24 +163,50 @@ export default function App() {
           />
 
           <Route
-           path="/admin/managedata"
-           element={
-            <AdminRoute>
-              <ManageData />
-            </AdminRoute>
-           }
-           
-           />
+            path="/admin/managedata"
+            element={
+              <AdminRoute>
+                <ManageData />
+              </AdminRoute>
+            }
+          />
 
-           <Route
-           path="/admin/manageusers"
-           element={
-            <AdminRoute>
-              <ManageUsers />
-            </AdminRoute>
-           }
-           
-           />
+          <Route
+            path="/admin/manageusers"
+            element={
+              <AdminRoute>
+                <ManageUsers />
+              </AdminRoute>
+            }
+          />
+
+          {/* ✅ NEW PROTECTED ADMIN ROUTES */}
+          <Route
+            path="/admin/payments"
+            element={
+              <AdminRoute>
+                <PaymentLogs />
+              </AdminRoute>
+            }
+          />
+
+          <Route
+            path="/admin/notifications"
+            element={
+              <AdminRoute>
+                <NotificationsPage />
+              </AdminRoute>
+            }
+          />
+
+          <Route
+            path="/admin/datasets"
+            element={
+              <AdminRoute>
+                <DatasetAccessPage />
+              </AdminRoute>
+            }
+          />
 
           {/* 404 */}
           <Route path="*" element={<NotFound />} />

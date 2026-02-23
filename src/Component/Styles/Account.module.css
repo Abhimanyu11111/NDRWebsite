@@ -1,0 +1,277 @@
+.accountContainer {
+  min-height: 100vh;
+  background: #f5f7fa;
+  padding-bottom: 40px;
+}
+
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px 0;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.headerContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.header p {
+  margin: 8px 0 0 0;
+  opacity: 0.9;
+  font-size: 1.1rem;
+}
+
+.btnSecondary, .btnLogout {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btnSecondary {
+  background: white;
+  color: #667eea;
+}
+
+.btnLogout {
+  background: rgba(255,255,255,0.2);
+  color: white;
+}
+
+.btnSecondary:hover {
+  background: #f0f0f0;
+}
+
+.btnLogout:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+.profileCard {
+  max-width: 1200px;
+  margin: -30px auto 30px;
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.profileCard h2 {
+  margin: 0 0 20px 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.profileGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.profileItem {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.label {
+  font-size: 0.875rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.value {
+  font-size: 1rem;
+  color: #333;
+  font-weight: 600;
+}
+
+.tabs {
+  max-width: 1200px;
+  margin: 0 auto 30px;
+  display: flex;
+  gap: 10px;
+  padding: 0 20px;
+}
+
+.tab {
+  padding: 12px 24px;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.activeTab {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.tab:hover {
+  border-color: #667eea;
+}
+
+.tabContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.tabContent h2 {
+  margin: 0 0 20px 0;
+  font-size: 1.75rem;
+  color: #333;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 12px;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.bookingsList {
+  display: grid;
+  gap: 20px;
+}
+
+.bookingCard {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.3s;
+}
+
+.bookingCard:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.bookingHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.bookingHeader h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #333;
+}
+
+.badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.badgePENDING { background: #fff3cd; color: #856404; }
+.badgeCONFIRMED { background: #d4edda; color: #155724; }
+.badgeCANCELLED { background: #f8d7da; color: #721c24; }
+.badgeCOMPLETED { background: #d1ecf1; color: #0c5460; }
+
+.bookingDetails {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.detailRow {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.detailRow span:first-child {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.detailRow strong {
+  font-size: 1rem;
+  color: #333;
+}
+
+.paymentBadge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.paymentPENDING { background: #fff3cd; color: #856404; }
+.paymentSUCCESS { background: #d4edda; color: #155724; }
+.paymentFAILED { background: #f8d7da; color: #721c24; }
+
+.paymentsTable {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.paymentsTable table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.paymentsTable th {
+  background: #f8f9fa;
+  padding: 15px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.paymentsTable td {
+  padding: 15px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.paymentsTable tr:hover {
+  background: #f8f9fa;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.statusINITIATED { background: #e7f3ff; color: #0066cc; }
+.statusSuccess { background: #d4edda; color: #155724; }
+.statusFailed { background: #f8d7da; color: #721c24; }
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  font-size: 1.5rem;
+  color: #667eea;
+}

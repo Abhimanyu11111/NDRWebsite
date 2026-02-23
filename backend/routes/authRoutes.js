@@ -18,38 +18,60 @@ router.post("/admin-login", async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(400).json({ msg: "User not found or blocked" });
+      return res.status(400).json({ 
+        success: false,
+        msg: "User not found or account is blocked" 
+      });
     }
 
     const user = rows[0];
 
     if (user.role !== "ADMIN") {
-      return res.status(403).json({ msg: "Not an admin" });
+      return res.status(403).json({ 
+        success: false,
+        msg: "Access denied. Admin privileges required." 
+      });
     }
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
-      return res.status(400).json({ msg: "Invalid credentials" });
+      return res.status(400).json({ 
+        success: false,
+        msg: "Invalid credentials" 
+      });
     }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      { 
+        id: user.id, 
+        email: user.email, 
+        role: user.role 
+      },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
+    // ✅ FIXED - Properly structured response with admin object
     res.json({
       success: true,
       token,
-      email: user.email,
-      role: user.role,
+      admin: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        company: user.company
+      }
     });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ msg: "Server error" });
+    console.error("Admin login error:", err);
+    res.status(500).json({ 
+      success: false,
+      msg: "Server error during login" 
+    });
   }
 });
-
 /* =====================================================
    USER REGISTER
 ===================================================== */

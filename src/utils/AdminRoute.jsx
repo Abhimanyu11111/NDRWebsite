@@ -1,6 +1,13 @@
 import { Navigate } from "react-router-dom";
 
 export default function AdminRoute({ children }) {
-  const admin = JSON.parse(localStorage.getItem("admin"));
-  return admin ? children : <Navigate to="/admin/login" />;
+  try {
+    const adminData = localStorage.getItem("admin");
+    const admin = adminData ? JSON.parse(adminData) : null;
+    
+    return admin ? children : <Navigate to="/admin/login" />;
+  } catch (error) {
+    console.error("AdminRoute error:", error);
+    return <Navigate to="/admin/login" />;
+  }
 }

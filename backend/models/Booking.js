@@ -34,7 +34,14 @@ const Booking = sequelize.define(
       defaultValue: "FULL_DAY",
     },
 
-    /* 🔥 SLOT-BASED CORE FIELDS (NEW) */
+    //  NEW – AM or PM for HALF_DAY bookings
+    half_day_slot: {
+      type: DataTypes.ENUM("AM", "PM"),
+      allowNull: true,
+      comment: "Required when booking_type = HALF_DAY",
+    },
+
+    /* Slot-based core fields */
     start_datetime: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -50,37 +57,31 @@ const Booking = sequelize.define(
       allowNull: false,
     },
 
-    /* 🟡 OLD FIELDS (DEPRECATED – keep for now) */
-    start_date: {
-      type: DataTypes.DATEONLY,
-      allowNull: true,
-    },
+    /* Legacy fields (kept for compatibility) */
+    start_date: { type: DataTypes.DATEONLY, allowNull: true },
+    end_date:   { type: DataTypes.DATEONLY, allowNull: true },
+    start_time: { type: DataTypes.TIME,     allowNull: true },
+    end_time:   { type: DataTypes.TIME,     allowNull: true },
 
-    end_date: {
-      type: DataTypes.DATEONLY,
-      allowNull: true,
-    },
-
-    start_time: {
-      type: DataTypes.TIME,
-      allowNull: true,
-    },
-
-    end_time: {
-      type: DataTypes.TIME,
-      allowNull: true,
-    },
-
+    //  Working days – auto-calculated on create/update
     working_days: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 1,
     },
 
+    //  NEW – surcharge for working days beyond free limit
+    working_day_surcharge: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+      comment: "Extra charge when working days exceed MAX_FREE_WORKING_DAYS",
+    },
+
     data_catalogue: {
       type: DataTypes.JSON,
       allowNull: true,
-      comment: "Selected data sets",
+      comment: "Selected dataset IDs (array)",
     },
 
     room_price: {
@@ -112,18 +113,45 @@ const Booking = sequelize.define(
       allowNull: true,
     },
 
-    status: {
-      type: DataTypes.ENUM(
-        "PENDING",
-        "CONFIRMED",
-        "CANCELLED",
-        "COMPLETED"
-      ),
+    //  NEW – payment tracking fields
+    payment_status: {
+      type: DataTypes.ENUM("PENDING", "SUCCESS", "FAILED", "REFUNDED"),
       allowNull: false,
       defaultValue: "PENDING",
     },
 
-    /* 🟡 LEGACY (logic ab status + datetime se hoga) */
+    payment_id: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+
+    //  NEW – dataset locked flag (set after payment success)
+    dataset_locked: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+
+    //  NEW – 4-day continuous access tracking
+    first_accessed_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: "Timestamp of first room/data access; 96h window starts here",
+    },
+
+    access_suspended: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: "True when 96h continuous access window is exhausted",
+    },
+
+    status: {
+      type: DataTypes.ENUM("PENDING", "CONFIRMED", "CANCELLED", "COMPLETED", "EXPIRED"),
+      allowNull: false,
+      defaultValue: "PENDING",
+    },
+
     is_blocked: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -138,15 +166,8 @@ const Booking = sequelize.define(
   }
 );
 
-/* RELATIONS */
-Booking.belongsTo(User, {
-  foreignKey: "user_id",
-  as: "user",
-});
-
-Booking.belongsTo(Room, {
-  foreignKey: "room_id",
-  as: "room",
-});
+/* Relations */
+Booking.belongsTo(User, { foreignKey: "user_id", as: "user" });
+Booking.belongsTo(Room, { foreignKey: "room_id", as: "room" });
 
 export default Booking;

@@ -12,14 +12,30 @@ export default function LoginAdmin() {
   const handleLogin = async () => {
     try {
       setError("");
-      const res = await api.post("/auth/admin-login", { email, password });
-      localStorage.setItem("admin", JSON.stringify(res.data));
+
+      const res = await api.post("/auth/admin-login", {
+        email,
+        password
+      });
+
+      console.log("API Response:", res.data);
+      console.log("Admin data:", res.data.admin);
+
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("admin", JSON.stringify(res.data.admin));
+
+      //  store token for API auth
+      localStorage.setItem("token", res.data.token);
+
+      //  store admin info (optional)
+      localStorage.setItem("admin", JSON.stringify(res.data.admin));
+
       navigate("/admin/dashboard");
+
     } catch (err) {
       setError("Invalid credentials");
     }
   };
-
   return (
     <div style={{
       display: 'flex',

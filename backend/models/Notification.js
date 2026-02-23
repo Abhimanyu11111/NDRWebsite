@@ -1,6 +1,6 @@
 import { DataTypes } from 'sequelize';
 import sequelize from "../src/config/db.js";
-
+import User from "./User.js";
 
 const Notification = sequelize.define('Notification', {
   id: {
@@ -18,23 +18,40 @@ const Notification = sequelize.define('Notification', {
   },
   room_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,           // allowNull true 
     references: {
       model: 'Rooms',
       key: 'id'
     }
   },
+
+  // COLUMNS CONTROLLER 
+  message: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  type: {
+    type: DataTypes.ENUM('BOOKING', 'PAYMENT', 'SYSTEM', 'INFO', 'GENERAL'),
+    allowNull: true,
+    defaultValue: 'GENERAL'
+  },
+  is_read: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
+
   start_date: {
     type: DataTypes.DATEONLY,
-    allowNull: false
+    allowNull: true
   },
   end_date: {
     type: DataTypes.DATEONLY,
-    allowNull: false
+    allowNull: true
   },
   user_email: {
     type: DataTypes.STRING(255),
-    allowNull: false
+    allowNull: true
   },
   is_active: {
     type: DataTypes.BOOLEAN,
@@ -57,6 +74,8 @@ const Notification = sequelize.define('Notification', {
   updatedAt: false
 });
 
+//USER ASSOCIATION
+Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
+
 export default Notification;
-
-

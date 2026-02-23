@@ -7,33 +7,33 @@
   --primary-color: #2563eb;
   --primary-hover: #1d4ed8;
   --primary-light: #dbeafe;
-  
+
   --secondary-color: #64748b;
   --secondary-light: #f1f5f9;
-  
+
   --success-color: #10b981;
   --danger-color: #ef4444;
   --danger-hover: #dc2626;
-  
+
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #94a3b8;
-  
+
   --bg-primary: #ffffff;
   --bg-secondary: #f8fafc;
   --bg-hover: #f1f5f9;
-  
+
   --border-color: #e2e8f0;
   --border-focus: #2563eb;
-  
+
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  
+
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
-  
+
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -44,7 +44,7 @@
   max-width: 1280px;
   margin: 0 auto;
   padding: 3rem 2rem;
-  background: linear-gradient(to bottom, #f8fafc 0%, #ffffff 100%);
+  background: linear-gradient(to bottom, #f4f7fb 0%, #ffffff 60%);
   min-height: 100vh;
 }
 
@@ -54,8 +54,9 @@
 .bookingHeader {
   margin-bottom: 3rem;
   padding-bottom: 2rem;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 2px solid #e6edf5;
 }
+
 
 .headerContent {
   display: flex;
@@ -72,11 +73,10 @@
 }
 
 .bookingHeader h1 {
-  font-size: 2.25rem;
+  font-size: 2.2rem;
   font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-  letter-spacing: -0.025em;
+  color: #1e3a8a;
+  letter-spacing: -0.02em;
 }
 
 .bookingHeader p {
@@ -97,6 +97,9 @@
   transition: var(--transition);
   white-space: nowrap;
   box-shadow: var(--shadow-sm);
+  background: #fff;
+  color: #b91c1c;
+  border: 1px solid #e5e7eb;
 }
 
 .btnLogout:hover {
@@ -105,6 +108,8 @@
   border-color: var(--danger-color);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
+  background: #b91c1c;
+  color: white;
 }
 
 /* =====================
@@ -127,18 +132,22 @@
    CARDS
    ===================== */
 .card {
-  background: var(--bg-primary);
-  border-radius: var(--radius-lg);
+  background: #ffffff;
+  border-radius: 14px;
   padding: 2rem;
-  box-shadow: var(--shadow-md);
   margin-bottom: 2rem;
-  border: 1px solid rgba(226, 232, 240, 0.6);
-  transition: var(--transition);
+  border: 1px solid #e6edf5;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.04),
+    0 10px 24px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s ease;
 }
 
 .card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.05),
+    0 18px 40px rgba(0, 0, 0, 0.06);
 }
 
 .cardTitle {
@@ -189,6 +198,7 @@
   transition: var(--transition);
   cursor: pointer;
   box-shadow: var(--shadow-sm);
+  background: #fbfdff;
 }
 
 .formSelect:hover {
@@ -199,6 +209,8 @@
   outline: none;
   border-color: var(--border-focus);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: #1e40af;
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.08);
 }
 
 /* =====================
@@ -322,7 +334,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loadingPreview p {
@@ -378,23 +392,18 @@
    ===================== */
 .btnConfirm {
   width: 100%;
-  padding: 1.125rem 1.5rem;
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+  padding: 1.1rem 1.5rem;
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
   color: white;
-  border: none;
-  border-radius: var(--radius-md);
-  font-size: 1.0625rem;
+  border-radius: 10px;
   font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-  box-shadow: var(--shadow-md);
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
 }
 
 .btnConfirm:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--primary-hover) 0%, #1e40af 100%);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
+  background: linear-gradient(135deg, #1e40af, #1d4ed8);
+  transform: translateY(-1px);
 }
 
 .btnConfirm:active:not(:disabled) {
@@ -431,19 +440,19 @@
   .bookingContainer {
     padding: 2rem 1.25rem;
   }
-  
+
   .bookingHeader h1 {
     font-size: 1.875rem;
   }
-  
+
   .card {
     padding: 1.5rem;
   }
-  
+
   .cardTitle {
     font-size: 1.25rem;
   }
-  
+
   .checkboxCard {
     padding: 1rem 1.25rem;
   }
@@ -457,6 +466,7 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -489,15 +499,47 @@ select:focus-visible {
   border-radius: 6px;
   cursor: pointer;
 }
+
 .free {
-  background: #e6fffa;
-  border: 1px solid #38b2ac;
+  background: #f0fdf4;
+  border: 1px solid #16a34a;
 }
+
 .blocked {
-  background: #ffe6e6;
-  border: 1px solid #e53e3e;
-  cursor: not-allowed;
+  background: #fef2f2;
+  border: 1px solid #dc2626;
 }
+
 .error {
   color: red;
+}
+
+.btnAccount {
+  padding: 10px 20px;
+  background: white;
+  color: #667eea;
+  border: 2px solid white;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 0.95rem;
+}
+
+.btnAccount:hover {
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+.stickyCard .card {
+  background: #fbfdff;
+  border: 1px solid #dbe6f2;
+}
+.bookingContainer {
+  animation: fadeInPage 0.4s ease;
+}
+
+@keyframes fadeInPage {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
