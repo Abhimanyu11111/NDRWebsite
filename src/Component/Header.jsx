@@ -157,6 +157,8 @@ const Header = () => {
               </div>
             </div>
 
+             <Link to="/book-vdr">VDR-Booking</Link>
+
             <Link to="/contact">Contact</Link>
           </nav>
 

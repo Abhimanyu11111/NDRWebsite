@@ -1,545 +1,669 @@
 /* =====================================================
-   PROFESSIONAL BOOKING SYSTEM - MODERN CLEAN DESIGN
+   VDR BOOKING SYSTEM — MODERN EDITION
+   Clean · Interesting · Professional
    ===================================================== */
 
-/* CSS Variables for Professional Color Palette */
 :root {
-  --primary-color: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-light: #dbeafe;
-
-  --secondary-color: #64748b;
-  --secondary-light: #f1f5f9;
-
-  --success-color: #10b981;
-  --danger-color: #ef4444;
-  --danger-hover: #dc2626;
-
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
+  --primary: #1a3a6b;
+  --primary-hover: #14305a;
+  --primary-light: #e8eef7;
+  --accent: #f97316;
+  --accent-hover: #ea580c;
+  
+  --success: #16a34a;
+  --success-light: #dcfce7;
+  --danger: #dc2626;
+  --danger-light: #fee2e2;
+  --warning: #f59e0b;
+  
+  --text: #0f172a;
+  --text-light: #475569;
   --text-muted: #94a3b8;
-
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
-  --bg-hover: #f1f5f9;
-
-  --border-color: #e2e8f0;
-  --border-focus: #2563eb;
-
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-
-  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --input: #f9fbfd;
+  --hover: #f1f5f9;
+  
+  --border: #e2e8f0;
+  --radius: 12px;
+  --shadow: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* =====================
-   BOOKING CONTAINER
-   ===================== */
+/* ===================== CONTAINER ===================== */
 .bookingContainer {
-  max-width: 1280px;
+  max-width: 1260px;
   margin: 0 auto;
-  padding: 3rem 2rem;
-  background: linear-gradient(to bottom, #f4f7fb 0%, #ffffff 60%);
+  padding: 2.5rem 2rem;
+  background: var(--bg);
   min-height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
+  animation: fadeIn 0.4s ease;
 }
 
-/* =====================
-   HEADER
-   ===================== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===================== HEADER ===================== */
 .bookingHeader {
-  margin-bottom: 3rem;
-  padding-bottom: 2rem;
-  border-bottom: 2px solid #e6edf5;
+  margin-bottom: 2.5rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  overflow: hidden;
 }
 
+.bookingHeader::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(249,115,22,0.15), transparent);
+  pointer-events: none;
+}
 
 .headerContent {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 2rem;
-}
-
-@media (max-width: 768px) {
-  .headerContent {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+  position: relative;
+  z-index: 1;
 }
 
 .bookingHeader h1 {
-  font-size: 2.2rem;
-  font-weight: 700;
-  color: #1e3a8a;
+  font-size: 2em;
+  font-weight: 800;
+  color: white;
   letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .bookingHeader p {
-  color: var(--text-secondary);
-  font-size: 1rem;
-  line-height: 1.6;
+  color: rgba(255,255,255,0.8);
+  font-size: 1em;
+}
+
+.bookingHeader p strong {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+}
+
+.btnAccount,
+.btnLogout {
+  padding: 0.75rem 1.5rem;
+  border: 2px solid;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  backdrop-filter: blur(10px);
+}
+
+.btnAccount {
+  background: rgba(255,255,255,0.1);
+  color: white;
+  border-color: rgba(255,255,255,0.3);
+}
+
+.btnAccount:hover {
+  background: rgba(255,255,255,0.2);
+  border-color: rgba(255,255,255,0.5);
+  transform: translateY(-2px);
 }
 
 .btnLogout {
-  padding: 0.75rem 1.75rem;
-  background-color: var(--bg-primary);
-  color: var(--danger-color);
-  border: 1.5px solid var(--border-color);
-  border-radius: var(--radius-md);
-  font-size: 0.9375rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: var(--transition);
-  white-space: nowrap;
-  box-shadow: var(--shadow-sm);
-  background: #fff;
-  color: #b91c1c;
-  border: 1px solid #e5e7eb;
+  background: rgba(220,38,38,0.2);
+  color: #fca5a5;
+  border-color: rgba(220,38,38,0.4);
 }
 
 .btnLogout:hover {
-  background-color: var(--danger-color);
+  background: var(--danger);
+  border-color: var(--danger);
   color: white;
-  border-color: var(--danger-color);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-  background: #b91c1c;
-  color: white;
+  transform: translateY(-2px);
 }
 
-/* =====================
-   GRID LAYOUT
-   ===================== */
+/* ===================== GRID ===================== */
 .bookingGrid {
   display: grid;
-  grid-template-columns: 1fr 420px;
-  gap: 2.5rem;
+  grid-template-columns: 1fr 400px;
+  gap: 2rem;
   align-items: start;
 }
 
-@media (max-width: 968px) {
-  .bookingGrid {
-    grid-template-columns: 1fr;
-  }
+/* ===================== CARDS ===================== */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 2rem;
+  margin-bottom: 1.75rem;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
 }
 
-/* =====================
-   CARDS
-   ===================== */
-.card {
-  background: #ffffff;
-  border-radius: 14px;
-  padding: 2rem;
-  margin-bottom: 2rem;
-  border: 1px solid #e6edf5;
-  box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.04),
-    0 10px 24px rgba(0, 0, 0, 0.04);
-  transition: all 0.25s ease;
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 0;
+  background: var(--accent);
+  transition: height 0.3s ease;
 }
 
 .card:hover {
+  box-shadow: var(--shadow-lg);
   transform: translateY(-3px);
-  box-shadow:
-    0 4px 10px rgba(0, 0, 0, 0.05),
-    0 18px 40px rgba(0, 0, 0, 0.06);
+}
+
+.card:hover::before {
+  height: 100%;
 }
 
 .cardTitle {
-  font-size: 1.375rem;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-size: 1.2em;
+  font-weight: 800;
+  color: var(--text);
   margin-bottom: 0.5rem;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.01em;
+  border-left: 4px solid var(--accent);
+  padding-left: 1rem;
 }
 
 .cardSubtitle {
-  color: var(--text-secondary);
-  font-size: 0.9375rem;
-  margin-bottom: 1.75rem;
+  color: var(--text-light);
+  font-size: 0.9em;
+  margin-bottom: 1.5rem;
+  padding-left: 1rem;
   line-height: 1.6;
 }
 
 .stickyCard {
   position: sticky;
-  top: 2rem;
-  transition: var(--transition);
+  top: 1.5rem;
 }
 
-/* =====================
-   FORM ELEMENTS
-   ===================== */
+/* ===================== FORM ELEMENTS ===================== */
 .formGroup {
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.5rem;
 }
 
 .formGroup label {
   display: block;
-  font-weight: 500;
-  color: var(--text-primary);
-  margin-bottom: 0.625rem;
-  font-size: 0.9375rem;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.6rem;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.required {
+  color: var(--danger);
+  margin-left: 4px;
+}
+
+.fieldHelper {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin: 5px 0 10px 0;
+  font-style: italic;
 }
 
 .formSelect {
   width: 100%;
-  padding: 0.875rem 1rem;
-  border: 1.5px solid var(--border-color);
-  border-radius: var(--radius-md);
-  font-size: 1rem;
-  color: var(--text-primary);
-  background-color: var(--bg-primary);
+  padding: 0.9rem 1rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95em;
+  color: var(--text);
+  background: var(--input);
   transition: var(--transition);
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  background: #fbfdff;
 }
 
 .formSelect:hover {
-  border-color: var(--secondary-color);
+  border-color: var(--accent);
+  background: white;
 }
 
 .formSelect:focus {
   outline: none;
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-  border-color: #1e40af;
-  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.08);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(249,115,22,0.1);
+  background: white;
 }
 
-/* =====================
-   DATEPICKER
-   ===================== */
-.datepickerWrapper {
+.formTextarea {
+  width: 100%;
+  padding: 1rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95em;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 120px;
+  transition: var(--transition);
+}
+
+.formTextarea:hover {
+  border-color: var(--accent);
+}
+
+.formTextarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(249,115,22,0.1);
+}
+
+.charCount {
+  text-align: right;
+  font-size: 0.8em;
+  color: var(--text-muted);
+  margin-top: 5px;
+}
+
+/* ===================== DURATION TABS ===================== */
+.durationTabs {
   display: flex;
-  justify-content: center;
+  gap: 10px;
 }
 
-.datepickerWrapper :global(.react-datepicker) {
-  border: 1.5px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  font-family: inherit;
-  box-shadow: var(--shadow-lg);
-}
-
-.datepickerWrapper :global(.react-datepicker__header) {
-  background-color: var(--bg-secondary);
-  border-bottom: 1.5px solid var(--border-color);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding-top: 1rem;
-}
-
-.datepickerWrapper :global(.react-datepicker__day--selected),
-.datepickerWrapper :global(.react-datepicker__day--in-range) {
-  background-color: var(--primary-color);
-  font-weight: 500;
-}
-
-.datepickerWrapper :global(.react-datepicker__day--in-selecting-range) {
-  background-color: var(--primary-light);
-  color: var(--primary-color);
-}
-
-.datepickerWrapper :global(.react-datepicker__day:hover) {
-  background-color: var(--bg-hover);
-  border-radius: var(--radius-sm);
-}
-
-/* =====================
-   DATA CATALOGUE
-   ===================== */
-.dataOptions {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.checkboxCard {
-  display: flex;
-  align-items: center;
-  padding: 1.25rem 1.5rem;
-  border: 1.5px solid var(--border-color);
-  border-radius: var(--radius-md);
+.durationTab {
+  flex: 1;
+  padding: 0.875rem 1rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--input);
+  font-weight: 700;
   cursor: pointer;
   transition: var(--transition);
-  background-color: var(--bg-primary);
-  box-shadow: var(--shadow-sm);
+  text-align: center;
+  text-transform: uppercase;
+  font-size: 0.8em;
+  letter-spacing: 0.05em;
 }
 
-.checkboxCard:hover {
-  border-color: var(--primary-color);
-  background-color: var(--bg-hover);
-  transform: translateX(4px);
-  box-shadow: var(--shadow-md);
+.durationTab:hover {
+  border-color: var(--accent);
+  background: white;
+  transform: translateY(-2px);
 }
 
-.checkboxCard:has(input[type="checkbox"]:checked) {
-  border-color: var(--primary-color);
-  background-color: var(--primary-light);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+.durationTabActive {
+  background: linear-gradient(135deg, var(--accent) 0%, #ea580c 100%);
+  border-color: var(--accent);
+  color: white;
+  box-shadow: 0 4px 12px rgba(249,115,22,0.3);
 }
 
-.checkboxCard input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  margin-right: 1.25rem;
+/* ===================== DATE PICKER ===================== */
+.dateFieldsRow {
+  display: flex;
+  align-items: stretch;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: relative;
+  background: var(--card);
+  transition: var(--transition);
+}
+
+.dateFieldsRow:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(249,115,22,0.1);
+}
+
+.dateField {
+  flex: 1;
+  padding: 1.25rem;
   cursor: pointer;
-  accent-color: var(--primary-color);
+  transition: var(--transition);
 }
 
-.checkboxContent {
+.dateField:hover {
+  background: var(--hover);
+}
+
+.dateFieldActive {
+  background: rgba(249,115,22,0.1) !important;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.dateFieldReadonly {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.dateFieldReadonly:hover {
+  background: transparent;
+}
+
+.dateFieldDivider {
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  color: var(--accent);
+  font-size: 1.5em;
+  font-weight: 700;
+  border-left: 2px solid var(--border);
+  border-right: 2px solid var(--border);
+}
+
+.dateFieldLabel {
+  font-size: 0.7em;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.dateFieldValue {
+  font-size: 1.3em;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.dateFieldPlaceholder {
+  font-size: 1em;
+  color: var(--text-muted);
+}
+
+.dateFieldDay {
+  font-size: 0.75em;
+  color: var(--text-light);
+  margin-top: 4px;
+}
+
+/* ===================== CALENDAR DROPDOWN ===================== */
+.calDropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  z-index: 999;
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-lg);
+  min-width: 340px;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.calInfoStrip {
+  display: flex;
+  gap: 8px;
+  background: rgba(249,115,22,0.1);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 0.85em;
+  color: var(--text);
+  margin-bottom: 1rem;
+}
+
+.calSelectingLabel {
+  font-size: 0.85em;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--border);
+}
+
+/* Mini Calendar */
+.miniCal { width: 100%; }
+
+.calNav {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex: 1;
+  margin-bottom: 1rem;
 }
 
-.dataType {
-  font-weight: 500;
-  color: var(--text-primary);
-  font-size: 1rem;
+.calNavBtn {
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--input);
+  font-size: 1.2em;
+  cursor: pointer;
+  transition: var(--transition);
 }
 
-.dataPrice {
-  color: var(--text-secondary);
-  font-weight: 600;
-  font-size: 0.9375rem;
-  padding: 0.375rem 0.875rem;
-  background-color: var(--bg-secondary);
-  border-radius: var(--radius-sm);
+.calNavBtn:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
 }
 
-/* =====================
-   PREVIEW SECTION
-   ===================== */
-.loadingPreview {
+.calNavBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.calMonthTitle {
+  font-size: 1em;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.calGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calDayHead {
   text-align: center;
-  padding: 3rem 0;
-}
-
-.spinner {
-  width: 44px;
-  height: 44px;
-  margin: 0 auto 1.25rem;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--primary-color);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.loadingPreview p {
-  color: var(--text-secondary);
-  font-size: 0.9375rem;
-}
-
-.noPreview {
-  text-align: center;
-  padding: 3.5rem 1.5rem;
+  font-size: 0.7em;
+  font-weight: 700;
   color: var(--text-muted);
-  font-size: 0.9375rem;
+  padding: 6px;
+  text-transform: uppercase;
 }
 
+.calDay {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.calDay:hover:not(.calDayDisabled) {
+  background: var(--accent);
+  color: white;
+  transform: scale(1.1);
+}
+
+.calDayDisabled {
+  color: var(--border);
+  cursor: not-allowed;
+}
+
+.calDayToday {
+  border: 2px solid var(--accent);
+  font-weight: 800;
+}
+
+.calDayStart,
+.calDayEnd {
+  background: var(--accent) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(249,115,22,0.3);
+}
+
+.calDayInRange {
+  background: rgba(249,115,22,0.1);
+  color: var(--accent);
+}
+
+/* ===================== INFO BARS ===================== */
+.durationInfo {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--success-light);
+  border-left: 4px solid var(--success);
+  border-radius: 8px;
+  font-size: 0.85em;
+  color: var(--success);
+  font-weight: 600;
+}
+
+.blockedWarning {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* ===================== BOOKING SUMMARY ===================== */
 .previewDetails {
-  margin-bottom: 1.75rem;
+  background: var(--input);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .previewRow {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 1rem 0;
-  color: var(--text-secondary);
-  font-size: 0.9375rem;
-}
-
-.previewRow.discount {
-  color: var(--success-color);
-  font-weight: 500;
-}
-
-.previewRow.total {
-  font-size: 1.25rem;
-  color: var(--text-primary);
-  font-weight: 600;
-  padding-top: 1.25rem;
+  padding: 0.75rem 0;
+  font-size: 0.9em;
+  color: var(--text-light);
 }
 
 .previewRow strong {
-  font-weight: 600;
-  color: var(--text-primary);
+  font-weight: 700;
+  color: var(--text);
 }
 
 .previewDivider {
   height: 1px;
-  background: linear-gradient(to right, transparent, var(--border-color), transparent);
-  margin: 0.75rem 0;
+  background: var(--border);
 }
 
-/* =====================
-   BUTTONS
-   ===================== */
+.noPreview {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--text-muted);
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+}
+
+/* ===================== BUTTONS ===================== */
 .btnConfirm {
   width: 100%;
-  padding: 1.1rem 1.5rem;
-  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  padding: 1rem;
+  background: linear-gradient(135deg, var(--accent) 0%, #ea580c 100%);
   color: white;
-  border-radius: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+  border: none;
+  border-radius: 8px;
+  font-size: 1em;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 4px 12px rgba(249,115,22,0.3);
 }
 
 .btnConfirm:hover:not(:disabled) {
-  background: linear-gradient(135deg, #1e40af, #1d4ed8);
-  transform: translateY(-1px);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(249,115,22,0.4);
 }
 
 .btnConfirm:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(-1px);
 }
 
 .btnConfirm:disabled {
-  background: var(--secondary-light);
+  background: var(--border);
   color: var(--text-muted);
   cursor: not-allowed;
   box-shadow: none;
 }
 
-/* =====================
-   ERROR MESSAGE
-   ===================== */
+/* ===================== ERROR ===================== */
 .errorMessage {
-  padding: 1.125rem 1.25rem;
-  background-color: #fef2f2;
-  border: 1.5px solid #fecaca;
-  border-left: 4px solid var(--danger-color);
-  border-radius: var(--radius-md);
-  color: #991b1b;
-  margin-bottom: 1.5rem;
-  font-size: 0.9375rem;
-  line-height: 1.6;
-  box-shadow: var(--shadow-sm);
-}
-
-/* =====================
-   RESPONSIVE DESIGN
-   ===================== */
-@media (max-width: 768px) {
-  .bookingContainer {
-    padding: 2rem 1.25rem;
-  }
-
-  .bookingHeader h1 {
-    font-size: 1.875rem;
-  }
-
-  .card {
-    padding: 1.5rem;
-  }
-
-  .cardTitle {
-    font-size: 1.25rem;
-  }
-
-  .checkboxCard {
-    padding: 1rem 1.25rem;
-  }
-}
-
-/* =====================
-   SMOOTH ANIMATIONS
-   ===================== */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.card {
-  animation: fadeIn 0.4s ease-out;
-}
-
-/* =====================
-   ACCESSIBILITY
-   ===================== */
-*:focus-visible {
-  outline: 2px solid var(--primary-color);
-  outline-offset: 2px;
-}
-
-button:focus-visible,
-select:focus-visible {
-  outline: 2px solid var(--primary-color);
-  outline-offset: 2px;
-}
-
-/* Clender CSS */
-
-.slot {
-  padding: 10px;
-  margin-bottom: 6px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.free {
-  background: #f0fdf4;
-  border: 1px solid #16a34a;
-}
-
-.blocked {
-  background: #fef2f2;
-  border: 1px solid #dc2626;
-}
-
-.error {
-  color: red;
-}
-
-.btnAccount {
-  padding: 10px 20px;
-  background: white;
-  color: #667eea;
-  border: 2px solid white;
+  padding: 1rem;
+  background: var(--danger-light);
+  border-left: 4px solid var(--danger);
   border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-  font-size: 0.95rem;
+  color: var(--danger);
+  margin-bottom: 1rem;
+  font-size: 0.9em;
 }
 
-.btnAccount:hover {
-  background: rgba(255, 255, 255, 0.9);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-.stickyCard .card {
-  background: #fbfdff;
-  border: 1px solid #dbe6f2;
-}
-.bookingContainer {
-  animation: fadeInPage 0.4s ease;
+/* ===================== LOADING ===================== */
+.spinner {
+  width: 40px;
+  height: 40px;
+  margin: 2rem auto;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
-@keyframes fadeInPage {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 968px) {
+  .bookingGrid { grid-template-columns: 1fr; }
+  .stickyCard { position: static; }
+}
+
+@media (max-width: 768px) {
+  .bookingContainer { padding: 1.5rem 1rem; }
+  .bookingHeader { padding: 1.5rem; }
+  .bookingHeader h1 { font-size: 1.5em; }
+  .headerContent { flex-direction: column; align-items: flex-start; }
+  .card { padding: 1.5rem; }
+  .durationTabs { flex-direction: column; }
+  .dateFieldsRow { flex-direction: column; }
+  .dateFieldDivider { 
+    border: none; 
+    border-top: 2px solid var(--border); 
+    padding: 10px 0; 
+  }
+}
+
+/* ===================== ACCESSIBILITY ===================== */
+*:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
 }

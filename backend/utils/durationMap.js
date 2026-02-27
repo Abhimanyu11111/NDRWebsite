@@ -1,20 +1,19 @@
 // ─── Duration map ─────────────────────────────────────────────────────────────
-// Minutes → null means end_datetime is provided by user (MULTI_DAY)
-// HALF_DAY → 240 min (4 hours, AM or PM session)
-
 export const DURATION_MAP = {
-  HALF_DAY:  240,   // ✅ NEW – 4-hour session
+  HALF_DAY:  240,   // 4-hour session
   HOURLY:     60,
   FULL_DAY: 1440,
-  MULTI_DAY: null,  // end_datetime - start_datetime
+  MULTI_DAY: null,  // end_datetime - start_datetime (user picks range)
+  ONE_WEEK: 10080,  // ✅ 7 days = 7 * 24 * 60
 };
 
 // Human-readable labels
 export const DURATION_LABELS = {
   HALF_DAY:  "Half Day (4 hrs)",
   HOURLY:    "Hourly",
-  FULL_DAY:  "Full Day",
-  MULTI_DAY: "Multi Day",
+  FULL_DAY:  "24 Hours",
+  MULTI_DAY: "Multiple Days",
+  ONE_WEEK:  "1 Week",
 };
 
 // Which slot does HALF_DAY fall in?
@@ -24,14 +23,6 @@ export const HALF_DAY_SLOTS = {
 };
 
 // ─── Working-day helpers ──────────────────────────────────────────────────────
-
-/**
- * Count working days (Mon–Fri) between two Date objects, excluding holidays.
- * @param {Date}   start
- * @param {Date}   end
- * @param {Set}    holidaySet  – Set of 'YYYY-MM-DD' strings
- * @returns {number}
- */
 export const countWorkingDays = (start, end, holidaySet = new Set()) => {
   let count = 0;
   const cur = new Date(start);
@@ -48,17 +39,9 @@ export const countWorkingDays = (start, end, holidaySet = new Set()) => {
   return count;
 };
 
-// Max working days included in base price before surcharge kicks in
 export const MAX_FREE_WORKING_DAYS = 3;
+export const EXTRA_RATE_PER_WORKING_DAY = 50;
 
-// Extra charge per working day beyond MAX_FREE_WORKING_DAYS
-export const EXTRA_RATE_PER_WORKING_DAY = 50; // ₹50 / day
-
-/**
- * Calculate surcharge for extra working days beyond free limit.
- * @param {number} workingDays
- * @returns {number}
- */
 export const calcWorkingDaySurcharge = (workingDays) => {
   const extra = Math.max(0, workingDays - MAX_FREE_WORKING_DAYS);
   return extra * EXTRA_RATE_PER_WORKING_DAY;

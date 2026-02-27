@@ -1,20 +1,19 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Lock, 
-  MapPin, 
-  Building2, 
-  Map, 
+import {
+  User,
+  Mail,
+  Phone,
+  Lock,
+  MapPin,
+  Building2,
+  Map,
   Hash,
-  CreditCard,
+  Upload,
   Shield,
   CheckCircle,
-  AlertCircle,
-  Loader2
+  AlertCircle
 } from "lucide-react";
 
 function Register() {
@@ -27,8 +26,8 @@ function Register() {
     city: "",
     state: "",
     pincode: "",
-    id_proof_type: "",
-    id_proof_number: ""
+    organization_type: "",
+    certificate: null
   });
 
   const [loading, setLoading] = useState(false);
@@ -37,11 +36,12 @@ function Register() {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-    setError(""); // Clear error on input change
+    if (e.target.name === "certificate") {
+      setFormData({ ...formData, certificate: e.target.files[0] });
+    } else {
+      setFormData({ ...formData, [e.target.name]: e.target.value });
+    }
+    setError("");
   };
 
   const handleSubmit = async (e) => {
@@ -49,7 +49,6 @@ function Register() {
     setError("");
     setLoading(true);
 
-    // Basic validation
     if (!formData.name || !formData.email || !formData.phone || !formData.password) {
       setError("Please fill all required fields");
       setLoading(false);
@@ -57,15 +56,20 @@ function Register() {
     }
 
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/register", formData);
+      const data = new FormData();
+
+      Object.keys(formData).forEach((key) => {
+        data.append(key, formData[key]);
+      });
+
+      await axios.post("http://localhost:5000/api/auth/register", data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
       setSuccess(true);
-      
-      // Redirect to login after 2 seconds
-      setTimeout(() => {
-        navigate("/login");
-      }, 2000);
+      setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
-      setError(err.response?.data?.msg || "Registration failed. Please try again.");
+      setError(err.response?.data?.msg || "Registration failed");
     } finally {
       setLoading(false);
     }
@@ -73,82 +77,110 @@ function Register() {
 
   return (
     <div style={pageWrapper}>
-      {/* GOVERNMENT HEADER */}
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          
+          input:focus, select:focus {
+            border-color: #0d47a1 !important;
+            box-shadow: 0 0 0 3px rgba(13, 71, 161, 0.1) !important;
+          }
+          
+          button:hover:not(:disabled) {
+            background-color: #1565c0 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 5px 12px rgba(0,0,0,0.2) !important;
+          }
+          
+          button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+          
+          a:hover {
+            text-decoration: underline !important;
+          }
+        `}
+      </style>
+
+      {/* Header */}
       <div style={header}>
         <div style={headerContent}>
           <div style={govEmblem}>
-            <Shield size={40} strokeWidth={2.5} style={{ color: "#ff6f00" }} />
+            <Shield size={40} color="#0d47a1" />
           </div>
           <div style={headerText}>
-            <h1 style={headerTitle}>National Data Repository</h1>
-            <p style={headerSubtitle}>Government of India | User Registration Portal</p>
+            <h1 style={headerTitle}>Government of India</h1>
+            <p style={headerSubtitle}>Ministry of Registration & Licensing</p>
           </div>
         </div>
       </div>
 
-      {/* MAIN CONTENT */}
+      {/* Content */}
       <div style={contentContainer}>
         <div style={registrationCard}>
+          {/* Card Header */}
           <div style={cardHeader}>
-            <User size={32} strokeWidth={2.5} style={{ color: "#0d47a1" }} />
+            <User size={28} color="#0d47a1" />
             <div>
-              <h2 style={cardTitle}>New User Registration</h2>
-              <p style={cardSubtitle}>Create your account to access VDR booking services</p>
+              <h2 style={cardTitle}>Organization Registration</h2>
+              <p style={cardSubtitle}>Please fill in your details to register</p>
             </div>
           </div>
 
+          {/* Success Message */}
           {success && (
             <div style={successBox}>
-              <CheckCircle size={18} strokeWidth={2.5} />
+              <CheckCircle size={18} />
               <span>Registration successful! Redirecting to login...</span>
             </div>
           )}
 
+          {/* Error Message */}
           {error && (
             <div style={errorBox}>
-              <AlertCircle size={18} strokeWidth={2.5} />
+              <AlertCircle size={18} />
               <span>{error}</span>
             </div>
           )}
 
+          {/* Form */}
           <form onSubmit={handleSubmit} style={form}>
-            {/* PERSONAL INFORMATION */}
+            {/* Personal Information Section */}
             <div style={sectionHeader}>
-              <h3 style={sectionTitle}>Personal Information</h3>
+              <div style={sectionTitle}>Personal Information</div>
               <div style={sectionLine}></div>
             </div>
 
             <div style={formRow}>
               <div style={formGroup}>
                 <label style={formLabel}>
-                  <User size={16} strokeWidth={2.5} />
+                  <User size={16} />
                   Full Name <span style={requiredStar}>*</span>
                 </label>
                 <input
-                  type="text"
+                  style={formInput}
                   name="name"
                   placeholder="Enter your full name"
-                  value={formData.name}
                   onChange={handleChange}
-                  style={formInput}
-                  disabled={loading}
                   required
                 />
               </div>
 
               <div style={formGroup}>
                 <label style={formLabel}>
-                  <Mail size={16} strokeWidth={2.5} />
+                  <Mail size={16} />
                   Email Address <span style={requiredStar}>*</span>
                 </label>
                 <input
+                  style={formInput}
                   type="email"
                   name="email"
                   placeholder="your.email@example.com"
-                  value={formData.email}
                   onChange={handleChange}
-                  style={formInput}
-                  disabled={loading}
                   required
                 />
               </div>
@@ -157,248 +189,185 @@ function Register() {
             <div style={formRow}>
               <div style={formGroup}>
                 <label style={formLabel}>
-                  <Phone size={16} strokeWidth={2.5} />
+                  <Phone size={16} />
                   Phone Number <span style={requiredStar}>*</span>
                 </label>
                 <input
-                  type="tel"
-                  name="phone"
-                  placeholder="10-digit mobile number"
-                  value={formData.phone}
-                  onChange={handleChange}
                   style={formInput}
-                  disabled={loading}
-                  maxLength="10"
+                  name="phone"
+                  placeholder="+91 XXXXX XXXXX"
+                  onChange={handleChange}
                   required
                 />
               </div>
 
               <div style={formGroup}>
                 <label style={formLabel}>
-                  <Lock size={16} strokeWidth={2.5} />
+                  <Lock size={16} />
                   Password <span style={requiredStar}>*</span>
                 </label>
                 <input
+                  style={formInput}
                   type="password"
                   name="password"
                   placeholder="Create a strong password"
-                  value={formData.password}
                   onChange={handleChange}
-                  style={formInput}
-                  disabled={loading}
                   required
                 />
               </div>
             </div>
 
-            {/* ADDRESS INFORMATION */}
+            {/* Address Section */}
             <div style={sectionHeader}>
-              <h3 style={sectionTitle}>Address Details</h3>
+              <div style={sectionTitle}>Address Details</div>
               <div style={sectionLine}></div>
             </div>
 
             <div style={formGroup}>
               <label style={formLabel}>
-                <MapPin size={16} strokeWidth={2.5} />
-                Address
+                <MapPin size={16} />
+                Street Address
               </label>
               <input
-                type="text"
-                name="address"
-                placeholder="Enter your complete address"
-                value={formData.address}
-                onChange={handleChange}
                 style={formInput}
-                disabled={loading}
+                name="address"
+                placeholder="House/Flat No., Street Name"
+                onChange={handleChange}
               />
             </div>
 
             <div style={formRow}>
               <div style={formGroup}>
                 <label style={formLabel}>
-                  <Building2 size={16} strokeWidth={2.5} />
+                  <Building2 size={16} />
                   City
                 </label>
                 <input
-                  type="text"
+                  style={formInput}
                   name="city"
                   placeholder="Enter city"
-                  value={formData.city}
                   onChange={handleChange}
-                  style={formInput}
-                  disabled={loading}
                 />
               </div>
 
               <div style={formGroup}>
                 <label style={formLabel}>
-                  <Map size={16} strokeWidth={2.5} />
+                  <Map size={16} />
                   State
                 </label>
                 <input
-                  type="text"
+                  style={formInput}
                   name="state"
                   placeholder="Enter state"
-                  value={formData.state}
                   onChange={handleChange}
-                  style={formInput}
-                  disabled={loading}
                 />
               </div>
             </div>
 
             <div style={formGroup}>
               <label style={formLabel}>
-                <Hash size={16} strokeWidth={2.5} />
+                <Hash size={16} />
                 Pincode
               </label>
               <input
-                type="text"
+                style={formInput}
                 name="pincode"
                 placeholder="6-digit pincode"
-                value={formData.pincode}
                 onChange={handleChange}
-                style={formInput}
-                disabled={loading}
-                maxLength="6"
               />
             </div>
 
-            {/* ID PROOF INFORMATION */}
+            {/* Organization Section */}
             <div style={sectionHeader}>
-              <h3 style={sectionTitle}>Identity Verification</h3>
+              <div style={sectionTitle}>Organization Details</div>
               <div style={sectionLine}></div>
             </div>
 
-            <div style={formRow}>
-              <div style={formGroup}>
-                <label style={formLabel}>
-                  <CreditCard size={16} strokeWidth={2.5} />
-                  ID Proof Type
-                </label>
-                <select
-                  name="id_proof_type"
-                  value={formData.id_proof_type}
-                  onChange={handleChange}
-                  style={selectInput}
-                  disabled={loading}
-                >
-                  <option value="">Select ID Proof Type</option>
-                  <option value="Aadhaar">Aadhaar Card</option>
-                  <option value="Driving Licence">Driving Licence</option>
-                  <option value="Passport">Passport</option>
-                  <option value="Voter ID">Voter ID Card</option>
-                  <option value="PAN Card">PAN Card</option>
-                </select>
-              </div>
-
-              <div style={formGroup}>
-                <label style={formLabel}>
-                  <Hash size={16} strokeWidth={2.5} />
-                  ID Proof Number
-                </label>
-                <input
-                  type="text"
-                  name="id_proof_number"
-                  placeholder="Enter ID proof number"
-                  value={formData.id_proof_number}
-                  onChange={handleChange}
-                  style={formInput}
-                  disabled={loading}
-                />
-              </div>
+            <div style={formGroup}>
+              <label style={formLabel}>
+                <Building2 size={16} />
+                Organization Type <span style={requiredStar}>*</span>
+              </label>
+              <select
+                style={selectInput}
+                name="organization_type"
+                onChange={handleChange}
+                required
+              >
+                <option value="">Select Organization Type</option>
+                <option>Educational Institute</option>
+                <option>MSME</option>
+                <option>E&P Organization</option>
+                <option>Service Provider</option>
+                <option>Investor</option>
+                <option>Others</option>
+              </select>
             </div>
 
-            {/* SUBMIT BUTTON */}
-            <button
-              type="submit"
-              style={{
-                ...submitButton,
-                opacity: loading ? 0.7 : 1,
-                cursor: loading ? "not-allowed" : "pointer"
-              }}
-              disabled={loading}
-            >
+            <div style={formGroup}>
+              <label style={formLabel}>
+                <Upload size={16} />
+                Identity Certificate <span style={requiredStar}>*</span>
+              </label>
+              <input
+                style={formInput}
+                type="file"
+                name="certificate"
+                accept=".pdf,.jpg,.png"
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            {/* Submit Button */}
+            <button type="submit" style={submitButton} disabled={loading}>
               {loading ? (
                 <>
                   <div style={spinner}></div>
-                  <span>Registering...</span>
+                  Registering...
                 </>
               ) : (
                 <>
-                  <CheckCircle size={18} strokeWidth={2.5} />
-                  <span>Register Account</span>
+                  <CheckCircle size={18} />
+                  Register
                 </>
               )}
             </button>
           </form>
 
+          {/* Footer */}
           <div style={footer}>
             <div style={divider}></div>
-            <div style={footerText}>
+            <p style={footerText}>
               Already have an account?{" "}
               <a href="/login" style={footerLink}>
                 Login here
               </a>
-            </div>
+            </p>
           </div>
         </div>
 
-        {/* SECURITY NOTICE */}
+        {/* Security Notice */}
         <div style={securityNotice}>
-          <Shield size={20} strokeWidth={2.5} style={{ color: "#0d47a1" }} />
+          <Shield size={20} color="#0d47a1" />
           <div>
-            <p style={securityTitle}>Secure Registration</p>
+            <div style={securityTitle}>Secure Registration</div>
             <p style={securityText}>
-              Your personal information is encrypted and stored securely. Fields marked with * are mandatory.
+              Your information is encrypted and stored securely. All data is
+              handled in accordance with government privacy policies.
             </p>
           </div>
         </div>
       </div>
 
-      {/* FOOTER BAR */}
+      {/* Footer Bar */}
       <div style={footerBar}>
         <div style={footerBarContent}>
           <p style={footerBarText}>
-            © 2026 National Data Repository, Government of India. All rights reserved.
+            © 2024 Government of India. All Rights Reserved.
           </p>
         </div>
       </div>
-
-      <style>
-        {`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-
-          input:focus, select:focus {
-            border-color: #0d47a1 !important;
-            box-shadow: 0 0 0 3px rgba(13, 71, 161, 0.1) !important;
-          }
-
-          button:hover:not(:disabled) {
-            background-color: #002171 !important;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-          }
-
-          button:active:not(:disabled) {
-            transform: translateY(0);
-          }
-
-          a:hover {
-            color: #002171 !important;
-            text-decoration: underline !important;
-          }
-
-          @media (max-width: 768px) {
-            .form-row {
-              grid-template-columns: 1fr !important;
-            }
-          }
-        `}
-      </style>
     </div>
   );
 }
@@ -410,7 +379,7 @@ export default Register;
 const pageWrapper = {
   minHeight: "100vh",
   backgroundColor: "#f1f5f9",
-  fontFamily: "'Segoe UI', 'Roboto', system-ui, -apple-system, sans-serif",
+  fontFamily: "'Segoe UI','Roboto',system-ui,-apple-system,sans-serif",
   display: "flex",
   flexDirection: "column"
 };
@@ -418,8 +387,8 @@ const pageWrapper = {
 const header = {
   backgroundColor: "#0d47a1",
   borderBottom: "4px solid #ff6f00",
-  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-  padding: "24px 0"
+  boxShadow: "0 3px 10px rgba(0,0,0,0.08)",
+  padding: "22px 0"
 };
 
 const headerContent = {
@@ -428,273 +397,240 @@ const headerContent = {
   padding: "0 24px",
   display: "flex",
   alignItems: "center",
-  gap: "20px"
+  gap: "18px"
 };
 
 const govEmblem = {
-  width: "80px",
-  height: "80px",
-  backgroundColor: "#ffffff",
-  borderRadius: "8px",
+  width: "72px",
+  height: "72px",
+  backgroundColor: "#fff",
+  borderRadius: "10px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
+  boxShadow: "0 6px 18px rgba(0,0,0,0.15)"
 };
 
-const headerText = {
-  color: "white"
-};
+const headerText = { color: "#fff" };
 
 const headerTitle = {
-  margin: "0 0 6px 0",
-  fontSize: "28px",
-  fontWeight: "600",
-  letterSpacing: "0.3px"
+  margin: 0,
+  fontSize: "26px",
+  fontWeight: 600,
+  letterSpacing: ".3px"
 };
 
 const headerSubtitle = {
-  margin: 0,
-  fontSize: "15px",
-  opacity: 0.95,
-  fontWeight: "400"
+  marginTop: 4,
+  fontSize: "14px",
+  opacity: 0.95
 };
 
 const contentContainer = {
   flex: 1,
-  maxWidth: "800px",
+  maxWidth: "820px",
   margin: "0 auto",
-  padding: "40px 24px",
+  padding: "36px 20px",
   width: "100%"
 };
 
 const registrationCard = {
-  backgroundColor: "white",
-  borderRadius: "8px",
+  backgroundColor: "#fff",
+  borderRadius: "10px",
   border: "1px solid #e2e8f0",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+  boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
   overflow: "hidden"
 };
 
 const cardHeader = {
-  padding: "32px 32px 24px 32px",
-  borderBottom: "2px solid #f1f5f9",
+  padding: "28px",
+  borderBottom: "1px solid #e2e8f0",
   display: "flex",
-  alignItems: "flex-start",
-  gap: "16px"
+  gap: "14px",
+  alignItems: "center"
 };
 
 const cardTitle = {
-  margin: "0 0 4px 0",
-  fontSize: "22px",
-  fontWeight: "600",
+  margin: 0,
+  fontSize: "21px",
+  fontWeight: 600,
   color: "#0f172a"
 };
 
 const cardSubtitle = {
-  margin: 0,
+  marginTop: 4,
   fontSize: "14px",
-  color: "#64748b",
-  fontWeight: "400"
+  color: "#64748b"
 };
 
 const successBox = {
-  margin: "24px 32px 0 32px",
-  padding: "14px 16px",
-  backgroundColor: "#f0fdf4",
+  margin: "20px 28px 0",
+  padding: "12px 14px",
+  backgroundColor: "#ecfdf5",
   border: "1px solid #86efac",
   borderRadius: "6px",
   display: "flex",
-  alignItems: "center",
-  gap: "10px",
+  gap: "8px",
   color: "#166534",
   fontSize: "14px",
-  fontWeight: "500"
+  fontWeight: 500
 };
 
 const errorBox = {
-  margin: "24px 32px 0 32px",
-  padding: "14px 16px",
+  margin: "20px 28px 0",
+  padding: "12px 14px",
   backgroundColor: "#fef2f2",
   border: "1px solid #fecaca",
   borderRadius: "6px",
   display: "flex",
-  alignItems: "center",
-  gap: "10px",
+  gap: "8px",
   color: "#991b1b",
   fontSize: "14px",
-  fontWeight: "500"
+  fontWeight: 500
 };
 
-const form = {
-  padding: "32px"
-};
+const form = { padding: "28px" };
 
-const sectionHeader = {
-  marginBottom: "20px",
-  marginTop: "8px"
-};
+const sectionHeader = { margin: "10px 0 18px" };
 
 const sectionTitle = {
-  fontSize: "16px",
-  fontWeight: "600",
+  fontSize: "15px",
+  fontWeight: 600,
   color: "#0f172a",
-  marginBottom: "8px",
-  display: "flex",
-  alignItems: "center",
-  gap: "8px"
+  marginBottom: "6px"
 };
 
 const sectionLine = {
   height: "2px",
   backgroundColor: "#e2e8f0",
-  borderRadius: "1px"
+  borderRadius: 2
 };
 
 const formRow = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr",
-  gap: "20px",
-  marginBottom: "20px"
+  gap: "18px",
+  marginBottom: "18px"
 };
 
-const formGroup = {
-  marginBottom: "20px"
-};
+const formGroup = { marginBottom: "18px" };
 
 const formLabel = {
   display: "flex",
   alignItems: "center",
   gap: "6px",
-  fontSize: "14px",
-  fontWeight: "600",
+  fontSize: "13.5px",
+  fontWeight: 600,
   color: "#334155",
-  marginBottom: "8px"
+  marginBottom: "6px"
 };
 
-const requiredStar = {
-  color: "#dc2626",
-  marginLeft: "2px"
-};
+const requiredStar = { color: "#dc2626" };
 
 const formInput = {
   width: "100%",
-  padding: "12px 16px",
+  padding: "11px 14px",
   border: "1px solid #cbd5e1",
   borderRadius: "6px",
-  fontSize: "15px",
-  color: "#1e293b",
+  fontSize: "14px",
   outline: "none",
-  transition: "all 0.2s",
-  fontFamily: "inherit",
-  backgroundColor: "white"
+  transition: "0.2s ease",
+  backgroundColor: "#fff",
+  boxSizing: "border-box"
 };
 
 const selectInput = {
-  width: "100%",
-  padding: "12px 16px",
-  border: "1px solid #cbd5e1",
-  borderRadius: "6px",
-  fontSize: "15px",
-  color: "#1e293b",
-  outline: "none",
-  transition: "all 0.2s",
-  fontFamily: "inherit",
-  backgroundColor: "white",
+  ...formInput,
   cursor: "pointer"
 };
 
 const submitButton = {
   width: "100%",
-  padding: "14px",
+  padding: "13px",
   backgroundColor: "#0d47a1",
-  color: "white",
+  color: "#fff",
   border: "none",
   borderRadius: "6px",
   fontSize: "15px",
-  fontWeight: "600",
+  fontWeight: 600,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  gap: "10px",
-  transition: "all 0.2s",
-  boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-  marginTop: "8px"
+  gap: "8px",
+  transition: "all .2s ease",
+  boxShadow: "0 3px 8px rgba(0,0,0,0.15)",
+  cursor: "pointer"
 };
 
 const spinner = {
   width: "16px",
   height: "16px",
-  border: "2px solid rgba(255,255,255,0.3)",
-  borderTopColor: "white",
+  border: "2px solid rgba(255,255,255,0.4)",
+  borderTopColor: "#fff",
   borderRadius: "50%",
-  animation: "spin 0.8s linear infinite"
+  animation: "spin 0.7s linear infinite"
 };
 
-const footer = {
-  padding: "24px 32px 32px 32px"
-};
+const footer = { padding: "20px 28px 28px" };
 
 const divider = {
   height: "1px",
   backgroundColor: "#e2e8f0",
-  marginBottom: "20px"
+  marginBottom: "16px"
 };
 
 const footerText = {
   textAlign: "center",
-  fontSize: "14px",
-  color: "#64748b"
+  fontSize: "13px",
+  color: "#64748b",
+  margin: 0
 };
 
 const footerLink = {
   color: "#0d47a1",
-  textDecoration: "none",
-  fontWeight: "500",
-  transition: "all 0.2s"
+  fontWeight: 500,
+  textDecoration: "none"
 };
 
 const securityNotice = {
-  marginTop: "24px",
-  padding: "20px",
+  marginTop: "22px",
+  padding: "16px",
   backgroundColor: "#f8fafc",
   border: "1px solid #e2e8f0",
   borderRadius: "8px",
   display: "flex",
-  gap: "14px",
-  alignItems: "flex-start"
+  gap: "12px"
 };
 
 const securityTitle = {
-  margin: "0 0 6px 0",
   fontSize: "14px",
-  fontWeight: "600",
-  color: "#0f172a"
+  fontWeight: 600,
+  marginBottom: 4,
+  margin: 0
 };
 
 const securityText = {
-  margin: 0,
   fontSize: "13px",
   color: "#64748b",
-  lineHeight: "1.6"
+  lineHeight: 1.5,
+  margin: 0
 };
 
 const footerBar = {
   backgroundColor: "#1e293b",
   borderTop: "3px solid #ff6f00",
-  padding: "20px 0"
+  padding: "16px 0"
 };
 
 const footerBarContent = {
   maxWidth: "1200px",
   margin: "0 auto",
-  padding: "0 24px",
+  padding: "0 20px",
   textAlign: "center"
 };
 
 const footerBarText = {
   margin: 0,
-  fontSize: "13px",
-  color: "#cbd5e1",
-  fontWeight: "400"
+  fontSize: "12.5px",
+  color: "#cbd5e1"
 };

@@ -82,11 +82,11 @@ const Home2 = () => {
 
               <div className={styles.buttons}>
 
-                <Link to="/book-vdr">
+                {/* <Link to="/book-vdr">
                   <button className={styles.exploreBtn}>
                     Login VDR <span>→</span>
                   </button>
-                </Link>
+                </Link> */}
 
                 <Link to="/researchInvest">
                   <button className={styles.learnBtn}>Research and Invest in India</button>

@@ -27,7 +27,6 @@ export default function Account() {
         axios.get("/user/bookings"),
         axios.get("/user/payments"),
       ]);
-
       setProfile(profileRes.data.user);
       setBookings(bookingsRes.data.bookings);
       setPayments(paymentsRes.data.payments);
@@ -43,23 +42,51 @@ export default function Account() {
     navigate("/login");
   };
 
+  const formatDate = (dt) =>
+    new Date(dt).toLocaleString("en-IN", {
+      day: "2-digit", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+
+  const formatDateShort = (dt) =>
+    new Date(dt).toLocaleDateString("en-IN", {
+      day: "2-digit", month: "short", year: "numeric",
+    });
+
+  const bookingTypeLabel = (type) => {
+    const map = {
+      FULL_DAY: "24 Hours",
+      MULTI_DAY: "Multiple Days",
+      ONE_WEEK: "1 Week",
+      HOURLY: "Hourly",
+      HALF_HOUR: "30 Minutes",
+    };
+    return map[type] || type;
+  };
+
   if (loading) {
-    return <div className={styles.loading}>Loading...</div>;
+    return (
+      <div className={styles.loadingScreen}>
+        <div className={styles.spinner} />
+        <p>Loading your account details...</p>
+      </div>
+    );
   }
 
   return (
     <div className={styles.accountContainer}>
-      {/* Header */}
+
+      {/* ── HEADER ── */}
       <div className={styles.header}>
         <div className={styles.headerContent}>
           <div>
             <h1>My Account</h1>
-            <p>Welcome back, {profile?.name}!</p>
+            <p>Welcome back, <strong>{profile?.name}</strong></p>
           </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button 
+          <div className={styles.headerActions}>
+            <button
               className={styles.btnSecondary}
-              onClick={() => navigate('/book-vdr')}
+              onClick={() => navigate("/book-vdr")}
             >
               New Booking
             </button>
@@ -70,136 +97,143 @@ export default function Account() {
         </div>
       </div>
 
-      {/* Profile Card */}
-      <div className={styles.profileCard}>
-        <h2>Profile Information</h2>
-        <div className={styles.profileGrid}>
-          <div className={styles.profileItem}>
-            <span className={styles.label}>Name:</span>
-            <span className={styles.value}>{profile?.name}</span>
-          </div>
-          <div className={styles.profileItem}>
-            <span className={styles.label}>Email:</span>
-            <span className={styles.value}>{profile?.email}</span>
-          </div>
-          <div className={styles.profileItem}>
-            <span className={styles.label}>Phone:</span>
-            <span className={styles.value}>{profile?.phone || 'N/A'}</span>
-          </div>
-          <div className={styles.profileItem}>
-            <span className={styles.label}>Company:</span>
-            <span className={styles.value}>{profile?.company || 'N/A'}</span>
+      <div className={styles.pageBody}>
+
+        {/* ── PROFILE CARD ── */}
+        <div className={styles.profileCard}>
+          <div className={styles.profileCardTitle}>Profile Information</div>
+          <div className={styles.profileGrid}>
+            {[
+              { label: "Full Name",     value: profile?.name },
+              { label: "Email Address", value: profile?.email },
+              { label: "Phone Number",  value: profile?.phone   || "N/A" },
+              { label: "Organisation",  value: profile?.company || "N/A" },
+            ].map(({ label, value }) => (
+              <div className={styles.profileItem} key={label}>
+                <span className={styles.profileLabel}>{label}</span>
+                <span className={styles.profileValue}>{value}</span>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div className={styles.tabs}>
-        <button
-          className={`${styles.tab} ${activeTab === "bookings" ? styles.activeTab : ""}`}
-          onClick={() => setActiveTab("bookings")}
-        >
-          My Bookings ({bookings.length})
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === "payments" ? styles.activeTab : ""}`}
-          onClick={() => setActiveTab("payments")}
-        >
-          Payment History ({payments.length})
-        </button>
-      </div>
-
-      {/* Bookings Tab */}
-      {activeTab === "bookings" && (
-        <div className={styles.tabContent}>
-          <h2>My Bookings</h2>
-          {bookings.length === 0 ? (
-            <p className={styles.emptyState}>No bookings found. Create your first booking!</p>
-          ) : (
-            <div className={styles.bookingsList}>
-              {bookings.map((booking) => (
-                <div key={booking.id} className={styles.bookingCard}>
-                  <div className={styles.bookingHeader}>
-                    <h3>{booking.Room?.title || 'Room'}</h3>
-                    <span className={`${styles.badge} ${styles[`badge${booking.status}`]}`}>
-                      {booking.status}
-                    </span>
-                  </div>
-                  <div className={styles.bookingDetails}>
-                    <div className={styles.detailRow}>
-                      <span>Booking ID:</span>
-                      <strong>{booking.booking_id}</strong>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span>Type:</span>
-                      <strong>{booking.booking_type}</strong>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span>Start:</span>
-                      <strong>{new Date(booking.start_datetime).toLocaleString()}</strong>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span>End:</span>
-                      <strong>{new Date(booking.end_datetime).toLocaleString()}</strong>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span>Amount:</span>
-                      <strong>₹{booking.total_price}</strong>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span>Payment:</span>
-                      <span className={`${styles.paymentBadge} ${styles[`payment${booking.payment_status}`]}`}>
-                        {booking.payment_status}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        {/* ── TABS ── */}
+        <div className={styles.tabBar}>
+          <button
+            className={`${styles.tab} ${activeTab === "bookings" ? styles.tabActive : ""}`}
+            onClick={() => setActiveTab("bookings")}
+          >
+            Booking Records
+            <span className={styles.tabCount}>{bookings.length}</span>
+          </button>
+          <button
+            className={`${styles.tab} ${activeTab === "payments" ? styles.tabActive : ""}`}
+            onClick={() => setActiveTab("payments")}
+          >
+            Payment History
+            <span className={styles.tabCount}>{payments.length}</span>
+          </button>
         </div>
-      )}
 
-      {/* Payments Tab */}
-      {activeTab === "payments" && (
-        <div className={styles.tabContent}>
-          <h2>Payment History</h2>
-          {payments.length === 0 ? (
-            <p className={styles.emptyState}>No payment records found.</p>
-          ) : (
-            <div className={styles.paymentsTable}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Order ID</th>
-                    <th>Room</th>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>Method</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payments.map((payment) => (
-                    <tr key={payment.id}>
-                      <td>{payment.order_id}</td>
-                      <td>{payment.Booking?.Room?.title || 'N/A'}</td>
-                      <td>{new Date(payment.created_at).toLocaleDateString()}</td>
-                      <td>₹{payment.amount}</td>
-                      <td>{payment.payment_method || 'N/A'}</td>
-                      <td>
-                        <span className={`${styles.statusBadge} ${styles[`status${payment.status}`]}`}>
-                          {payment.status}
-                        </span>
-                      </td>
+        {/* ── BOOKINGS TAB ── */}
+        {activeTab === "bookings" && (
+          <div className={styles.tabContent}>
+            {bookings.length === 0 ? (
+              <div className={styles.emptyState}>
+                <p>No booking records found.</p>
+                <button
+                  className={styles.btnPrimary}
+                  onClick={() => navigate("/book-vdr")}
+                >
+                  Create First Booking
+                </button>
+              </div>
+            ) : (
+              <div className={styles.tableWrapper}>
+                <table className={styles.dataTable}>
+                  <thead>
+                    <tr>
+                      <th>Booking ID</th>
+                      <th>Room</th>
+                      <th>Type</th>
+                      <th>Start</th>
+                      <th>End</th>
+                      <th>Amount</th>
+                      <th>Payment</th>
+                      <th>Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+                  </thead>
+                  <tbody>
+                    {bookings.map((b) => (
+                      <tr key={b.id}>
+                        <td className={styles.monoCell}>{b.booking_id}</td>
+                        <td>{b.Room?.title || "—"}</td>
+                        <td>{bookingTypeLabel(b.booking_type)}</td>
+                        <td>{formatDate(b.start_datetime)}</td>
+                        <td>{formatDate(b.end_datetime)}</td>
+                        <td className={styles.amountCell}>&#8377;{b.total_price}</td>
+                        <td>
+                          <span className={`${styles.badge} ${styles["pay" + b.payment_status]}`}>
+                            {b.payment_status}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`${styles.badge} ${styles["status" + b.status]}`}>
+                            {b.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── PAYMENTS TAB ── */}
+        {activeTab === "payments" && (
+          <div className={styles.tabContent}>
+            {payments.length === 0 ? (
+              <div className={styles.emptyState}>
+                <p>No payment records found.</p>
+              </div>
+            ) : (
+              <div className={styles.tableWrapper}>
+                <table className={styles.dataTable}>
+                  <thead>
+                    <tr>
+                      <th>Order ID</th>
+                      <th>Room</th>
+                      <th>Date</th>
+                      <th>Amount</th>
+                      <th>Method</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payments.map((p) => (
+                      <tr key={p.id}>
+                        <td className={styles.monoCell}>{p.order_id}</td>
+                        <td>{p.Booking?.Room?.title || "—"}</td>
+                        <td>{formatDateShort(p.created_at)}</td>
+                        <td className={styles.amountCell}>&#8377;{p.amount}</td>
+                        <td>{p.payment_method || "—"}</td>
+                        <td>
+                          <span className={`${styles.badge} ${styles["status" + p.status]}`}>
+                            {p.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }

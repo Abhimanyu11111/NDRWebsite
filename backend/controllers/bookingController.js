@@ -30,19 +30,40 @@ const calculateRoomPrice = (bookingType, durationMinutes, room) => {
   if (bookingType === "HOURLY")    return Math.ceil(durationMinutes / 60) * room.hourly_rate;
   if (bookingType === "HALF_DAY")  return room.half_day_rate;
   if (bookingType === "FULL_DAY")  return room.full_day_rate;
+  if (bookingType === "ONE_WEEK")  return 7 * room.full_day_rate;
   if (bookingType === "MULTI_DAY") return Math.ceil(durationMinutes / 1440) * room.full_day_rate;
   return 0;
 };
 
 /* =====================================================
+   DURATION HELPER —  ONE_WEEK support
+===================================================== */
+const resolveDuration = (bookingType, start_datetime, end_datetime) => {
+  const start = new Date(start_datetime);
+  let end, durationMinutes;
+
+  if (bookingType === "MULTI_DAY") {
+    end             = new Date(end_datetime);
+    durationMinutes = Math.floor((end - start) / 60000);
+  } else if (bookingType === "ONE_WEEK") {
+    end             = new Date(start);
+    end.setDate(end.getDate() + 7);
+    durationMinutes = 10080; // 7 * 24 * 60
+  } else {
+    durationMinutes = DURATION_MAP[bookingType];
+    end             = new Date(start.getTime() + durationMinutes * 60000);
+  }
+
+  return { start, end, durationMinutes };
+};
+
+/* =====================================================
    DATASET LOCK HELPER
-   Locks datasets exclusively to a booking after payment.
 ===================================================== */
 const lockDatasetsForBooking = async (booking, transaction) => {
   const datasetIds = booking.data_catalogue;
   if (!datasetIds || datasetIds.length === 0) return;
 
-  // Remove old active locks for this booking (idempotent)
   await DatasetLock.destroy({
     where: { booking_id: booking.booking_id, status: "ACTIVE" },
     transaction,
@@ -87,9 +108,9 @@ export const checkAvailability = async (req, res) => {
     const conflict = await Booking.findOne({
       where: {
         room_id,
-        status:           { [Op.in]: ["PENDING", "CONFIRMED"] },
-        start_datetime:   { [Op.lt]: end },
-        end_datetime:     { [Op.gt]: start },
+        status:         { [Op.in]: ["PENDING", "CONFIRMED"] },
+        start_datetime: { [Op.lt]: end },
+        end_datetime:   { [Op.gt]: start },
       },
     });
 
@@ -101,7 +122,7 @@ export const checkAvailability = async (req, res) => {
 };
 
 /* =====================================================
-   BOOKING PREVIEW  (working-day pricing shown upfront)
+   BOOKING PREVIEW
 ===================================================== */
 export const getBookingPreview = async (req, res) => {
   try {
@@ -114,26 +135,14 @@ export const getBookingPreview = async (req, res) => {
     const room = await Room.findByPk(room_id);
     if (!room) return res.status(404).json({ success: false, message: "Room not found" });
 
-    const start = new Date(start_datetime);
-    let end, durationMinutes;
+    const { start, end, durationMinutes } = resolveDuration(bookingType, start_datetime, end_datetime);
 
-    if (bookingType === "MULTI_DAY") {
-      end             = new Date(end_datetime);
-      durationMinutes = Math.floor((end - start) / 60000);
-    } else {
-      durationMinutes = DURATION_MAP[bookingType];
-      end             = new Date(start.getTime() + durationMinutes * 60000);
-    }
-
-    // ✅ Working-day pricing
-    const holidaySet        = await getHolidaySet();
-    const workingDays       = countWorkingDays(start, end, holidaySet);
+    const holidaySet          = await getHolidaySet();
+    const workingDays         = countWorkingDays(start, end, holidaySet);
     const workingDaySurcharge = calcWorkingDaySurcharge(workingDays);
+    const roomPrice           = calculateRoomPrice(bookingType, durationMinutes, room);
+    const estimatedTotal      = roomPrice + workingDaySurcharge;
 
-    const roomPrice    = calculateRoomPrice(bookingType, durationMinutes, room);
-    const estimatedTotal = roomPrice + workingDaySurcharge;
-
-    // ✅ Full validation check for preview warnings
     const { valid, errors } = await validateBookingRequest({
       startDatetime: start,
       bookingType,
@@ -143,20 +152,20 @@ export const getBookingPreview = async (req, res) => {
     res.json({
       success: true,
       preview: {
-        room:       room.title,
+        room: room.title,
         start,
         end,
         durationMinutes,
         bookingType,
-        halfDaySlot:  halfDaySlot || null,
-        hasWeekend:   hasWeekendInRange(start, end),
-        violatesAdvance: violatesAdvanceRule(start),
+        halfDaySlot:        halfDaySlot || null,
+        hasWeekend:         hasWeekendInRange(start, end),
+        violatesAdvance:    violatesAdvanceRule(start),
         violatesMaxAdvance: violatesMaxAdvanceRule(start),
         workingDays,
         pricing: {
-          roomPrice:          roomPrice.toFixed(2),
+          roomPrice:           roomPrice.toFixed(2),
           workingDaySurcharge: workingDaySurcharge.toFixed(2),
-          estimatedTotal:     estimatedTotal.toFixed(2),
+          estimatedTotal:      estimatedTotal.toFixed(2),
         },
         validationWarnings: valid ? [] : errors,
       },
@@ -168,10 +177,9 @@ export const getBookingPreview = async (req, res) => {
 };
 
 /* =====================================================
-   CREATE BOOKING  (DB transaction – no double booking)
+   CREATE BOOKING
 ===================================================== */
 export const createBooking = async (req, res) => {
-  // ✅ Wrap everything in a transaction to prevent double-booking
   const t = await sequelize.transaction();
 
   try {
@@ -183,7 +191,7 @@ export const createBooking = async (req, res) => {
       end_datetime,
       dataCatalogue,
       weekendNotice,
-      halfDaySlot,    // ✅ NEW – AM or PM for HALF_DAY
+      halfDaySlot,
     } = req.body;
 
     if (!room_id || !bookingType || !start_datetime) {
@@ -191,7 +199,7 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing required booking fields" });
     }
 
-    // ✅ Full rule validation (advance, max advance, holiday, half-day slot)
+    // Validate
     const { valid, errors } = await validateBookingRequest({
       startDatetime: new Date(start_datetime),
       bookingType,
@@ -205,7 +213,6 @@ export const createBooking = async (req, res) => {
 
     const [user, room] = await Promise.all([
       User.findByPk(userId),
-      // ✅ LOCK ROW to prevent concurrent modification
       Room.findByPk(room_id, { lock: t.LOCK.UPDATE, transaction: t }),
     ]);
 
@@ -214,19 +221,12 @@ export const createBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: "User or Room not found" });
     }
 
-    const start = new Date(start_datetime);
-    let end, durationMinutes;
+    //  ONE_WEEK + MULTI_DAY + all other types handled here
+    const { start, end, durationMinutes } = resolveDuration(bookingType, start_datetime, end_datetime);
 
-    if (bookingType === "MULTI_DAY") {
-      if (!end_datetime) {
-        await t.rollback();
-        return res.status(400).json({ success: false, message: "end_datetime required for MULTI_DAY booking" });
-      }
-      end             = new Date(end_datetime);
-      durationMinutes = Math.floor((end - start) / 60000);
-    } else {
-      durationMinutes = DURATION_MAP[bookingType];
-      end             = new Date(start.getTime() + durationMinutes * 60000);
+    if (bookingType === "MULTI_DAY" && !end_datetime) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: "end_datetime required for MULTI_DAY booking" });
     }
 
     const hasWeekend = hasWeekendInRange(start, end);
@@ -234,11 +234,11 @@ export const createBooking = async (req, res) => {
       await t.rollback();
       return res.status(400).json({
         success: false,
-        message: "Weekend booking requires admin advance notice",
+        message: "Weekend booking requires advance notice. Please fill the Weekend Notice field.",
       });
     }
 
-    // ✅ Conflict check INSIDE the transaction (atomic – prevents race condition)
+    // Conflict check
     const conflict = await Booking.findOne({
       where: {
         room_id,
@@ -255,42 +255,37 @@ export const createBooking = async (req, res) => {
       return res.status(409).json({ success: false, message: "This time slot is already booked" });
     }
 
-    // ✅ Working-day surcharge calculation
+    // Pricing
     const holidaySet          = await getHolidaySet();
     const workingDays         = countWorkingDays(start, end, holidaySet);
     const workingDaySurcharge = calcWorkingDaySurcharge(workingDays);
-
-    // Pricing
-    const roomPrice  = calculateRoomPrice(bookingType, durationMinutes, room);
-    const totalPrice = roomPrice + workingDaySurcharge;  // data_price added at payment step
-
-    // Weekend bookings stay PENDING until admin approves
-    const finalStatus = hasWeekend ? "PENDING" : "CONFIRMED";
+    const roomPrice           = calculateRoomPrice(bookingType, durationMinutes, room);
+    const totalPrice          = roomPrice + workingDaySurcharge;
+    const finalStatus         = hasWeekend ? "PENDING" : "CONFIRMED";
 
     const booking = await Booking.create(
       {
-        booking_id:           generateBookingId(),
-        user_id:              userId,
+        booking_id:            generateBookingId(),
+        user_id:               userId,
         room_id,
-        booking_type:         bookingType,
-        half_day_slot:        bookingType === "HALF_DAY" ? halfDaySlot.toUpperCase() : null,
-        start_datetime:       start,
-        end_datetime:         end,
-        duration_minutes:     durationMinutes,
-        data_catalogue:       dataCatalogue || [],
-        weekend_notice:       weekendNotice || null,
-        working_days:         workingDays,
+        booking_type:          bookingType,
+        half_day_slot:         bookingType === "HALF_DAY" ? halfDaySlot.toUpperCase() : null,
+        start_datetime:        start,
+        end_datetime:          end,
+        duration_minutes:      durationMinutes,
+        data_catalogue:        dataCatalogue || [],
+        weekend_notice:        weekendNotice || null,
+        working_days:          workingDays,
         working_day_surcharge: workingDaySurcharge,
-        room_price:           roomPrice,
-        total_price:          totalPrice,
-        status:               finalStatus,
+        room_price:            roomPrice,
+        total_price:           totalPrice,
+        status:                finalStatus,
       },
       { transaction: t }
     );
 
     await t.commit();
 
-    // Send confirmation email (outside transaction – non-critical)
     sendBookingConfirmation({
       email:     user.email,
       name:      user.name,
@@ -301,9 +296,9 @@ export const createBooking = async (req, res) => {
     }).catch((e) => console.error("Email error:", e));
 
     res.status(201).json({
-      success: true,
-      bookingId:    booking.booking_id,
-      status:       booking.status,
+      success:    true,
+      booking_id: booking.booking_id,
+      status:     booking.status,
       totalPrice,
       workingDays,
       workingDaySurcharge,
@@ -326,7 +321,7 @@ export const getUserBookings = async (req, res) => {
   try {
     const userId   = req.user.id;
     const bookings = await Booking.findAll({
-      where: { user_id: userId },
+      where:   { user_id: userId },
       include: [{ model: Room, as: "room" }],
       order:   [["created_at", "DESC"]],
     });
@@ -353,7 +348,7 @@ export const getBookingCalendar = async (req, res) => {
         status: { [Op.in]: ["PENDING", "CONFIRMED"] },
       },
       include: [{ model: User, as: "user", attributes: ["name"] }],
-      order: [["start_datetime", "ASC"]],
+      order:   [["start_datetime", "ASC"]],
     });
 
     res.json({ success: true, bookings });
@@ -372,9 +367,9 @@ export const cancelBooking = async (req, res) => {
     const { booking_id } = req.params;
 
     const booking = await Booking.findOne({
-      where: { booking_id },
+      where:   { booking_id },
       include: [{ model: Room, as: "room" }],
-      lock: t.LOCK.UPDATE,
+      lock:    t.LOCK.UPDATE,
       transaction: t,
     });
 
@@ -383,7 +378,6 @@ export const cancelBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
-    // ✅ Release dataset locks when booking cancelled
     await DatasetLock.update(
       { status: "RELEASED", released_at: new Date() },
       { where: { booking_id, status: "ACTIVE" }, transaction: t }
@@ -391,12 +385,10 @@ export const cancelBooking = async (req, res) => {
 
     booking.status = "CANCELLED";
     await booking.save({ transaction: t });
-
     await t.commit();
 
-    // Notify waitlisted users (outside transaction)
     const notifications = await Notification.findAll({
-      where: { room_id: booking.room_id, is_active: true },
+      where:   { room_id: booking.room_id, is_active: true },
       include: [{ model: User, as: "user" }],
     });
 
@@ -419,8 +411,7 @@ export const cancelBooking = async (req, res) => {
 };
 
 /* =====================================================
-   CONFIRM BOOKING  (called internally after payment)
-   Locks datasets + marks booking confirmed – atomic.
+   CONFIRM BOOKING AFTER PAYMENT
 ===================================================== */
 export const confirmBookingAfterPayment = async (bookingId, transaction) => {
   const booking = await Booking.findOne({
@@ -430,14 +421,12 @@ export const confirmBookingAfterPayment = async (bookingId, transaction) => {
   });
 
   if (!booking) throw new Error(`Booking ${bookingId} not found`);
-  if (booking.status === "CONFIRMED") return booking; // idempotent
+  if (booking.status === "CONFIRMED") return booking;
 
   booking.status         = "CONFIRMED";
   booking.dataset_locked = true;
   await booking.save({ transaction });
 
-  //  Lock datasets exclusively for this booking
   await lockDatasetsForBooking(booking, transaction);
-
   return booking;
 };
