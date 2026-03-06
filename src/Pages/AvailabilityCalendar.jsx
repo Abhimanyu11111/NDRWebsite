@@ -4,7 +4,7 @@ import styles from "../Component/Styles/AvailabilityCalendar.module.css";
 
 /* ====================== DGH HOLIDAYS 2026 ====================== */
 const DGH_HOLIDAYS_2026 = {
-  // Government Holidays (GH)
+  // Government Holidays (GH) - YE ACTUAL HOLIDAYS HAIN
   govtHolidays: [
     { date: "2026-01-26", name: "Republic Day" },
     { date: "2026-03-04", name: "Holi" },
@@ -24,7 +24,7 @@ const DGH_HOLIDAYS_2026 = {
     { date: "2026-11-24", name: "Guru Nanak B'day" },
     { date: "2026-12-25", name: "Christmas Day" },
   ],
-  // Restricted Holidays (RH)
+  // Restricted Holidays (RH) - YE WORKING DAYS HAIN (but not shown)
   restrictedHolidays: [
     { date: "2026-01-01", name: "New Year's Day" },
     { date: "2026-01-03", name: "Hazarat Ali's Birthday" },
@@ -64,17 +64,15 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-const isHoliday = (dateStr) => {
-  const allHolidays = [
-    ...DGH_HOLIDAYS_2026.govtHolidays,
-    ...DGH_HOLIDAYS_2026.restrictedHolidays,
-  ];
-  return allHolidays.find((h) => h.date === dateStr);
+const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const isGovtHoliday = (dateStr) => {
+  return DGH_HOLIDAYS_2026.govtHolidays.find((h) => h.date === dateStr);
 };
 
 const isWeekend = (date) => {
   const day = date.getDay();
-  return day === 0 || day === 6; // Sunday or Saturday
+  return day === 0 || day === 6;
 };
 
 const formatDateKey = (date) => {
@@ -85,14 +83,13 @@ const formatDateKey = (date) => {
 };
 
 /* ====================== MAIN COMPONENT ====================== */
-export default function AvailabilityCalendar({ onDateSelect }) {
+export default function AvailabilityCalendar() {
   const [rooms, setRooms] = useState([]);
   const [bookings, setBookings] = useState({});
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [hoveredCell, setHoveredCell] = useState(null);
-  const [selectedRoom, setSelectedRoom] = useState(null); // NEW: Track selected room
 
   /* --- Fetch rooms --- */
   useEffect(() => {
@@ -100,10 +97,6 @@ export default function AvailabilityCalendar({ onDateSelect }) {
       try {
         const res = await axios.get("/rooms");
         setRooms(res.data.rooms || []);
-        // Auto-select first room
-        if (res.data.rooms?.length) {
-          setSelectedRoom(res.data.rooms[0].id);
-        }
       } catch (err) {
         console.error("Failed to fetch rooms:", err);
       }
@@ -111,15 +104,22 @@ export default function AvailabilityCalendar({ onDateSelect }) {
     fetchRooms();
   }, []);
 
-  /* --- Fetch bookings for selected room only --- */
+  /* --- Fetch bookings for ALL rooms --- */
   useEffect(() => {
     const fetchBookings = async () => {
-      if (!selectedRoom) return;
+      if (rooms.length === 0) return;
 
       setLoading(true);
       try {
-        const res = await axios.get(`/booking/calendar?room_id=${selectedRoom}`);
-        setBookings({ [selectedRoom]: res.data.bookings || [] });
+        const allBookings = {};
+        
+        // Fetch bookings for each room
+        for (const room of rooms) {
+          const res = await axios.get(`/booking/calendar?room_id=${room.id}`);
+          allBookings[room.id] = res.data.bookings || [];
+        }
+        
+        setBookings(allBookings);
       } catch (err) {
         console.error("Failed to fetch bookings:", err);
       } finally {
@@ -128,15 +128,13 @@ export default function AvailabilityCalendar({ onDateSelect }) {
     };
 
     fetchBookings();
-  }, [selectedRoom, currentMonth, currentYear]);
+  }, [rooms, currentMonth, currentYear]);
 
   /* --- Check if a date is booked for a room --- */
   const isDateBooked = (roomId, date) => {
-    const dateKey = formatDateKey(date);
     const roomBookings = bookings[roomId] || [];
 
     return roomBookings.some((booking) => {
-      // Only consider confirmed bookings
       if (booking.status !== "CONFIRMED" && booking.status !== "PENDING") {
         return false;
       }
@@ -144,13 +142,11 @@ export default function AvailabilityCalendar({ onDateSelect }) {
       const start = new Date(booking.start_datetime);
       const end = new Date(booking.end_datetime);
 
-      // Set all dates to midnight for comparison
       const checkDate = new Date(date);
       checkDate.setHours(0, 0, 0, 0);
       start.setHours(0, 0, 0, 0);
       end.setHours(0, 0, 0, 0);
 
-      // Check if date falls within booking range
       return checkDate >= start && checkDate < end;
     });
   };
@@ -158,55 +154,30 @@ export default function AvailabilityCalendar({ onDateSelect }) {
   /* --- Get cell status --- */
   const getCellStatus = (roomId, date) => {
     const dateKey = formatDateKey(date);
-    const holiday = isHoliday(dateKey);
+    const govtHoliday = isGovtHoliday(dateKey);
     const weekend = isWeekend(date);
     const booked = isDateBooked(roomId, date);
 
     if (booked) return "booked";
-    if (holiday) return "holiday";
+    if (govtHoliday) return "holiday";
     if (weekend) return "weekend";
     return "available";
   };
 
-  /* --- Generate calendar days with week structure --- */
-  const generateCalendarGrid = () => {
+  /* --- Generate calendar days --- */
+  const generateCalendarDays = () => {
     const firstDay = new Date(currentYear, currentMonth, 1);
-    const lastDay = new Date(currentYear, currentMonth + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay(); // 0 = Sunday
-
-    const calendarDays = [];
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     
-    // Add empty cells for days before month starts
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      calendarDays.push(null);
+    const days = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      days.push(new Date(currentYear, currentMonth, d));
     }
     
-    // Add actual days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      calendarDays.push(new Date(currentYear, currentMonth, day));
-    }
-    
-    return calendarDays;
+    return days;
   };
 
-  // const calendarDays = generateCalendarGrid();
-  // const today = new Date();
-  // today.setHours(0, 0, 0, 0);
-
-  /* --- Handle cell click --- */
-  // const handleCellClick = (date, status) => {
-  //   if (status === "available" && onDateSelect && selectedRoom) {
-  //     const room = rooms.find(r => r.id === selectedRoom);
-  //     onDateSelect({
-  //       room,
-  //       date,
-  //       dateString: formatDateKey(date),
-  //     });
-  //   }
-  // };
-
-  const calendarDays = generateCalendarGrid();
+  const calendarDays = generateCalendarDays();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -235,18 +206,6 @@ export default function AvailabilityCalendar({ onDateSelect }) {
     setCurrentYear(now.getFullYear());
   };
 
-  /* --- Handle cell click --- */
-  const handleCellClick = (date, status) => {
-    if (status === "available" && onDateSelect && selectedRoom) {
-      const room = rooms.find(r => r.id === selectedRoom);
-      onDateSelect({
-        room,
-        date,
-        dateString: formatDateKey(date),
-      });
-    }
-  };
-
   /* --- Check if date is in the past --- */
   const isPastDate = (date) => {
     const checkDate = new Date(date);
@@ -272,33 +231,13 @@ export default function AvailabilityCalendar({ onDateSelect }) {
             Room Availability Calendar
           </h2>
           <p className={styles.calendarSubtitle}>
-            Select a room to view its availability
+            View all rooms availability - Use booking form below to select dates
           </p>
         </div>
         <div className={styles.headerRight}>
           <button className={styles.todayBtn} onClick={goToToday}>
             Today
           </button>
-        </div>
-      </div>
-
-      {/* Room Selector */}
-      <div className={styles.roomSelector}>
-        <label className={styles.roomSelectorLabel}>Select Room:</label>
-        <div className={styles.roomOptions}>
-          {rooms.map((room) => (
-            <label key={room.id} className={styles.roomOption}>
-              <input
-                type="radio"
-                name="room"
-                value={room.id}
-                checked={selectedRoom === room.id}
-                onChange={(e) => setSelectedRoom(room.id)}
-                className={styles.roomRadio}
-              />
-              <span className={styles.roomOptionText}>{room.title}</span>
-            </label>
-          ))}
         </div>
       </div>
 
@@ -314,7 +253,7 @@ export default function AvailabilityCalendar({ onDateSelect }) {
         </div>
         <div className={styles.legendItem}>
           <div className={`${styles.legendBox} ${styles.holiday}`}></div>
-          <span>Holiday</span>
+          <span>Govt Holiday</span>
         </div>
         <div className={styles.legendItem}>
           <div className={`${styles.legendBox} ${styles.weekend}`}></div>
@@ -343,75 +282,83 @@ export default function AvailabilityCalendar({ onDateSelect }) {
         </button>
       </div>
 
-      {/* Calendar Grid */}
+      {/* TABLE LAYOUT - ROOMS IN ROWS, DATES IN COLUMNS */}
       {loading ? (
         <div className={styles.loading}>Loading availability...</div>
       ) : (
-        <div className={styles.calendarGrid}>
-          {/* Day Headers */}
-          <div className={styles.dayHeaders}>
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-              <div key={day} className={styles.dayHeader}>
-                {day}
-              </div>
-            ))}
-          </div>
+        <div className={styles.tableContainer}>
+          <table className={styles.calendarTable}>
+            <thead>
+              <tr>
+                <th className={styles.roomHeader}>Room</th>
+                {calendarDays.map((date) => (
+                  <th key={date.getTime()} className={styles.dateHeader}>
+                    <div className={styles.dateHeaderContent}>
+                      <div className={styles.dateDay}>{DAYS_SHORT[date.getDay()]}</div>
+                      <div className={styles.dateNumber}>{date.getDate()}</div>
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rooms.map((room) => (
+                <tr key={room.id}>
+                  <td className={styles.roomCell}>
+                    <strong>{room.title}</strong>
+                  </td>
+                  {calendarDays.map((date) => {
+                    const dateKey = formatDateKey(date);
+                    const status = getCellStatus(room.id, date);
+                    const govtHoliday = isGovtHoliday(dateKey);
+                    const past = isPastDate(date);
+                    const todayDate = isToday(date);
+                    const cellKey = `${room.id}-${date.getTime()}`;
+                    const isHovered = hoveredCell === cellKey;
 
-          {/* Calendar Days */}
-          <div className={styles.daysGrid}>
-            {calendarDays.map((date, idx) => {
-              if (!date) {
-                return <div key={`empty-${idx}`} className={styles.emptyDay}></div>;
-              }
+                    let cellClass = `${styles.dateCell} ${styles[status]}`;
+                    if (past) cellClass += ` ${styles.past}`;
+                    if (todayDate) cellClass += ` ${styles.today}`;
+                    if (isHovered) cellClass += ` ${styles.hovered}`;
 
-              const dateKey = formatDateKey(date);
-              const status = getCellStatus(selectedRoom, date);
-              const holiday = isHoliday(dateKey);
-              const past = isPastDate(date);
-              const todayDate = isToday(date);
-              const cellKey = `${selectedRoom}-${date.getTime()}`;
-              const isHovered = hoveredCell === cellKey;
+                    let tooltipText = "";
+                    if (past) {
+                      tooltipText = "Past date";
+                    } else if (govtHoliday) {
+                      tooltipText = `Govt Holiday: ${govtHoliday.name}`;
+                    } else if (status === "booked") {
+                      tooltipText = "Already booked";
+                    } else if (status === "weekend") {
+                      tooltipText = "Weekend";
+                    } else if (todayDate) {
+                      tooltipText = "Today";
+                    } else {
+                      tooltipText = "Available";
+                    }
 
-              let cellClass = `${styles.calendarDay} ${styles[status]}`;
-              if (past) cellClass += ` ${styles.past}`;
-              if (todayDate) cellClass += ` ${styles.today}`;
-              if (status === "available" && !past) cellClass += ` ${styles.clickable}`;
-              if (isHovered) cellClass += ` ${styles.hovered}`;
-
-              return (
-                <div
-                  key={cellKey}
-                  className={cellClass}
-                  onClick={() => !past && handleCellClick(date, status)}
-                  onMouseEnter={() => setHoveredCell(cellKey)}
-                  onMouseLeave={() => setHoveredCell(null)}
-                  title={
-                    past
-                      ? "Past date"
-                      : holiday
-                      ? `Holiday: ${holiday.name}`
-                      : status === "booked"
-                      ? "Already booked"
-                      : status === "weekend"
-                      ? "Weekend"
-                      : todayDate
-                      ? "Today"
-                      : "Click to book"
-                  }
-                >
-                  <div className={styles.dayNumber}>{date.getDate()}</div>
-                  {holiday && <div className={styles.holidayIndicator}>H</div>}
-                </div>
-              );
-            })}
-          </div>
+                    return (
+                      <td
+                        key={cellKey}
+                        className={cellClass}
+                        onMouseEnter={() => setHoveredCell(cellKey)}
+                        onMouseLeave={() => setHoveredCell(null)}
+                        title={tooltipText}
+                      >
+                        {govtHoliday && <span className={styles.holidayMark}>H</span>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* Info Footer */}
+      {/* Info Footer - UPDATED */}
       <div className={styles.calendarFooter}>
         <p className={styles.footerNote}>
-          <strong>Note:</strong> Click on any available (green) date to start booking. Bookings open 3 days in advance.
+          <strong>Note:</strong> This calendar is for viewing only. Use the booking form below to select your dates.
         </p>
       </div>
     </div>

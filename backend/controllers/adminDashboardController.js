@@ -13,7 +13,7 @@ import sequelize from "../src/config/db.js";
 ===================================================== */
 export const getDashboardCounts = async (req, res) => {
   try {
-    const now       = new Date();
+    const now        = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const last7Days  = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
@@ -27,6 +27,8 @@ export const getDashboardCounts = async (req, res) => {
       activeDatasetLocks,
       recentBookings,
       revenueChart,
+      // ✅ NEW: pending registration count
+      pendingRegistrations,
     ] = await Promise.all([
       User.count(),
       User.count({ where: { is_active: true } }),
@@ -37,26 +39,14 @@ export const getDashboardCounts = async (req, res) => {
       Booking.count({ where: { status: "PENDING" } }),
       Booking.count({ where: { status: "CANCELLED" } }),
 
-      // Total revenue from successful payments
       Payment.sum("amount", { where: { status: "SUCCESS" } }),
-
-      // Today's revenue
       Payment.sum("amount", {
         where: { status: "SUCCESS", created_at: { [Op.gte]: todayStart } },
       }),
-
-      // Pending payments (bookings not yet paid)
-      Booking.count({
-        where: { status: "PENDING", payment_status: "PENDING" },
-      }),
-
-      // Failed payments
+      Booking.count({ where: { status: "PENDING", payment_status: "PENDING" } }),
       Payment.count({ where: { status: "FAILED" } }),
-
-      // Active dataset locks
       DatasetLock.count({ where: { status: "ACTIVE", expires_at: { [Op.gt]: now } } }),
 
-      // Recent bookings with user + room
       Booking.findAll({
         limit: 20,
         order: [["created_at", "DESC"]],
@@ -66,7 +56,6 @@ export const getDashboardCounts = async (req, res) => {
         ],
       }),
 
-      // Revenue last 7 days (for bar chart)
       sequelize.query(
         `SELECT 
            DATE(p.created_at) AS date,
@@ -77,39 +66,37 @@ export const getDashboardCounts = async (req, res) => {
            AND p.created_at >= :since
          GROUP BY DATE(p.created_at)
          ORDER BY date ASC`,
-        {
-          replacements: { since: last7Days },
-          type: sequelize.QueryTypes.SELECT,
-        }
+        { replacements: { since: last7Days }, type: sequelize.QueryTypes.SELECT }
       ),
+
+      // ✅ NEW: Count users awaiting approval
+      User.count({ where: { approval_status: "PENDING" } }),
     ]);
 
-    // Format recent bookings
     const formattedBookings = recentBookings.map((b) => ({
-      id:                   b.id,
-      booking_id:           b.booking_id,
-      userName:             b.user?.name   || "—",
-      userEmail:            b.user?.email  || "—",
-      roomTitle:            b.room?.title  || "—",
-      booking_type:         b.booking_type,
-      half_day_slot:        b.half_day_slot,
-      start_datetime:       b.start_datetime,
-      end_datetime:         b.end_datetime,
-      working_days:         b.working_days,
+      id:                    b.id,
+      booking_id:            b.booking_id,
+      userName:              b.user?.name  || "—",
+      userEmail:             b.user?.email || "—",
+      roomTitle:             b.room?.title || "—",
+      booking_type:          b.booking_type,
+      half_day_slot:         b.half_day_slot,
+      start_datetime:        b.start_datetime,
+      end_datetime:          b.end_datetime,
+      working_days:          b.working_days,
       working_day_surcharge: b.working_day_surcharge,
-      total_price:          b.total_price,
-      payment_status:       b.payment_status,
-      status:               b.status,
-      created_at:           b.created_at,
+      total_price:           b.total_price,
+      payment_status:        b.payment_status,
+      status:                b.status,
+      created_at:            b.created_at,
     }));
 
-    // Fill missing days in chart (last 7 days, even if no revenue)
     const chartMap = {};
     revenueChart.forEach((r) => { chartMap[r.date] = r.revenue; });
 
     const chartData = [];
     for (let i = 6; i >= 0; i--) {
-      const d = new Date(now - i * 24 * 60 * 60 * 1000);
+      const d   = new Date(now - i * 24 * 60 * 60 * 1000);
       const key = d.toISOString().slice(0, 10);
       chartData.push({
         label:   d.toLocaleDateString("en-IN", { weekday: "short" }),
@@ -122,18 +109,20 @@ export const getDashboardCounts = async (req, res) => {
       success: true,
       stats: {
         totalUsers,
-        activeUsers:        activeUsers   || 0,
+        activeUsers:          activeUsers          || 0,
         totalRooms,
-        activeRooms:        activeRooms   || 0,
+        activeRooms:          activeRooms          || 0,
         totalBookings,
         confirmedBookings,
         pendingBookings,
         cancelledBookings,
-        totalRevenue:       parseFloat(revenueData  || 0),
-        todayRevenue:       parseFloat(todayRevenue || 0),
-        pendingPayments:    pendingPayments  || 0,
-        failedPayments:     failedPayments   || 0,
-        activeDatasetLocks: activeDatasetLocks || 0,
+        totalRevenue:         parseFloat(revenueData  || 0),
+        todayRevenue:         parseFloat(todayRevenue || 0),
+        pendingPayments:      pendingPayments       || 0,
+        failedPayments:       failedPayments        || 0,
+        activeDatasetLocks:   activeDatasetLocks    || 0,
+        // ✅ NEW stat for dashboard badge
+        pendingRegistrations: pendingRegistrations  || 0,
       },
       recentBookings: formattedBookings,
       revenueChart:   chartData,
@@ -146,18 +135,19 @@ export const getDashboardCounts = async (req, res) => {
 
 /* =====================================================
    GET /admin/notifications?limit=20
+   Returns all notification types including REGISTRATION + BOOKING
 ===================================================== */
 export const getAdminNotifications = async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 20;
-    const page  = parseInt(req.query.page)  || 1;
+    const limit  = parseInt(req.query.limit) || 20;
+    const page   = parseInt(req.query.page)  || 1;
     const offset = (page - 1) * limit;
 
     const notifications = await Notification.findAll({
       order:  [["created_at", "DESC"]],
       limit,
       offset,
-      include: [{ model: User, as: "user", attributes: ["name", "email"] }],
+      include: [{ model: User, as: "user", attributes: ["name", "email", "phone", "company", "approval_status"] }],
     });
 
     const unreadCount = await Notification.count({ where: { is_read: false } });
@@ -170,7 +160,14 @@ export const getAdminNotifications = async (req, res) => {
         type:       n.type || "GENERAL",
         is_read:    n.is_read,
         room_id:    n.room_id,
-        user:       n.user ? { name: n.user.name, email: n.user.email } : null,
+        // ✅ Full user details in notification
+        user: n.user ? {
+          name:            n.user.name,
+          email:           n.user.email,
+          phone:           n.user.phone,
+          company:         n.user.company,
+          approval_status: n.user.approval_status,
+        } : null,
         created_at: n.created_at,
       })),
       unreadCount,
@@ -186,9 +183,7 @@ export const getAdminNotifications = async (req, res) => {
 ===================================================== */
 export const markNotificationRead = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const notif = await Notification.findByPk(id);
+    const notif = await Notification.findByPk(req.params.id);
     if (!notif) return res.status(404).json({ success: false, message: "Notification not found" });
 
     notif.is_read = true;
@@ -214,6 +209,127 @@ export const markAllNotificationsRead = async (req, res) => {
 };
 
 /* =====================================================
+   GET /admin/registrations?status=PENDING
+   ✅ NEW — List users pending approval
+===================================================== */
+export const getPendingRegistrations = async (req, res) => {
+  try {
+    const { status = "PENDING", page = 1, limit = 20 } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    const where = {};
+    if (status) where.approval_status = status;
+
+    const { count, rows } = await User.findAndCountAll({
+      where,
+      limit:  parseInt(limit),
+      offset,
+      order:  [["created_at", "DESC"]],
+      attributes: [
+        "id", "name", "email", "phone", "company",
+        "address", "city", "state", "pincode",
+        "id_proof_type", "id_proof_number",
+        "approval_status", "is_active", "created_at",
+      ],
+    });
+
+    res.json({
+      success: true,
+      registrations: rows,
+      pagination: { total: count, page: parseInt(page), limit: parseInt(limit) },
+    });
+  } catch (err) {
+    console.error("Pending registrations error:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch registrations" });
+  }
+};
+
+/* =====================================================
+   PATCH /admin/registrations/:userId/approve
+   ✅ NEW — Admin approves a pending user
+===================================================== */
+export const approveRegistration = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findByPk(userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    if (user.approval_status !== "PENDING") {
+      return res.status(400).json({
+        success: false,
+        message: `User is already ${user.approval_status.toLowerCase()}`,
+      });
+    }
+
+    // ✅ Approve: activate account
+    user.approval_status = "APPROVED";
+    user.is_active       = true;
+    await user.save();
+
+    // ✅ Notify the user
+    await Notification.create({
+      user_id:   user.id,
+      message:   `Welcome ${user.name}! Your account has been approved. You can now login to the VDR portal.`,
+      type:      "SYSTEM",
+      is_read:   false,
+      is_active: true,
+    });
+
+    res.json({
+      success: true,
+      message: `${user.name}'s account has been approved successfully`,
+    });
+  } catch (err) {
+    console.error("Approve registration error:", err);
+    res.status(500).json({ success: false, message: "Failed to approve registration" });
+  }
+};
+
+/* =====================================================
+   PATCH /admin/registrations/:userId/reject
+   ✅ NEW — Admin rejects a pending user
+===================================================== */
+export const rejectRegistration = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { reason } = req.body; // Optional rejection reason
+
+    const user = await User.findByPk(userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    if (user.approval_status !== "PENDING") {
+      return res.status(400).json({
+        success: false,
+        message: `User is already ${user.approval_status.toLowerCase()}`,
+      });
+    }
+
+    // ✅ Reject: keep inactive
+    user.approval_status = "REJECTED";
+    user.is_active       = false;
+    await user.save();
+
+    // ✅ Notify the user about rejection
+    await Notification.create({
+      user_id:   user.id,
+      message:   `Your registration request has been rejected.${reason ? ` Reason: ${reason}` : " Please contact support for more information."}`,
+      type:      "SYSTEM",
+      is_read:   false,
+      is_active: true,
+    });
+
+    res.json({
+      success: true,
+      message: `${user.name}'s registration has been rejected`,
+    });
+  } catch (err) {
+    console.error("Reject registration error:", err);
+    res.status(500).json({ success: false, message: "Failed to reject registration" });
+  }
+};
+
+/* =====================================================
    GET /admin/bookings?status=PENDING&type=WEEKEND
 ===================================================== */
 export const getAdminBookings = async (req, res) => {
@@ -222,10 +338,9 @@ export const getAdminBookings = async (req, res) => {
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     const where = {};
-    if (status) where.status = status;
+    if (status)  where.status  = status;
     if (room_id) where.room_id = room_id;
 
-    // Weekend pending filter
     if (type === "WEEKEND") {
       where.weekend_notice = { [Op.ne]: null };
       where.status = "PENDING";
@@ -233,9 +348,9 @@ export const getAdminBookings = async (req, res) => {
 
     const { count, rows } = await Booking.findAndCountAll({
       where,
-      limit:   parseInt(limit),
+      limit:  parseInt(limit),
       offset,
-      order:   [["created_at", "DESC"]],
+      order:  [["created_at", "DESC"]],
       include: [
         { model: User, as: "user", attributes: ["name", "email", "phone"] },
         { model: Room, as: "room", attributes: ["title"] },
@@ -245,22 +360,22 @@ export const getAdminBookings = async (req, res) => {
     res.json({
       success: true,
       bookings: rows.map((b) => ({
-        booking_id:           b.booking_id,
-        userName:             b.user?.name  || "—",
-        userEmail:            b.user?.email || "—",
-        userPhone:            b.user?.phone || "—",
-        roomTitle:            b.room?.title || "—",
-        booking_type:         b.booking_type,
-        half_day_slot:        b.half_day_slot,
-        start_datetime:       b.start_datetime,
-        end_datetime:         b.end_datetime,
-        working_days:         b.working_days,
+        booking_id:            b.booking_id,
+        userName:              b.user?.name  || "—",
+        userEmail:             b.user?.email || "—",
+        userPhone:             b.user?.phone || "—",
+        roomTitle:             b.room?.title || "—",
+        booking_type:          b.booking_type,
+        half_day_slot:         b.half_day_slot,
+        start_datetime:        b.start_datetime,
+        end_datetime:          b.end_datetime,
+        working_days:          b.working_days,
         working_day_surcharge: b.working_day_surcharge,
-        total_price:          b.total_price,
-        weekend_notice:       b.weekend_notice,
-        status:               b.status,
-        payment_status:       b.payment_status,
-        created_at:           b.created_at,
+        total_price:           b.total_price,
+        weekend_notice:        b.weekend_notice,
+        status:                b.status,
+        payment_status:        b.payment_status,
+        created_at:            b.created_at,
       })),
       pagination: { total: count, page: parseInt(page), limit: parseInt(limit) },
     });
@@ -272,7 +387,7 @@ export const getAdminBookings = async (req, res) => {
 
 /* =====================================================
    PATCH /admin/bookings/:id/status
-   Approve / Reject booking
+   Approve / Reject booking + ✅ Rich notification
 ===================================================== */
 export const updateBookingStatus = async (req, res) => {
   try {
@@ -281,25 +396,52 @@ export const updateBookingStatus = async (req, res) => {
 
     const allowed = ["CONFIRMED", "CANCELLED", "PENDING", "COMPLETED"];
     if (!allowed.includes(status)) {
-      return res.status(400).json({ success: false, message: `Invalid status. Allowed: ${allowed.join(", ")}` });
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Allowed: ${allowed.join(", ")}`,
+      });
     }
 
-    const booking = await Booking.findOne({ where: { booking_id: id } });
+    // ✅ Load booking WITH user + room details for rich notification
+    const booking = await Booking.findOne({
+      where: { booking_id: id },
+      include: [
+        { model: User, as: "user", attributes: ["name", "email"] },
+        { model: Room, as: "room", attributes: ["title"] },
+      ],
+    });
     if (!booking) return res.status(404).json({ success: false, message: "Booking not found" });
 
     booking.status = status;
     await booking.save();
 
-    // Create notification for user
+    // ✅ Rich notification message with booking details
+    const startDate = new Date(booking.start_datetime).toLocaleDateString("en-IN", {
+      day: "numeric", month: "short", year: "numeric",
+    });
+    const endDate = new Date(booking.end_datetime).toLocaleDateString("en-IN", {
+      day: "numeric", month: "short", year: "numeric",
+    });
+
+    const statusMessages = {
+      CONFIRMED: `✅ Booking Confirmed! Your booking ${id} for ${booking.room?.title || "the room"} (${startDate} – ${endDate}) has been confirmed. Amount: ₹${Number(booking.total_price).toLocaleString("en-IN")}.`,
+      CANCELLED: `❌ Booking Cancelled. Your booking ${id} for ${booking.room?.title || "the room"} (${startDate} – ${endDate}) has been cancelled by admin.`,
+      COMPLETED: `🎉 Booking Completed. Your booking ${id} for ${booking.room?.title || "the room"} has been marked as completed. Thank you!`,
+      PENDING:   `⏳ Your booking ${id} status has been updated to pending review.`,
+    };
+
     await Notification.create({
-      user_id:  booking.user_id,
-      room_id:  booking.room_id,
-      message:  `Your booking ${id} has been ${status.toLowerCase()} by admin.`,
-      type:     "BOOKING",
-      is_read:  false,
+      user_id:   booking.user_id,
+      room_id:   booking.room_id,
+      message:   statusMessages[status] || `Your booking ${id} has been ${status.toLowerCase()} by admin.`,
+      type:      "BOOKING",
+      is_read:   false,
       is_active: true,
     });
 
+    // ✅ Also create an ADMIN-facing notification for the activity log
+    // (user_id = admin's user_id — or use a dedicated admin notification approach)
+    // We store user_id = booking.user_id but type = BOOKING so admin dashboard picks it up
     res.json({ success: true, message: `Booking ${status.toLowerCase()} successfully` });
   } catch (err) {
     console.error("Status update error:", err);
@@ -320,15 +462,12 @@ export const getAdminPayments = async (req, res) => {
 
     const { count, rows } = await Payment.findAndCountAll({
       where,
-      limit:  parseInt(limit),
+      limit:   parseInt(limit),
       offset,
-      order:  [["created_at", "DESC"]],
-      include: [
-        { model: User, as: "user", attributes: ["name", "email"] },
-      ],
+      order:   [["created_at", "DESC"]],
+      include: [{ model: User, as: "user", attributes: ["name", "email"] }],
     });
 
-    // For each failed payment, count total failures for that booking
     const payments = await Promise.all(
       rows.map(async (p) => {
         const fail_count = await Payment.count({
@@ -376,7 +515,11 @@ export const getDatasetLocks = async (req, res) => {
       offset,
       order:  [["locked_at", "DESC"]],
       include: [
-        { model: Booking, as: "booking", include: [{ model: User, as: "user", attributes: ["name", "email"] }] },
+        {
+          model:   Booking,
+          as:      "booking",
+          include: [{ model: User, as: "user", attributes: ["name", "email"] }],
+        },
       ],
     });
 

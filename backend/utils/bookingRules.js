@@ -19,7 +19,7 @@ export const hasWeekendInRange = (start, end) => {
 
 // ─── Advance booking rules ────────────────────────────────────────────────────
 
-// ✅ FIXED: Time strip karke sirf date compare karo
+//  Time strip karke sirf date compare karo
 export const violatesAdvanceRule = (startDatetime) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -130,7 +130,7 @@ export const validateBookingRequest = async ({
     errors.push(`Booking cannot be made more than ${MAX_ADVANCE_DAYS} days in advance.`);
   }
 
-  // 3. ✅ Weekend ALLOWED — advance notice ke saath book ho sakta hai
+  // 3.  Weekend ALLOWED — advance notice ke saath book ho sakta hai
   //    weekendNotice validation bookingController.js mein hoti hai
   //    Yahan weekend ko BLOCK nahi karte
 

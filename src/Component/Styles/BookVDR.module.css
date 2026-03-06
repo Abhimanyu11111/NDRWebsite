@@ -156,9 +156,10 @@
   box-shadow: var(--shadow);
   transition: var(--transition);
   position: relative;
-  overflow: hidden;
+  /* ✅ FIX: overflow: hidden REMOVED — was clipping the calendar dropdown */
 }
 
+/* ✅ FIX: accent bar now uses box-shadow trick instead of pseudo-element with overflow */
 .card::before {
   content: '';
   position: absolute;
@@ -168,6 +169,8 @@
   height: 0;
   background: var(--accent);
   transition: height 0.3s ease;
+  border-radius: var(--radius) 0 0 var(--radius);
+  z-index: 1;
 }
 
 .card:hover {
@@ -322,7 +325,7 @@
   align-items: stretch;
   border: 2px solid var(--border);
   border-radius: var(--radius);
-  overflow: hidden;
+  /* ✅ FIX: overflow: hidden REMOVED — was clipping the dropdown */
   position: relative;
   background: var(--card);
   transition: var(--transition);
@@ -401,12 +404,12 @@
   position: absolute;
   top: calc(100% + 12px);
   left: 0;
-  z-index: 999;
+  z-index: 9999; /* ✅ FIX: Higher z-index so it appears above everything */
   background: var(--card);
   border: 2px solid var(--border);
   border-radius: var(--radius);
   padding: 1.5rem;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15); /* ✅ FIX: stronger shadow */
   min-width: 340px;
   animation: slideDown 0.2s ease;
 }

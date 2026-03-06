@@ -62,7 +62,7 @@ function MiniCalendar({
       <div className={styles.calNav}>
         <button
           className={styles.calNavBtn}
-          onClick={onPrev}
+          onClick={(e) => { e.stopPropagation(); onPrev(); }}
           disabled={isPrevDisabled}
           type="button"
         >
@@ -71,7 +71,11 @@ function MiniCalendar({
         <span className={styles.calMonthTitle}>
           {MONTHS[viewMonth]} {viewYear}
         </span>
-        <button className={styles.calNavBtn} onClick={onNext} type="button">
+        <button
+          className={styles.calNavBtn}
+          onClick={(e) => { e.stopPropagation(); onNext(); }}
+          type="button"
+        >
           ›
         </button>
       </div>
@@ -103,7 +107,10 @@ function MiniCalendar({
             <div
               key={date.getTime()}
               className={cls}
-              onClick={() => !disabled && onDayClick(date)}
+              onClick={(e) => {
+                e.stopPropagation(); // ✅ FIX: prevent outside-click handler from firing
+                !disabled && onDayClick(date);
+              }}
               onMouseEnter={() => !disabled && onDayHover(date)}
             >
               {date.getDate()}
@@ -120,7 +127,7 @@ export default function BookVDR() {
   /* --- State --- */
   const [rooms, setRooms] = useState([]);
   const [roomId, setRoomId] = useState("");
-  const [durationType, setDurationType] = useState("FULL_DAY");
+  const [durationType, setDurationType] = useState("MULTI_DAY");
 
   // Data Catalogue
   const [dataCategory, setDataCategory] = useState("");
@@ -231,12 +238,13 @@ export default function BookVDR() {
   /* --- Close calendar on outside click --- */
   useEffect(() => {
     const handler = (e) => {
+      // ✅ FIX: Only close if click is truly outside the calendar ref
       if (calRef.current && !calRef.current.contains(e.target)) {
         setCalOpen(false);
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
   }, []);
 
   /* --- Duration change: reset dates --- */
@@ -248,7 +256,8 @@ export default function BookVDR() {
   };
 
   /* --- Open calendar for checkin or checkout --- */
-  const openCal = (for_) => {
+  const openCal = (for_, e) => {
+    if (e) e.stopPropagation(); // ✅ FIX: stop event bubbling to document
     setSelectingFor(for_);
     setCalOpen(true);
     if (for_ === "checkout" && checkOut) {
@@ -266,14 +275,12 @@ export default function BookVDR() {
   /* --- Day click logic --- */
   const handleDayClick = (date) => {
     if (durationType === "FULL_DAY") {
-      // Auto checkout = +1 day
       const co = new Date(date);
       co.setDate(co.getDate() + 1);
       setCheckIn(date);
       setCheckOut(co);
       setCalOpen(false);
     } else if (durationType === "ONE_WEEK") {
-      // Auto checkout = +7 days
       const co = new Date(date);
       co.setDate(co.getDate() + 7);
       setCheckIn(date);
@@ -304,7 +311,7 @@ export default function BookVDR() {
   const isPrevDisabled =
     viewYear === minDate.getFullYear() && viewMonth <= minDate.getMonth();
 
-  /* --- Slot blocked check (for FULL_DAY / ONE_WEEK) --- */
+  /* --- Slot blocked check --- */
   const isDateRangeBlocked = () => {
     if (!checkIn || !checkOut) return false;
     return calendarBookings.some(
@@ -316,7 +323,6 @@ export default function BookVDR() {
 
   /* --- Booking summary values --- */
   const durationLabel = {
-    FULL_DAY: "24 Hours",
     MULTI_DAY: "Multiple Days",
     ONE_WEEK: "1 Week",
   }[durationType];
@@ -326,19 +332,14 @@ export default function BookVDR() {
       ? Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24))
       : null;
 
-  const isReady = checkIn && checkOut && !isDateRangeBlocked() && 
+  const isReady = checkIn && checkOut && !isDateRangeBlocked() &&
                   dataCategory && dataRequirements.trim().length >= 50;
 
   /* --- Handle date selection from availability calendar --- */
   const handleDateSelectFromCalendar = (selection) => {
-    // Set the selected room
     setRoomId(selection.room.id);
-    
-    // Set the check-in date
     const selectedDate = new Date(selection.date);
     setCheckIn(selectedDate);
-    
-    // Auto-set checkout based on booking type
     if (durationType === "FULL_DAY") {
       const co = new Date(selectedDate);
       co.setDate(co.getDate() + 1);
@@ -350,13 +351,8 @@ export default function BookVDR() {
     } else {
       setCheckOut(null);
     }
-    
-    // Scroll to booking form
     if (bookingFormRef.current) {
-      bookingFormRef.current.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'start' 
-      });
+      bookingFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -434,7 +430,7 @@ export default function BookVDR() {
         </div>
       </div>
 
-      {/* AVAILABILITY CALENDAR - NEW SECTION */}
+      {/* AVAILABILITY CALENDAR */}
       <div className={styles.availabilitySection}>
         <AvailabilityCalendar onDateSelect={handleDateSelectFromCalendar} />
       </div>
@@ -465,7 +461,6 @@ export default function BookVDR() {
               <label>Booking Type</label>
               <div className={styles.durationTabs}>
                 {[
-                  { val: "FULL_DAY", label: "⚡ 24 Hours" },
                   { val: "MULTI_DAY", label: "📅 Multiple Days" },
                   { val: "ONE_WEEK",  label: "🗓️ 1 Week" },
                 ].map(({ val, label }) => (
@@ -482,7 +477,7 @@ export default function BookVDR() {
             </div>
           </div>
 
-          {/* DATA CATALOGUE SECTION - NEW */}
+          {/* DATA CATALOGUE SECTION */}
           <div className={styles.card}>
             <h3 className={styles.cardTitle}>Data Catalogue</h3>
             <p className={styles.cardSubtitle}>Select the data you wish to access in VDR</p>
@@ -494,7 +489,7 @@ export default function BookVDR() {
                 value={dataCategory}
                 onChange={(e) => {
                   setDataCategory(e.target.value);
-                  setDataSubCategory(""); // Reset subcategory when main changes
+                  setDataSubCategory("");
                 }}
               >
                 <option value="">Select Category...</option>
@@ -583,24 +578,23 @@ export default function BookVDR() {
             </div>
           </div>
 
-          {/* DATE PICKER — MakeMyTrip Style */}
+          {/* DATE PICKER */}
           <div className={styles.card}>
             <h3 className={styles.cardTitle}>Select Dates</h3>
             <p className={styles.cardSubtitle}>
-              {durationType === "FULL_DAY" && "Pick check-in date — checkout auto set to next day"}
               {durationType === "MULTI_DAY" && "Pick check-in then check-out date"}
               {durationType === "ONE_WEEK" && "Pick start date — checkout auto set to +7 days"}
             </p>
 
-            {/* Date Fields */}
+            {/* ✅ FIX: calRef moved to wrapper div that contains both fields AND dropdown */}
             <div className={styles.dateFieldsRow} ref={calRef}>
               {/* Check-in */}
               <div
                 className={`${styles.dateField} ${calOpen && selectingFor === "checkin" ? styles.dateFieldActive : ""}`}
-                onClick={() => openCal("checkin")}
+                onClick={(e) => openCal("checkin", e)}  // ✅ FIX: pass event to stopPropagation
               >
                 <div className={styles.dateFieldLabel}>
-                  <span className={styles.dateFieldIcon}>✈</span> Check-in
+                  <span className={styles.dateFieldIcon}>✈</span> CHECK-IN
                 </div>
                 {checkIn ? (
                   <>
@@ -622,10 +616,12 @@ export default function BookVDR() {
                   durationType === "MULTI_DAY" && calOpen && selectingFor === "checkout"
                     ? styles.dateFieldActive : ""
                 } ${durationType !== "MULTI_DAY" ? styles.dateFieldReadonly : ""}`}
-                onClick={() => durationType === "MULTI_DAY" && checkIn && openCal("checkout")}
+                onClick={(e) => {
+                  if (durationType === "MULTI_DAY" && checkIn) openCal("checkout", e); // ✅ FIX: pass event
+                }}
               >
                 <div className={styles.dateFieldLabel}>
-                  <span className={styles.dateFieldIcon}>🏁</span> Check-out
+                  <span className={styles.dateFieldIcon}>🏁</span> CHECK-OUT
                 </div>
                 {checkOut ? (
                   <>
@@ -643,7 +639,10 @@ export default function BookVDR() {
 
               {/* Calendar Dropdown */}
               {calOpen && viewYear !== null && (
-                <div className={styles.calDropdown}>
+                <div
+                  className={styles.calDropdown}
+                  onClick={(e) => e.stopPropagation()} // ✅ FIX: clicks inside dropdown won't close it
+                >
                   {/* Info strip */}
                   <div className={styles.calInfoStrip}>
                     <span>📌</span>
@@ -723,7 +722,7 @@ export default function BookVDR() {
                     <span>Duration:</span>
                     <strong>{diffDays} {diffDays === 1 ? "Day" : "Days"}</strong>
                   </div>
-                  
+
                   {dataCategory && (
                     <>
                       <div className={styles.previewDivider} />
@@ -735,7 +734,7 @@ export default function BookVDR() {
                       </div>
                     </>
                   )}
-                  
+
                   {dataSubCategory && (
                     <>
                       <div className={styles.previewDivider} />

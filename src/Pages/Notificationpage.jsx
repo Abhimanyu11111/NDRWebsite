@@ -14,31 +14,31 @@ const REFRESH_INTERVAL_MS = 30_000;
 const ITEMS_PER_PAGE = 15;
 
 const TYPE_CONFIG = {
-    PAYMENT: { 
-        color: "#10b981", 
-        bg: "#ecfdf5", 
-        icon: CreditCard, 
+    PAYMENT: {
+        color: "#10b981",
+        bg: "#ecfdf5",
+        icon: CreditCard,
         label: "Payment",
         gradient: "linear-gradient(135deg, #10b981 0%, #059669 100%)"
     },
-    BOOKING: { 
-        color: "#3b82f6", 
-        bg: "#eff6ff", 
-        icon: Calendar, 
+    BOOKING: {
+        color: "#3b82f6",
+        bg: "#eff6ff",
+        icon: Calendar,
         label: "Booking",
         gradient: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"
     },
-    SYSTEM: { 
-        color: "#f59e0b", 
-        bg: "#fef3c7", 
-        icon: ShieldAlert, 
+    SYSTEM: {
+        color: "#f59e0b",
+        bg: "#fef3c7",
+        icon: ShieldAlert,
         label: "System",
         gradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"
     },
-    INFO: { 
-        color: "#8b5cf6", 
-        bg: "#f5f3ff", 
-        icon: Info, 
+    INFO: {
+        color: "#8b5cf6",
+        bg: "#f5f3ff",
+        icon: Info,
         label: "Info",
         gradient: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
     },
@@ -142,7 +142,7 @@ export default function NotificationsPage() {
 
     const deleteNotif = async (id) => {
         if (!window.confirm("Are you sure you want to delete this notification?")) return;
-        
+
         try {
             setActionLoading((p) => ({ ...p, [id]: "delete" }));
             await api.delete(`/admin/notifications/${id}`);
@@ -173,7 +173,7 @@ export default function NotificationsPage() {
     const bulkMarkRead = async () => {
         try {
             await Promise.all(
-                Array.from(selectedNotifs).map(id => 
+                Array.from(selectedNotifs).map(id =>
                     api.patch(`/admin/notifications/${id}/read`)
                 )
             );
@@ -189,10 +189,10 @@ export default function NotificationsPage() {
 
     const bulkDelete = async () => {
         if (!window.confirm(`Delete ${selectedNotifs.size} notifications?`)) return;
-        
+
         try {
             await Promise.all(
-                Array.from(selectedNotifs).map(id => 
+                Array.from(selectedNotifs).map(id =>
                     api.delete(`/admin/notifications/${id}`)
                 )
             );
@@ -240,7 +240,7 @@ export default function NotificationsPage() {
                 setShowBulkActions(false);
             }
         };
-        
+
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
@@ -294,7 +294,7 @@ export default function NotificationsPage() {
                 new Date(n.created_at).toLocaleString("en-IN")
             ])
         ].map(row => row.join(",")).join("\n");
-        
+
         const blob = new Blob([csv], { type: "text/csv" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -319,7 +319,7 @@ export default function NotificationsPage() {
         <>
             <AdminNavbar />
             <div style={styles.page}>
-                
+
                 {/* ── SUCCESS MESSAGE ──────────────────────────────────────────── */}
                 {successMsg && (
                     <div style={styles.toast("success")} role="alert">
@@ -366,7 +366,7 @@ export default function NotificationsPage() {
                             </p>
                         )}
                     </div>
-                    
+
                     <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
                         {/* Export Button */}
                         <button onClick={exportToCSV} style={styles.exportBtn}>
@@ -382,22 +382,22 @@ export default function NotificationsPage() {
                         )}
 
                         {/* Refresh */}
-                        <button 
-                            onClick={() => fetchNotifications(true)} 
-                            style={styles.refreshBtn} 
+                        <button
+                            onClick={() => fetchNotifications(true)}
+                            style={styles.refreshBtn}
                             disabled={refreshing}
                         >
-                            <RefreshCw 
-                                size={16} 
-                                style={{ animation: refreshing ? "spin 1s linear infinite" : "none" }} 
+                            <RefreshCw
+                                size={16}
+                                style={{ animation: refreshing ? "spin 1s linear infinite" : "none" }}
                             />
                             {refreshing ? "Refreshing…" : "Refresh"}
                         </button>
 
                         {/* User Menu */}
                         <div style={{ position: "relative" }} ref={userMenuRef}>
-                            <button 
-                                onClick={() => setShowUserMenu(!showUserMenu)} 
+                            <button
+                                onClick={() => setShowUserMenu(!showUserMenu)}
                                 style={styles.userBtn}
                             >
                                 <User size={20} color="#64748b" />
@@ -415,14 +415,14 @@ export default function NotificationsPage() {
                                         </div>
                                     </div>
                                     <div style={styles.userMenuDivider} />
-                                    <button 
+                                    <button
                                         style={styles.userMenuItem}
                                         onClick={() => window.location.href = "/admin/dashboard"}
                                     >
                                         <Activity size={16} />
                                         <span>Dashboard</span>
                                     </button>
-                                    <button 
+                                    <button
                                         style={styles.userMenuItem}
                                         onClick={() => window.location.href = "/admin/settings"}
                                     >
@@ -430,7 +430,7 @@ export default function NotificationsPage() {
                                         <span>Settings</span>
                                     </button>
                                     <div style={styles.userMenuDivider} />
-                                    <button 
+                                    <button
                                         style={{ ...styles.userMenuItem, color: "#ef4444" }}
                                         onClick={handleLogout}
                                     >
@@ -475,17 +475,17 @@ export default function NotificationsPage() {
                         )}
                     </div>
 
-                    {/* Type Filter */}
+                    {/* Type Filter */} 
                     <div style={styles.filterGroup}>
                         <span style={styles.filterLabel}>Type:</span>
                         <div style={styles.filterRow}>
                             {["ALL", "BOOKING", "PAYMENT", "SYSTEM", "INFO"].map((t) => (
-                                <button 
-                                    key={t} 
+                                <button
+                                    key={t}
                                     onClick={() => {
                                         setTypeFilter(t);
                                         setCurrentPage(1);
-                                    }} 
+                                    }}
                                     style={styles.filterBtn(typeFilter === t)}
                                 >
                                     {t}
@@ -499,8 +499,8 @@ export default function NotificationsPage() {
                         <span style={styles.filterLabel}>Status:</span>
                         <div style={styles.filterRow}>
                             {["ALL", "UNREAD", "READ"].map((r) => (
-                                <button 
-                                    key={r} 
+                                <button
+                                    key={r}
                                     onClick={() => {
                                         setReadFilter(r);
                                         setCurrentPage(1);
@@ -516,8 +516,8 @@ export default function NotificationsPage() {
                     {/* Sort */}
                     <div style={styles.filterGroup}>
                         <span style={styles.filterLabel}>Sort:</span>
-                        <select 
-                            value={sortBy} 
+                        <select
+                            value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
                             style={styles.select}
                         >
@@ -557,10 +557,10 @@ export default function NotificationsPage() {
                             <> (filtered from <strong>{notifications.length}</strong> total)</>
                         )}
                     </span>
-                    
+
                     {filtered.length > 0 && (
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                            <button 
+                            <button
                                 onClick={selectedNotifs.size === filtered.length ? deselectAll : selectAll}
                                 style={styles.selectAllBtn}
                             >
@@ -601,14 +601,14 @@ export default function NotificationsPage() {
                                 const Icon = config.icon;
                                 const isActing = actionLoading[n.id];
                                 const isSelected = selectedNotifs.has(n.id);
-                                
+
                                 return (
                                     <div
                                         key={n.id}
                                         style={{
                                             ...styles.notifCard,
-                                            background: isSelected 
-                                                ? "#eff6ff" 
+                                            background: isSelected
+                                                ? "#eff6ff"
                                                 : n.is_read ? "white" : "#fefce8",
                                             borderLeft: `4px solid ${config.color}`,
                                             opacity: isActing === "delete" ? 0.4 : 1,
@@ -626,9 +626,9 @@ export default function NotificationsPage() {
                                         />
 
                                         {/* Icon */}
-                                        <div style={{ 
-                                            ...styles.notifIconBox, 
-                                            background: config.gradient 
+                                        <div style={{
+                                            ...styles.notifIconBox,
+                                            background: config.gradient
                                         }}>
                                             <Icon size={20} style={{ color: "white" }} strokeWidth={2.5} />
                                         </div>
@@ -636,10 +636,10 @@ export default function NotificationsPage() {
                                         {/* Content */}
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={styles.notifTopRow}>
-                                                <span style={{ 
-                                                    ...styles.typePill, 
-                                                    background: config.bg, 
-                                                    color: config.color 
+                                                <span style={{
+                                                    ...styles.typePill,
+                                                    background: config.bg,
+                                                    color: config.color
                                                 }}>
                                                     {config.label}
                                                 </span>
@@ -710,7 +710,7 @@ export default function NotificationsPage() {
 
                         {/* ── PAGINATION ───────────────────────────────────────────── */}
                         {totalPages > 1 && (
-                            <Pagination 
+                            <Pagination
                                 currentPage={currentPage}
                                 totalPages={totalPages}
                                 onPageChange={setCurrentPage}
@@ -748,7 +748,7 @@ export default function NotificationsPage() {
 function Pagination({ currentPage, totalPages, onPageChange }) {
     const pages = [];
     const maxVisible = 7;
-    
+
     if (totalPages <= maxVisible) {
         for (let i = 1; i <= totalPages; i++) pages.push(i);
     } else {
@@ -827,40 +827,40 @@ function StatCard({ label, value, color, icon: Icon }) {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = {
     page: {
-        maxWidth: 1280, 
-        margin: "0 auto", 
+        maxWidth: 1280,
+        margin: "0 auto",
         padding: "40px 28px",
-        background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)", 
+        background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
         minHeight: "100vh",
         fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
     },
     center: {
-        display: "flex", 
-        flexDirection: "column", 
+        display: "flex",
+        flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center", 
-        minHeight: "80vh", 
+        justifyContent: "center",
+        minHeight: "80vh",
         gap: 16,
     },
     spinnerRing: {
-        width: 48, 
+        width: 48,
         height: 48,
-        border: "4px solid #e2e8f0", 
+        border: "4px solid #e2e8f0",
         borderTop: "4px solid #3b82f6",
-        borderRadius: "50%", 
+        borderRadius: "50%",
         animation: "spin 0.8s linear infinite",
     },
     miniSpinner: {
-        width: 14, 
+        width: 14,
         height: 14,
-        border: "2px solid rgba(255,255,255,0.3)", 
+        border: "2px solid rgba(255,255,255,0.3)",
         borderTop: "2px solid currentColor",
-        borderRadius: "50%", 
+        borderRadius: "50%",
         animation: "spin 0.6s linear infinite",
     },
-    loadingText: { 
-        color: "#64748b", 
-        fontSize: 16, 
+    loadingText: {
+        color: "#64748b",
+        fontSize: 16,
         fontWeight: 600,
         letterSpacing: -0.3,
     },
@@ -895,91 +895,91 @@ const styles = {
         marginLeft: 8,
     },
     header: {
-        display: "flex", 
-        justifyContent: "space-between", 
+        display: "flex",
+        justifyContent: "space-between",
         alignItems: "flex-start",
-        marginBottom: 32, 
-        flexWrap: "wrap", 
+        marginBottom: 32,
+        flexWrap: "wrap",
         gap: 16,
     },
-    pageTitle: { 
-        fontSize: 36, 
-        fontWeight: 800, 
-        color: "#0f172a", 
-        margin: 0, 
+    pageTitle: {
+        fontSize: 36,
+        fontWeight: 800,
+        color: "#0f172a",
+        margin: 0,
         letterSpacing: -1,
         display: "flex",
         alignItems: "center",
     },
-    subtitle: { 
-        fontSize: 13, 
-        color: "#94a3b8", 
-        margin: "8px 0 0", 
-        fontWeight: 500 
+    subtitle: {
+        fontSize: 13,
+        color: "#94a3b8",
+        margin: "8px 0 0",
+        fontWeight: 500
     },
     unreadBadge: {
-        background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)", 
+        background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
         color: "white",
-        fontSize: 12, 
-        fontWeight: 800, 
+        fontSize: 12,
+        fontWeight: 800,
         padding: "4px 12px",
-        borderRadius: 20, 
+        borderRadius: 20,
         letterSpacing: 0.5,
         boxShadow: "0 4px 12px rgba(245,158,11,0.3)",
     },
     exportBtn: {
-        display: "flex", 
-        alignItems: "center", 
+        display: "flex",
+        alignItems: "center",
         gap: 6,
-        padding: "9px 16px", 
-        background: "white", 
+        padding: "9px 16px",
+        background: "white",
         border: "2px solid #e2e8f0",
-        borderRadius: 10, 
-        fontSize: 13, 
-        fontWeight: 700, 
-        color: "#475569", 
+        borderRadius: 10,
+        fontSize: 13,
+        fontWeight: 700,
+        color: "#475569",
         cursor: "pointer",
         transition: "all 0.2s",
         boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
     },
     markAllBtn: {
-        display: "flex", 
-        alignItems: "center", 
+        display: "flex",
+        alignItems: "center",
         gap: 6,
-        padding: "9px 16px", 
-        background: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)", 
+        padding: "9px 16px",
+        background: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)",
         border: "2px solid #bbf7d0",
-        borderRadius: 10, 
-        fontSize: 13, 
-        fontWeight: 700, 
-        color: "#166534", 
+        borderRadius: 10,
+        fontSize: 13,
+        fontWeight: 700,
+        color: "#166534",
         cursor: "pointer",
         transition: "all 0.2s",
         boxShadow: "0 2px 8px rgba(16,185,129,0.15)",
     },
     refreshBtn: {
-        display: "flex", 
-        alignItems: "center", 
+        display: "flex",
+        alignItems: "center",
         gap: 6,
-        padding: "9px 16px", 
-        background: "white", 
+        padding: "9px 16px",
+        background: "white",
         border: "2px solid #e2e8f0",
-        borderRadius: 10, 
-        fontSize: 13, 
-        fontWeight: 700, 
-        color: "#475569", 
+        borderRadius: 10,
+        fontSize: 13,
+        fontWeight: 700,
+        color: "#475569",
         cursor: "pointer",
         transition: "all 0.2s",
         boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
     },
     userBtn: {
-        width: 44, 
-        height: 44, 
+        width: 44,
+        height: 44,
         borderRadius: 12,
-        background: "white", 
+        background: "white",
         border: "2px solid #e2e8f0",
-        display: "flex", 
-        alignItems: "center", 
+        display: "flex",
+        alignItems: "center",
         justifyContent: "center",
         cursor: "pointer",
         transition: "all 0.2s",
@@ -1046,9 +1046,9 @@ const styles = {
         transition: "background 0.15s",
     },
     statsGrid: {
-        display: "grid", 
-        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", 
-        gap: 16, 
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+        gap: 16,
         marginBottom: 32,
     },
     statCard: {
@@ -1087,45 +1087,45 @@ const styles = {
         display: "block",
     },
     filterBar: {
-        background: "white", 
-        borderRadius: 16, 
+        background: "white",
+        borderRadius: 16,
         border: "2px solid #e2e8f0",
-        padding: "20px 24px", 
+        padding: "20px 24px",
         marginBottom: 20,
-        display: "flex", 
-        flexWrap: "wrap", 
-        gap: 20, 
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 20,
         alignItems: "center",
         boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
     },
     searchBox: {
-        display: "flex", 
-        alignItems: "center", 
+        display: "flex",
+        alignItems: "center",
         gap: 10,
-        border: "2px solid #e2e8f0", 
-        borderRadius: 10, 
+        border: "2px solid #e2e8f0",
+        borderRadius: 10,
         padding: "10px 14px",
-        background: "#f8fafc", 
+        background: "#f8fafc",
         flex: "1 1 280px",
         transition: "all 0.2s",
     },
     searchInput: {
-        border: "none", 
-        outline: "none", 
+        border: "none",
+        outline: "none",
         background: "transparent",
-        fontSize: 14, 
-        color: "#334155", 
-        flex: 1, 
+        fontSize: 14,
+        color: "#334155",
+        flex: 1,
         fontFamily: "inherit",
         fontWeight: 500,
     },
     clearBtn: {
-        background: "none", 
-        border: "none", 
+        background: "none",
+        border: "none",
         cursor: "pointer",
-        color: "#94a3b8", 
-        display: "flex", 
-        alignItems: "center", 
+        color: "#94a3b8",
+        display: "flex",
+        alignItems: "center",
         padding: 2,
     },
     filterGroup: {
@@ -1140,19 +1140,19 @@ const styles = {
         textTransform: "uppercase",
         letterSpacing: 0.5,
     },
-    filterRow: { 
-        display: "flex", 
-        gap: 8, 
-        flexWrap: "wrap" 
+    filterRow: {
+        display: "flex",
+        gap: 8,
+        flexWrap: "wrap"
     },
     filterBtn: (active) => ({
-        padding: "7px 14px", 
-        borderRadius: 8, 
-        fontSize: 12, 
+        padding: "7px 14px",
+        borderRadius: 8,
+        fontSize: 12,
         fontWeight: 700,
         border: active ? "2px solid #3b82f6" : "2px solid #e2e8f0",
         background: active ? "#3b82f6" : "white",
-        color: active ? "white" : "#64748b", 
+        color: active ? "white" : "#64748b",
         cursor: "pointer",
         transition: "all 0.2s",
         letterSpacing: 0.3,
@@ -1208,7 +1208,7 @@ const styles = {
         cursor: "pointer",
         transition: "all 0.2s",
     }),
-    resultsRow: { 
+    resultsRow: {
         marginBottom: 16,
         display: "flex",
         justifyContent: "space-between",
@@ -1216,8 +1216,8 @@ const styles = {
         flexWrap: "wrap",
         gap: 12,
     },
-    resultsText: { 
-        fontSize: 13, 
+    resultsText: {
+        fontSize: 13,
         color: "#64748b",
         fontWeight: 500,
     },
@@ -1235,19 +1235,19 @@ const styles = {
         cursor: "pointer",
         transition: "all 0.2s",
     },
-    notifList: { 
-        display: "flex", 
-        flexDirection: "column", 
-        gap: 12 
+    notifList: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 12
     },
     notifCard: {
-        background: "white", 
-        borderRadius: 14, 
+        background: "white",
+        borderRadius: 14,
         border: "2px solid #e2e8f0",
-        padding: "18px 20px", 
-        display: "flex", 
+        padding: "18px 20px",
+        display: "flex",
         alignItems: "flex-start",
-        gap: 16, 
+        gap: 16,
         boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
         transition: "all 0.2s",
     },
@@ -1259,27 +1259,27 @@ const styles = {
         accentColor: "#3b82f6",
     },
     notifIconBox: {
-        width: 48, 
-        height: 48, 
-        borderRadius: 12, 
+        width: 48,
+        height: 48,
+        borderRadius: 12,
         flexShrink: 0,
-        display: "flex", 
-        alignItems: "center", 
+        display: "flex",
+        alignItems: "center",
         justifyContent: "center",
         boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
     },
-    notifTopRow: { 
-        display: "flex", 
-        alignItems: "center", 
-        gap: 8, 
-        marginBottom: 8 
+    notifTopRow: {
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        marginBottom: 8
     },
     typePill: {
-        fontSize: 10, 
-        fontWeight: 800, 
+        fontSize: 10,
+        fontWeight: 800,
         padding: "3px 10px",
-        borderRadius: 6, 
-        letterSpacing: 0.8, 
+        borderRadius: 6,
+        letterSpacing: 0.8,
         textTransform: "uppercase",
     },
     newBadge: {
@@ -1293,50 +1293,50 @@ const styles = {
         animation: "pulse 2s ease-in-out infinite",
     },
     unreadDot: {
-        width: 8, 
-        height: 8, 
-        borderRadius: "50%", 
-        background: "#3b82f6", 
+        width: 8,
+        height: 8,
+        borderRadius: "50%",
+        background: "#3b82f6",
         flexShrink: 0,
     },
-    notifMsg: { 
-        fontSize: 14, 
-        color: "#334155", 
-        margin: "0 0 10px", 
+    notifMsg: {
+        fontSize: 14,
+        color: "#334155",
+        margin: "0 0 10px",
         lineHeight: 1.6,
         fontWeight: 500,
     },
-    notifMeta: { 
-        display: "flex", 
-        alignItems: "center", 
-        gap: 6 
+    notifMeta: {
+        display: "flex",
+        alignItems: "center",
+        gap: 6
     },
-    notifActions: { 
-        display: "flex", 
-        gap: 8, 
-        flexShrink: 0, 
+    notifActions: {
+        display: "flex",
+        gap: 8,
+        flexShrink: 0,
         alignItems: "center",
         flexWrap: "wrap",
     },
     actionBtn: (bg, color) => ({
-        display: "flex", 
-        alignItems: "center", 
+        display: "flex",
+        alignItems: "center",
         gap: 5,
-        padding: "7px 12px", 
-        background: bg, 
+        padding: "7px 12px",
+        background: bg,
         border: "none",
-        borderRadius: 8, 
-        fontSize: 12, 
-        fontWeight: 700, 
-        color, 
+        borderRadius: 8,
+        fontSize: 12,
+        fontWeight: 700,
+        color,
         cursor: "pointer",
         transition: "all 0.2s",
     }),
     emptyState: {
-        background: "white", 
-        borderRadius: 16, 
+        background: "white",
+        borderRadius: 16,
         border: "2px solid #e2e8f0",
-        padding: "80px 20px", 
+        padding: "80px 20px",
         textAlign: "center",
         boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
     },
