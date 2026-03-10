@@ -1,9 +1,9 @@
-name: Deploy Full Stack to AWS EC2
+name: Deploy Full Stack via AWS SSM
 
 on:
   push:
     branches:
-      - main  # branch
+      - main
 
 jobs:
   deploy:
@@ -13,100 +13,53 @@ jobs:
       - name:  Checkout code
         uses: actions/checkout@v3
 
-      - name:  Deploy to EC2 Server
-        uses: appleboy/ssh-action@master
+      - name:  Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            echo " Starting Full Stack Deployment..."
-            echo "================================================"
-            
-            # ============================================
-            # BACKEND DEPLOYMENT
-            # ============================================
-            echo ""
-            echo " BACKEND DEPLOYMENT STARTED..."
-            echo "================================================"
-            
-            cd /var/www/gov-react-portal/backend
-            
-            # Backup current version (optional)
-            echo " Creating backup..."
-            
-            # Stash any local changes
-            git stash
-            
-            # Pull latest backend code
-            echo " Pulling latest backend code..."
-            git pull origin main
-            
-            # Install backend dependencies
-            echo " Installing backend dependencies..."
-            npm install --production
-            
-            # Restart backend with PM2
-            echo " Restarting backend..."
-            pm2 restart backend || pm2 start index.js --name backend
-            
-            # Check backend status
-            echo " Backend status:"
-            pm2 status backend
-            
-            echo ""
-            echo " BACKEND DEPLOYMENT COMPLETED!"
-            echo "================================================"
-            
-            # ============================================
-            # FRONTEND DEPLOYMENT
-            # ============================================
-            echo ""
-            echo " FRONTEND DEPLOYMENT STARTED..."
-            echo "================================================"
-            
-            cd /var/www/gov-react-portal
-            
-            # Pull latest frontend code
-            echo " Pulling latest frontend code..."
-            git pull origin main
-            
-            # Install frontend dependencies
-            echo " Installing frontend dependencies..."
-            npm install
-            
-            # Build production frontend
-            echo " Building production frontend..."
-            npm run build
-            
-            # Copy build to dist folder (if needed)
-            echo " Deploying build files..."
-            # Build files already in dist folder from Vite
-            
-            # Restart Nginx
-            echo " Restarting Nginx..."
-            sudo systemctl restart nginx
-            
-            # Check Nginx status
-            echo " Nginx status:"
-            sudo systemctl status nginx --no-pager | head -5
-            
-            echo ""
-            echo " FRONTEND DEPLOYMENT COMPLETED!"
-            echo "================================================"
-            
-            # ============================================
-            # DEPLOYMENT SUMMARY
-            # ============================================
-            echo ""
-            echo " FULL STACK DEPLOYMENT SUMMARY"
-            echo "================================================"
-            echo " Backend: Running on PM2"
-            echo " Frontend: Built and served by Nginx"
-            echo " SSL: Active on port 443"
-            echo ""
-            echo " Website URL: https://ndr.dghindia.gov.in"
-            echo ""
-            echo "================================================"
-            echo " ALL DEPLOYMENTS COMPLETED SUCCESSFULLY!"
-            echo "================================================"
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name:  Deploy Backend via AWS SSM
+        run: |
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --instance-ids "${{ secrets.AWS_INSTANCE_ID }}" \
+            --parameters 'commands=[
+              "echo \" Starting Backend Deployment...\"",
+              "cd /var/www/gov-react-portal/backend",
+              "git stash",
+              "git pull origin main",
+              "echo \" Installing backend dependencies...\"",
+              "npm install --production",
+              "echo \" Restarting backend...\"",
+              "pm2 restart backend || pm2 start index.js --name backend",
+              "pm2 status backend",
+              "echo \" Backend deployment completed!\""
+            ]' \
+            --comment "Backend deployment from GitHub Actions"
+
+      - name:  Deploy Frontend via AWS SSM
+        run: |
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --instance-ids "${{ secrets.AWS_INSTANCE_ID }}" \
+            --parameters 'commands=[
+              "echo \" Starting Frontend Deployment...\"",
+              "cd /var/www/gov-react-portal",
+              "git pull origin main",
+              "echo \" Installing frontend dependencies...\"",
+              "npm install",
+              "echo \" Building production frontend...\"",
+              "npm run build",
+              "echo \" Restarting Nginx...\"",
+              "sudo systemctl restart nginx",
+              "echo \" Frontend deployment completed!\""
+            ]' \
+            --comment "Frontend deployment from GitHub Actions"
+
+      - name:  Deployment Summary
+        run: |
+          echo "🎉 Deployment initiated successfully!"
+          echo "🌐 Website: https://dghindia.gov.in"
+          echo "Check AWS Systems Manager console for command execution status"
