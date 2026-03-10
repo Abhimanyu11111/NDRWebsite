@@ -29,7 +29,7 @@ const About = () => {
                         National Data Repository (NDR) is a cloud-based national E&P data platform established by the Government of India and operated under the aegis of the Directorate General of Hydrocarbons (DGH) for the systematic preservation, management, and dissemination of India's upstream oil and gas data. The platform represents the modernisation of India's national data infrastructure into a scalable, secure, and resilient cloud-enabled ecosystem aligned with national data policies and global best practices.
                     </p>
 
-                    <h3 className="section-title">Types of Data Stored in NDR</h3>
+                    <h3 className="section-title">Types of Data Stored in NDR NDR</h3>
 
                     {/* NEW 3–2 CARD LAYOUT */}
                     <div className="card-row">
