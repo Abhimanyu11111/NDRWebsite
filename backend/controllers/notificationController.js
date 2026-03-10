@@ -1,5 +1,5 @@
 import Notification from "../models/Notification.js";
-import Room from "../models/room.js";
+import Room from "../models/Slot.js";
 import User from "../models/User.js";
 import Booking from "../models/Booking.js";
 import { Op } from "sequelize";

@@ -2,7 +2,7 @@ import sequelize from "../src/config/db.js";
 import Payment from "../models/Payment.js";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
-import Room from "../models/room.js";
+import Room from "../models/Slot.js";
 import { encrypt, decrypt } from "../utils/ccavenue.js";
 import qs from "querystring";
 import { generateInvoicePDF } from "../utils/invoiceGenerator.js";

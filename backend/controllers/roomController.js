@@ -1,4 +1,4 @@
-import Room from "../models/room.js";
+import Room from "../models/Slot.js";
 
 /**
  * Get all active rooms

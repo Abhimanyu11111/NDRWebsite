@@ -1,4 +1,4 @@
-import { getSlotsByRoomAndDate } from "../models/slot.js";
+import { getSlotsByRoomAndDate } from "../models/Slot.js";
 
 export const getSlots = async (req, res) => {
   try {

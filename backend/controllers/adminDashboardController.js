@@ -1,6 +1,6 @@
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
-import Room from "../models/Room.js";
+import Room from "../models/Slot.js";
 import Payment from "../models/Payment.js";
 import Notification from "../models/Notification.js";
 import DatasetLock from "../models/DatasetLock.js";
