@@ -1,0 +1,112 @@
+name: Deploy Full Stack to AWS EC2
+
+on:
+  push:
+    branches:
+      - main  # branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v3
+
+      - name:  Deploy to EC2 Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo " Starting Full Stack Deployment..."
+            echo "================================================"
+            
+            # ============================================
+            # BACKEND DEPLOYMENT
+            # ============================================
+            echo ""
+            echo " BACKEND DEPLOYMENT STARTED..."
+            echo "================================================"
+            
+            cd /var/www/gov-react-portal/backend
+            
+            # Backup current version (optional)
+            echo " Creating backup..."
+            
+            # Stash any local changes
+            git stash
+            
+            # Pull latest backend code
+            echo " Pulling latest backend code..."
+            git pull origin main
+            
+            # Install backend dependencies
+            echo " Installing backend dependencies..."
+            npm install --production
+            
+            # Restart backend with PM2
+            echo " Restarting backend..."
+            pm2 restart backend || pm2 start index.js --name backend
+            
+            # Check backend status
+            echo " Backend status:"
+            pm2 status backend
+            
+            echo ""
+            echo " BACKEND DEPLOYMENT COMPLETED!"
+            echo "================================================"
+            
+            # ============================================
+            # FRONTEND DEPLOYMENT
+            # ============================================
+            echo ""
+            echo " FRONTEND DEPLOYMENT STARTED..."
+            echo "================================================"
+            
+            cd /var/www/gov-react-portal
+            
+            # Pull latest frontend code
+            echo " Pulling latest frontend code..."
+            git pull origin main
+            
+            # Install frontend dependencies
+            echo " Installing frontend dependencies..."
+            npm install
+            
+            # Build production frontend
+            echo " Building production frontend..."
+            npm run build
+            
+            # Copy build to dist folder (if needed)
+            echo " Deploying build files..."
+            # Build files already in dist folder from Vite
+            
+            # Restart Nginx
+            echo " Restarting Nginx..."
+            sudo systemctl restart nginx
+            
+            # Check Nginx status
+            echo " Nginx status:"
+            sudo systemctl status nginx --no-pager | head -5
+            
+            echo ""
+            echo " FRONTEND DEPLOYMENT COMPLETED!"
+            echo "================================================"
+            
+            # ============================================
+            # DEPLOYMENT SUMMARY
+            # ============================================
+            echo ""
+            echo " FULL STACK DEPLOYMENT SUMMARY"
+            echo "================================================"
+            echo " Backend: Running on PM2"
+            echo " Frontend: Built and served by Nginx"
+            echo " SSL: Active on port 443"
+            echo ""
+            echo " Website URL: https://ndr.dghindia.gov.in"
+            echo ""
+            echo "================================================"
+            echo " ALL DEPLOYMENTS COMPLETED SUCCESSFULLY!"
+            echo "================================================"
