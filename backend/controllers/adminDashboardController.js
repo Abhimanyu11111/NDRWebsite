@@ -1,7 +1,7 @@
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
-import Room from "../models/room.js";
-import Payment from "../models/payment.js";
+import Room from "../models/Room.js";
+import Payment from "../models/Payment.js";
 import Notification from "../models/Notification.js";
 import DatasetLock from "../models/DatasetLock.js";
 import { Op } from "sequelize";
