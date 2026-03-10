@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import styles from "./Styles/PaymentResult.module.css";
+// import styles from "./Styles/PaymentResult.module.css";
 
 export default function PaymentSuccess() {
   const navigate = useNavigate();

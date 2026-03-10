@@ -8,7 +8,7 @@ import {
   updateBookingStatus,
   getAdminPayments,
   getDatasetLocks,
-  // ✅ NEW registration approval exports
+  //  NEW registration approval exports
   getPendingRegistrations,
   approveRegistration,
   rejectRegistration,
@@ -38,7 +38,7 @@ router.get("/payments", getAdminPayments);
 // ── Dataset locks ──────────────────────────────────────
 router.get("/dataset-locks", getDatasetLocks);
 
-// ── ✅ NEW: Registration Approvals ─────────────────────
+// ──  NEW: Registration Approvals ─────────────────────
 // GET  /admin/dashboard/registrations?status=PENDING   → list pending users
 // PATCH /admin/dashboard/registrations/:userId/approve → approve user
 // PATCH /admin/dashboard/registrations/:userId/reject  → reject user

@@ -15,6 +15,8 @@ import api from "../../api/axiosClient";
 const REFRESH_INTERVAL_MS = 30_000;
 const BOOKINGS_PER_PAGE   = 10;
 const PAYMENTS_PER_PAGE   = 5;
+// ✅ AUTO LOGOUT: 10 minutes inactivity
+const AUTO_LOGOUT_TIME_MS = 10 * 60 * 1000; // 10 minutes
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -25,19 +27,18 @@ export default function AdminDashboard() {
     totalRevenue: 0, pendingPayments: 0,
     failedPayments: 0, todayRevenue: 0,
     activeDatasetLocks: 0,
-    pendingRegistrations: 0, // ✅ NEW
+    pendingRegistrations: 0,
   });
   const [recentBookings, setRecentBookings]     = useState([]);
   const [notifications, setNotifications]       = useState([]);
   const [pendingApprovals, setPendingApprovals] = useState([]);
   const [paymentAlerts, setPaymentAlerts]       = useState([]);
   const [revenueData, setRevenueData]           = useState([]);
-  // ✅ NEW
   const [pendingRegistrations, setPendingRegistrations] = useState([]);
   const [approvingRegId, setApprovingRegId]             = useState(null);
   const [rejectingRegId, setRejectingRegId]             = useState(null);
   const [rejectReason, setRejectReason]                 = useState("");
-  const [showRejectModal, setShowRejectModal]           = useState(null); // userId
+  const [showRejectModal, setShowRejectModal]           = useState(null);
 
   const [loading, setLoading]             = useState(true);
   const [refreshing, setRefreshing]       = useState(false);
@@ -53,8 +54,99 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm]       = useState("");
   const [showUserMenu, setShowUserMenu]   = useState(false);
 
+  // ✅ AUTO LOGOUT STATE
+  const [showLogoutWarning, setShowLogoutWarning] = useState(false);
+  const [logoutCountdown, setLogoutCountdown]     = useState(60); // 60 seconds warning
+
   const notifPanelRef = useRef(null);
   const userMenuRef   = useRef(null);
+  const inactivityTimerRef = useRef(null);
+  const warningTimerRef    = useRef(null);
+  const countdownIntervalRef = useRef(null);
+  const lastActivityRef    = useRef(Date.now());
+
+  // ✅ AUTO LOGOUT: Reset inactivity timer on user activity
+  const resetInactivityTimer = useCallback(() => {
+    lastActivityRef.current = Date.now();
+    setShowLogoutWarning(false);
+    
+    // Clear existing timers
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    
+    // Set new inactivity timer (9 minutes before warning)
+    inactivityTimerRef.current = setTimeout(() => {
+      setShowLogoutWarning(true);
+      setLogoutCountdown(60);
+      
+      // Start countdown
+      let count = 60;
+      countdownIntervalRef.current = setInterval(() => {
+        count--;
+        setLogoutCountdown(count);
+        if (count <= 0) {
+          clearInterval(countdownIntervalRef.current);
+          handleAutoLogout();
+        }
+      }, 1000);
+      
+      // Auto logout after 1 minute warning
+      warningTimerRef.current = setTimeout(() => {
+        handleAutoLogout();
+      }, 60000); // 60 seconds
+    }, AUTO_LOGOUT_TIME_MS - 60000); // Show warning 1 minute before logout
+  }, []);
+
+  // ✅ Handle auto logout
+  const handleAutoLogout = useCallback(() => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
+    sessionStorage.clear();
+    window.location.href = "/login?reason=inactivity";
+  }, []);
+
+  // ✅ Handle manual logout
+  const handleLogout = useCallback(() => {
+    if (confirm("Are you sure you want to logout?")) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      sessionStorage.clear();
+      window.location.href = "/login";
+    }
+  }, []);
+
+  // ✅ Stay logged in (dismiss warning)
+  const handleStayLoggedIn = useCallback(() => {
+    resetInactivityTimer();
+  }, [resetInactivityTimer]);
+
+  // ✅ Setup activity listeners
+  useEffect(() => {
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    
+    const handleActivity = () => {
+      resetInactivityTimer();
+    };
+
+    // Add listeners
+    activityEvents.forEach(event => {
+      document.addEventListener(event, handleActivity, { passive: true });
+    });
+
+    // Initial timer
+    resetInactivityTimer();
+
+    // Cleanup
+    return () => {
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, handleActivity);
+      });
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
+  }, [resetInactivityTimer]);
 
   useEffect(() => {
     if (successMsg) {
@@ -81,7 +173,6 @@ export default function AdminDashboard() {
         api.get("/admin/dashboard/notifications?limit=20"),
         api.get("/admin/dashboard/bookings?status=PENDING&type=WEEKEND"),
         api.get("/admin/dashboard/payments?status=FAILED&limit=10"),
-        // ✅ NEW: fetch pending registrations
         api.get("/admin/dashboard/registrations?status=PENDING&limit=50"),
       ]);
 
@@ -102,7 +193,6 @@ export default function AdminDashboard() {
       if (paymentsRes.status === "fulfilled" && paymentsRes.value.data.success) {
         setPaymentAlerts(paymentsRes.value.data.payments || []);
       }
-      // ✅ NEW
       if (regRes.status === "fulfilled" && regRes.value.data.success) {
         setPendingRegistrations(regRes.value.data.registrations || []);
       }
@@ -125,7 +215,6 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, [fetchAll, pauseRefresh]);
 
-  // ── Booking approve/reject ──────────────────────────
   const handleApproval = async (bookingId, action) => {
     try {
       setApprovingId(bookingId);
@@ -144,7 +233,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // ── ✅ NEW: Registration approve ────────────────────
   const handleApproveRegistration = async (userId, userName) => {
     try {
       setApprovingRegId(userId);
@@ -162,7 +250,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // ── ✅ NEW: Registration reject ─────────────────────
   const handleRejectRegistration = async (userId, userName) => {
     try {
       setRejectingRegId(userId);
@@ -184,7 +271,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // ── Notifications ───────────────────────────────────
   const markRead = async (notifId) => {
     try {
       await api.patch(`/admin/notifications/${notifId}/read`);
@@ -206,13 +292,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("refreshToken");
-    sessionStorage.clear();
-    window.location.href = "/login";
-  };
-
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (notifPanelRef.current && !notifPanelRef.current.contains(e.target)) setNotifOpen(false);
@@ -228,13 +307,13 @@ export default function AdminDashboard() {
         setNotifOpen(false);
         setShowUserMenu(false);
         setShowRejectModal(null);
+        setShowLogoutWarning(false);
       }
     };
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
   }, []);
 
-  // ── Computed ────────────────────────────────────────
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   const filteredBookings = bookingFilter === "ALL"
@@ -277,7 +356,33 @@ export default function AdminDashboard() {
       <AdminNavbar />
       <div style={styles.page}>
 
-        {/* ── TOASTS ─────────────────────────────────────── */}
+        {/* ✅ AUTO LOGOUT WARNING MODAL */}
+        {showLogoutWarning && (
+          <div style={styles.logoutWarningOverlay} role="dialog" aria-modal="true" aria-label="Inactivity warning">
+            <div style={styles.logoutWarningModal}>
+              <div style={styles.logoutWarningIcon}>
+                <Clock size={48} color="#f59e0b" />
+              </div>
+              <h2 style={styles.logoutWarningTitle}>Still There?</h2>
+              <p style={styles.logoutWarningText}>
+                You've been inactive for a while. You'll be logged out in <strong style={{ color: "#ef4444" }}>{logoutCountdown} seconds</strong> for security.
+              </p>
+              <div style={styles.logoutWarningActions}>
+                <button onClick={handleStayLoggedIn} style={styles.stayLoggedInBtn}>
+                  <Check size={16} /> Stay Logged In
+                </button>
+                <button onClick={handleAutoLogout} style={styles.logoutNowBtn}>
+                  <LogOut size={16} /> Logout Now
+                </button>
+              </div>
+              <div style={styles.logoutWarningProgress}>
+                <div style={{ ...styles.logoutWarningProgressBar, width: `${(logoutCountdown / 60) * 100}%` }} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TOASTS */}
         {successMsg && (
           <div style={styles.toast("success")} role="alert" aria-live="polite">
             <CheckCircle size={18} />
@@ -297,7 +402,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── REJECT REASON MODAL ────────────────────────── */}
+        {/* REJECT REASON MODAL */}
         {showRejectModal && (
           <div style={styles.modalOverlay} role="dialog" aria-modal="true" aria-label="Reject registration">
             <div style={styles.modal}>
@@ -341,7 +446,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── HEADER ─────────────────────────────────────── */}
+        {/* HEADER */}
         <div style={styles.header}>
           <div>
             <h1 style={styles.pageTitle}>Admin Dashboard</h1>
@@ -411,7 +516,6 @@ export default function AdminDashboard() {
                           tabIndex={0}
                           onKeyPress={(e) => { if (e.key === "Enter" && !n.is_read) markRead(n.id); }}
                         >
-                          {/* ✅ Type-specific icon */}
                           <div style={styles.notifIconWrap(n.type)} aria-hidden="true">
                             {n.type === "REGISTRATION" && <UserPlus size={14} />}
                             {n.type === "BOOKING"      && <Calendar  size={14} />}
@@ -421,11 +525,9 @@ export default function AdminDashboard() {
                           </div>
 
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            {/* ✅ Type badge */}
                             <span style={styles.notifTypeBadge(n.type)}>{n.type || "GENERAL"}</span>
                             <p style={styles.notifMsg}>{n.message}</p>
 
-                            {/* ✅ User details for REGISTRATION type */}
                             {n.type === "REGISTRATION" && n.user && (
                               <div style={styles.notifUserDetails}>
                                 {n.user.phone && (
@@ -452,6 +554,17 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
+
+            {/* ✅ IMPROVED LOGOUT BUTTON - More Visible */}
+            <button
+              onClick={handleLogout}
+              style={styles.logoutBtn}
+              aria-label="Logout"
+              title="Logout from admin panel"
+            >
+              <LogOut size={18} />
+              <span>Logout</span>
+            </button>
 
             {/* User Menu */}
             <div style={{ position: "relative" }} ref={userMenuRef}>
@@ -489,8 +602,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* ── ALERT BANNERS ───────────────────────────────── */}
-        {/* ✅ NEW: Registration pending banner */}
+        {/* ALERT BANNERS */}
         {pendingRegistrations.length > 0 && (
           <div style={styles.alertBanner("#eff6ff", "#1e40af", "#bfdbfe")} role="alert" aria-live="polite">
             <UserPlus size={18} color="#3b82f6" aria-hidden="true" />
@@ -516,7 +628,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── PRIMARY STATS ────────────────────────────────── */}
+        {/* PRIMARY STATS */}
         <div style={styles.primaryGrid}>
           <StatCard title="Total Users"     value={stats.totalUsers}   sub={`${stats.activeUsers} active`}          icon={Users}       color="#3b82f6" trend="+12%" up />
           <StatCard title="Total Rooms"     value={stats.totalRooms}   sub={`${stats.activeRooms} available`}        icon={Hotel}       color="#8b5cf6" trend="+5%"  up />
@@ -532,18 +644,17 @@ export default function AdminDashboard() {
           />
         </div>
 
-        {/* ── SECONDARY STATS ─────────────────────────────── */}
+        {/* SECONDARY STATS */}
         <div style={styles.secondaryGrid}>
           <MiniCard label="Active Users"         value={stats.activeUsers}          icon={UserCheck}  color="#10b981" />
           <MiniCard label="Pending Bookings"      value={stats.pendingBookings || 0}  icon={Clock}      color="#f59e0b" />
           <MiniCard label="Failed Payments"       value={stats.failedPayments  || 0}  icon={CreditCard} color="#ef4444" />
           <MiniCard label="Dataset Locks Active"  value={stats.activeDatasetLocks || 0} icon={Lock}     color="#6366f1" />
           <MiniCard label="Cancelled Bookings"    value={stats.cancelledBookings || 0} icon={XCircle}   color="#94a3b8" />
-          {/* ✅ NEW mini card */}
           <MiniCard label="Pending Registrations" value={stats.pendingRegistrations || 0} icon={UserPlus} color="#3b82f6" />
         </div>
 
-        {/* ── REVENUE CHART ───────────────────────────────── */}
+        {/* REVENUE CHART */}
         {revenueData.length > 0 && (
           <div style={styles.section}>
             <h2 style={styles.sectionTitle}>
@@ -554,7 +665,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── ✅ NEW: PENDING REGISTRATIONS SECTION ─────────── */}
+        {/* PENDING REGISTRATIONS SECTION */}
         {pendingRegistrations.length > 0 && (
           <div style={styles.section}>
             <h2 style={styles.sectionTitle}>
@@ -566,7 +677,6 @@ export default function AdminDashboard() {
             <div style={styles.regGrid}>
               {pendingRegistrations.map((u) => (
                 <div key={u.id} style={styles.regCard}>
-                  {/* Card Header */}
                   <div style={styles.regCardHeader}>
                     <div style={styles.regAvatar}>
                       {u.name.charAt(0).toUpperCase()}
@@ -578,7 +688,6 @@ export default function AdminDashboard() {
                     <span style={styles.pendingBadge}>PENDING</span>
                   </div>
 
-                  {/* User Details */}
                   <div style={styles.regDetails}>
                     {u.phone && (
                       <div style={styles.regDetailRow}>
@@ -612,7 +721,6 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
                   <div style={styles.regActions}>
                     <button
                       style={styles.approveRegBtn}
@@ -641,7 +749,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── PENDING WEEKEND APPROVALS ───────────────────── */}
+        {/* PENDING WEEKEND APPROVALS */}
         {pendingApprovals.length > 0 && (
           <div style={styles.section}>
             <h2 style={styles.sectionTitle}>
@@ -691,7 +799,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── PAYMENT ALERTS ──────────────────────────────── */}
+        {/* PAYMENT ALERTS */}
         {paymentAlerts.length > 0 && (
           <div style={styles.section}>
             <div style={styles.sectionRow}>
@@ -737,7 +845,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── RECENT BOOKINGS ─────────────────────────────── */}
+        {/* RECENT BOOKINGS */}
         <div style={styles.section}>
           <div style={styles.sectionRow}>
             <h2 style={styles.sectionTitle}>
@@ -827,7 +935,7 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* ── QUICK ACTIONS ───────────────────────────────── */}
+        {/* QUICK ACTIONS */}
         <div style={styles.section}>
           <h2 style={styles.sectionTitle}>
             <Zap size={20} style={{ marginRight: 8, color: "#f59e0b" }} />
@@ -850,12 +958,13 @@ export default function AdminDashboard() {
         @keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
         @keyframes slideDown { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:translateY(0); } }
         @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
       `}</style>
     </>
   );
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+// Helpers
 function exportCSV(data, filename) {
   const csv = [
     ["Order ID","Booking ID","User","Amount","Attempts","Date"],
@@ -885,7 +994,6 @@ function downloadCSV(csv, filename) {
   URL.revokeObjectURL(url);
 }
 
-// ── Revenue Chart ──────────────────────────────────────────────────────────────
 function RevenueChart({ data }) {
   const max = Math.max(...data.map((d) => d.revenue), 1);
   const [hoveredIndex, setHoveredIndex] = useState(null);
@@ -926,7 +1034,6 @@ function RevenueChart({ data }) {
   );
 }
 
-// ── Pagination ─────────────────────────────────────────────────────────────────
 function Pagination({ currentPage, totalPages, onPageChange }) {
   const pages = [];
   if (totalPages > 7) {
@@ -959,7 +1066,6 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
   );
 }
 
-// ── Sub-components ─────────────────────────────────────────────────────────────
 function StatCard({ title, value, sub, icon: Icon, color, trend, up }) {
   return (
     <div style={styles.statCard}>
@@ -1023,7 +1129,7 @@ function StatusBadge({ status }) {
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────────
+// Styles
 const styles = {
   page: { maxWidth:1440, margin:"0 auto", padding:"40px 28px", background:"#f8fafc", minHeight:"100vh", fontFamily:"'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif" },
   center: { display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"80vh", gap:16 },
@@ -1040,6 +1146,45 @@ const styles = {
     boxShadow:"0 10px 40px rgba(0,0,0,0.1)", animation:"slideDown 0.3s ease", maxWidth:400,
   }),
   toastClose: { background:"none", border:"none", cursor:"pointer", color:"inherit", opacity:0.7, display:"flex", alignItems:"center", padding:4, marginLeft:8 },
+
+  // ✅ Auto Logout Warning Modal
+  logoutWarningOverlay: { 
+    position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:10001, 
+    display:"flex", alignItems:"center", justifyContent:"center", padding:"20px",
+    backdropFilter:"blur(8px)", animation:"fadeIn 0.3s ease"
+  },
+  logoutWarningModal: { 
+    background:"white", borderRadius:20, padding:"40px", width:"100%", maxWidth:460, 
+    boxShadow:"0 25px 80px rgba(0,0,0,0.3)", animation:"slideDown 0.3s ease",
+    textAlign:"center"
+  },
+  logoutWarningIcon: { 
+    width:80, height:80, borderRadius:"50%", background:"#fef3c7", 
+    display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 24px",
+    animation:"pulse 2s ease infinite"
+  },
+  logoutWarningTitle: { fontSize:26, fontWeight:800, color:"#0f172a", margin:"0 0 12px" },
+  logoutWarningText: { fontSize:15, color:"#64748b", lineHeight:1.6, margin:"0 0 32px" },
+  logoutWarningActions: { display:"flex", gap:12, marginBottom:20 },
+  stayLoggedInBtn: { 
+    flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+    padding:"14px 24px", background:"#10b981", color:"white", border:"none", 
+    borderRadius:10, fontSize:15, fontWeight:700, cursor:"pointer",
+    boxShadow:"0 4px 14px rgba(16,185,129,0.4)", transition:"all 0.2s"
+  },
+  logoutNowBtn: { 
+    flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+    padding:"14px 24px", background:"white", color:"#64748b", 
+    border:"2px solid #e2e8f0", borderRadius:10, fontSize:15, fontWeight:700, 
+    cursor:"pointer", transition:"all 0.2s"
+  },
+  logoutWarningProgress: { 
+    width:"100%", height:6, background:"#f1f5f9", borderRadius:10, overflow:"hidden"
+  },
+  logoutWarningProgressBar: { 
+    height:"100%", background:"linear-gradient(90deg, #ef4444, #f59e0b)", 
+    borderRadius:10, transition:"width 1s linear"
+  },
 
   // Modal
   modalOverlay: { position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:10000, display:"flex", alignItems:"center", justifyContent:"center", padding:"20px" },
@@ -1059,11 +1204,19 @@ const styles = {
   pausedLabel: { color:"#f59e0b", fontWeight:600 },
   headerActions: { display:"flex", gap:12, alignItems:"center" },
   refreshBtn: { display:"flex", alignItems:"center", gap:6, padding:"8px 16px", background:"white", border:"1px solid #e2e8f0", borderRadius:8, fontSize:13, fontWeight:600, color:"#475569", cursor:"pointer", transition:"all 0.2s" },
+  
+  // ✅ Prominent Logout Button
+  logoutBtn: { 
+    display:"flex", alignItems:"center", gap:8, padding:"10px 18px", 
+    background:"linear-gradient(135deg, #ef4444, #dc2626)", color:"white", 
+    border:"none", borderRadius:10, fontSize:14, fontWeight:700, cursor:"pointer",
+    boxShadow:"0 4px 14px rgba(239,68,68,0.35)", transition:"all 0.2s",
+  },
+  
   bellBtn: { position:"relative", width:40, height:40, borderRadius:10, background:"white", border:"1px solid #e2e8f0", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", transition:"all 0.2s" },
   userBtn: { position:"relative", width:40, height:40, borderRadius:10, background:"white", border:"1px solid #e2e8f0", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", transition:"all 0.2s" },
   badge: { position:"absolute", top:-4, right:-4, background:"#ef4444", color:"white", fontSize:10, fontWeight:800, borderRadius:"50%", minWidth:18, height:18, display:"flex", alignItems:"center", justifyContent:"center", padding:"0 4px" },
 
-  // Notification panel
   notifPanel: { position:"absolute", top:48, right:0, width:400, background:"white", borderRadius:16, border:"1px solid #e2e8f0", boxShadow:"0 20px 60px rgba(0,0,0,0.12)", zIndex:999, animation:"slideIn 0.2s ease" },
   notifHeader: { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 20px", borderBottom:"1px solid #f1f5f9" },
   notifTitle: { fontWeight:700, fontSize:15, color:"#0f172a" },
@@ -1112,7 +1265,6 @@ const styles = {
   sectionRow: { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:12 },
   countBadge: { marginLeft:10, background:"#3b82f6", color:"white", fontSize:12, fontWeight:700, padding:"2px 10px", borderRadius:12 },
 
-  // ✅ Registration cards
   regGrid: { display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(340px, 1fr))", gap:16 },
   regCard: { background:"white", borderRadius:14, border:"1px solid #bfdbfe", padding:"20px", boxShadow:"0 2px 8px rgba(59,130,246,0.08)" },
   regCardHeader: { display:"flex", alignItems:"center", gap:12, marginBottom:16 },

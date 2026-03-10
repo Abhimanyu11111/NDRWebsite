@@ -26,8 +26,9 @@ function Register() {
     city: "",
     state: "",
     pincode: "",
-    organization_type: "",
-    certificate: null
+    id_proof_type: "",           // ✅ Fixed: organization_type → id_proof_type
+    id_proof_number: "",          // ✅ Fixed: Added new field
+    identity_certificate: null    // ✅ Fixed: certificate → identity_certificate
   });
 
   const [loading, setLoading] = useState(false);
@@ -36,8 +37,8 @@ function Register() {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    if (e.target.name === "certificate") {
-      setFormData({ ...formData, certificate: e.target.files[0] });
+    if (e.target.name === "identity_certificate") {  // ✅ Fixed: certificate → identity_certificate
+      setFormData({ ...formData, identity_certificate: e.target.files[0] });
     } else {
       setFormData({ ...formData, [e.target.name]: e.target.value });
     }
@@ -290,7 +291,7 @@ function Register() {
               </label>
               <select
                 style={selectInput}
-                name="organization_type"
+                name="id_proof_type"  // ✅ Fixed: organization_type → id_proof_type
                 onChange={handleChange}
                 required
               >
@@ -304,6 +305,21 @@ function Register() {
               </select>
             </div>
 
+            {/* ✅ NEW FIELD ADDED */}
+            <div style={formGroup}>
+              <label style={formLabel}>
+                <Hash size={16} />
+                ID Proof Number <span style={requiredStar}>*</span>
+              </label>
+              <input
+                style={formInput}
+                name="id_proof_number"
+                placeholder="Enter ID proof number (e.g., Registration No., GST No.)"
+                onChange={handleChange}
+                required
+              />
+            </div>
+
             <div style={formGroup}>
               <label style={formLabel}>
                 <Upload size={16} />
@@ -312,7 +328,7 @@ function Register() {
               <input
                 style={formInput}
                 type="file"
-                name="certificate"
+                name="identity_certificate"  // ✅ Fixed: certificate → identity_certificate
                 accept=".pdf,.jpg,.png"
                 onChange={handleChange}
                 required
