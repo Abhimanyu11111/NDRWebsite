@@ -66,7 +66,7 @@ const DatasetLock = sequelize.define(
 );
 
 /* Relations */
-DatasetLock.belongsTo(Booking, { foreignKey: "booking_id", targetKey: "booking_id", as: "booking" });
-Booking.hasMany(DatasetLock,  { foreignKey: "booking_id", sourceKey: "booking_id", as: "datasetLocks" });
+// DatasetLock.belongsTo(Booking, { foreignKey: "booking_id", targetKey: "booking_id", as: "booking" });
+// Booking.hasMany(DatasetLock,  { foreignKey: "booking_id", sourceKey: "booking_id", as: "datasetLocks" });
 
 export default DatasetLock;

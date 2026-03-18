@@ -1,5 +1,7 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../src/config/db.js";
+import Booking from "./Booking.js";
+
 
 const Slot = sequelize.define(
   "Slot",
@@ -42,7 +44,7 @@ const Slot = sequelize.define(
   }
 );
 
-// ✅ FUNCTION
+// FUNCTION
 export const getSlotsByRoomAndDate = async (roomId, date) => {
   return await Slot.findAll({
     where: {
@@ -54,5 +56,11 @@ export const getSlotsByRoomAndDate = async (roomId, date) => {
   });
 };
 
-// ✅ DEFAULT EXPORT
+
+// Slot.hasMany(Booking, {
+//   foreignKey: "room_id",
+//   as: "bookings"
+// });
+
+// DEFAULT EXPORT
 export default Slot;

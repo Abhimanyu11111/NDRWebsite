@@ -273,7 +273,7 @@ export default function AdminDashboard() {
 
   const markRead = async (notifId) => {
     try {
-      await api.patch(`/admin/notifications/${notifId}/read`);
+      await api.patch(`/admin/dashboard/notifications/${notifId}/read`);
       setNotifications((prev) =>
         prev.map((n) => (n.id === notifId ? { ...n, is_read: true } : n))
       );
@@ -283,14 +283,14 @@ export default function AdminDashboard() {
   };
 
   const markAllRead = async () => {
-    try {
-      await api.patch("/admin/notifications/read-all");
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-      setSuccessMsg("All notifications marked as read");
-    } catch (err) {
-      setError("Failed to mark all notifications as read");
-    }
-  };
+  try {
+    await api.patch("/admin/dashboard/notifications/read-all"); 
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    setSuccessMsg("All notifications marked as read");
+  } catch (err) {
+    setError("Failed to mark all notifications as read");
+  }
+};
 
   useEffect(() => {
     const handleClickOutside = (e) => {

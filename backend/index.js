@@ -5,12 +5,11 @@ import express from "express";
 import cors from "cors";
 import { express as useragentMiddleware } from "express-useragent";
 
-//  ADD
 import { startBookingExpiryCron } from "./cron/bookingExpiryCron.js";
-
 import sequelize from "./src/config/db.js";
+import './models/associations.js';
 
-// ROUTES (unchanged)
+// ROUTES
 import roomRoutes from "./routes/roomRoutes.js";
 import slotRoutes from "./routes/slotRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
@@ -22,50 +21,51 @@ import adminDashboardRoutes from "./routes/adminDashboardRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import paymentRoutes from './routes/paymentRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import registrationRoutes from './routes/registrationRoutes.js';
 
 const app = express();
 
+// MIDDLEWARES
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); //  REQUIRED
+app.use(express.urlencoded({ extended: true }));
 app.use(useragentMiddleware());
 
-// OPTIONAL
+// STATIC FILES
 app.use("/invoices", express.static("invoices"));
 
-// ROUTES (same as before)
+// API ROUTES
 app.use("/api/auth", authRoutes);
 app.use("/api/rooms", roomRoutes);
 app.use("/api/slots", slotRoutes);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/notifications", notificationRoutes);
-
 app.use("/api/admin/rooms", roomAdminRoutes);
 app.use("/api/admin/slots", slotAdminRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
 app.use("/api", userAdminRoutes);
-// app.use('/api/payment', paymentRoutes);
 app.use('/api/user', userRoutes);
-
+app.use('/api/register', registrationRoutes); 
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   try {
     await sequelize.authenticate();
-    console.log(" Database connected");
+    console.log("✅ Database connected successfully");
 
     await sequelize.sync();
-    console.log(" Models synced");
+    console.log("✅ Models synced successfully");
 
-    //  START CRON
+    // Start cron job
     startBookingExpiryCron();
+    console.log("✅ Booking expiry cron started");
 
     app.listen(PORT, () => {
-      console.log(` Server running on port ${PORT}`);
+      console.log(`✅ Server running on http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error("Unable to start server:", error);
+    console.error("❌ Unable to start server:", error);
     process.exit(1);
   }
 };

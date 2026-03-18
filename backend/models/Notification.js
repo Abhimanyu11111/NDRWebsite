@@ -75,7 +75,7 @@ const Notification = sequelize.define('Notification', {
 });
 
 //USER ASSOCIATION
-Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
-User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
+// Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+// User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
 
 export default Notification;

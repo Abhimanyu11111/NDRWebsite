@@ -27,7 +27,6 @@ export const getDashboardCounts = async (req, res) => {
       activeDatasetLocks,
       recentBookings,
       revenueChart,
-      // ✅ NEW: pending registration count
       pendingRegistrations,
     ] = await Promise.all([
       User.count(),
@@ -69,8 +68,7 @@ export const getDashboardCounts = async (req, res) => {
         { replacements: { since: last7Days }, type: sequelize.QueryTypes.SELECT }
       ),
 
-      // ✅ NEW: Count users awaiting approval
-      User.count({ where: { approval_status: "PENDING" } }),
+      User.count({ where: { is_active: false } }),
     ]);
 
     const formattedBookings = recentBookings.map((b) => ({
@@ -121,7 +119,6 @@ export const getDashboardCounts = async (req, res) => {
         pendingPayments:      pendingPayments       || 0,
         failedPayments:       failedPayments        || 0,
         activeDatasetLocks:   activeDatasetLocks    || 0,
-        // ✅ NEW stat for dashboard badge
         pendingRegistrations: pendingRegistrations  || 0,
       },
       recentBookings: formattedBookings,
@@ -135,7 +132,6 @@ export const getDashboardCounts = async (req, res) => {
 
 /* =====================================================
    GET /admin/notifications?limit=20
-   Returns all notification types including REGISTRATION + BOOKING
 ===================================================== */
 export const getAdminNotifications = async (req, res) => {
   try {
@@ -147,7 +143,7 @@ export const getAdminNotifications = async (req, res) => {
       order:  [["created_at", "DESC"]],
       limit,
       offset,
-      include: [{ model: User, as: "user", attributes: ["name", "email", "phone", "company", "approval_status"] }],
+      include: [{ model: User, as: "user", attributes: ["name", "email", "phone", "company"] }],
     });
 
     const unreadCount = await Notification.count({ where: { is_read: false } });
@@ -160,13 +156,11 @@ export const getAdminNotifications = async (req, res) => {
         type:       n.type || "GENERAL",
         is_read:    n.is_read,
         room_id:    n.room_id,
-        // ✅ Full user details in notification
         user: n.user ? {
-          name:            n.user.name,
-          email:           n.user.email,
-          phone:           n.user.phone,
-          company:         n.user.company,
-          approval_status: n.user.approval_status,
+          name:    n.user.name,
+          email:   n.user.email,
+          phone:   n.user.phone,
+          company: n.user.company,
         } : null,
         created_at: n.created_at,
       })),
@@ -210,15 +204,13 @@ export const markAllNotificationsRead = async (req, res) => {
 
 /* =====================================================
    GET /admin/registrations?status=PENDING
-   ✅ NEW — List users pending approval
 ===================================================== */
 export const getPendingRegistrations = async (req, res) => {
   try {
-    const { status = "PENDING", page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    const where = {};
-    if (status) where.approval_status = status;
+    const where = { is_active: false };
 
     const { count, rows } = await User.findAndCountAll({
       where,
@@ -227,9 +219,7 @@ export const getPendingRegistrations = async (req, res) => {
       order:  [["created_at", "DESC"]],
       attributes: [
         "id", "name", "email", "phone", "company",
-        "address", "city", "state", "pincode",
-        "id_proof_type", "id_proof_number",
-        "approval_status", "is_active", "created_at",
+        "is_active", "created_at",
       ],
     });
 
@@ -246,31 +236,34 @@ export const getPendingRegistrations = async (req, res) => {
 
 /* =====================================================
    PATCH /admin/registrations/:userId/approve
-   ✅ NEW — Admin approves a pending user
 ===================================================== */
 export const approveRegistration = async (req, res) => {
   try {
     const { userId } = req.params;
 
     const user = await User.findByPk(userId);
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-    if (user.approval_status !== "PENDING") {
-      return res.status(400).json({
-        success: false,
-        message: `User is already ${user.approval_status.toLowerCase()}`,
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
       });
     }
 
-    // ✅ Approve: activate account
-    user.approval_status = "APPROVED";
-    user.is_active       = true;
+    if (user.is_active) {
+      return res.status(400).json({
+        success: false,
+        message: "User is already active",
+      });
+    }
+
+    // Approve user
+    user.is_active = true;
     await user.save();
 
-    // ✅ Notify the user
+    // Create notification
     await Notification.create({
       user_id:   user.id,
-      message:   `Welcome ${user.name}! Your account has been approved. You can now login to the VDR portal.`,
+      message:   `Welcome ${user.name}! Your account has been approved. You can now login to the NDR portal.`,
       type:      "SYSTEM",
       is_read:   false,
       is_active: true,
@@ -288,29 +281,32 @@ export const approveRegistration = async (req, res) => {
 
 /* =====================================================
    PATCH /admin/registrations/:userId/reject
-   ✅ NEW — Admin rejects a pending user
 ===================================================== */
 export const rejectRegistration = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { reason } = req.body; // Optional rejection reason
+    const { reason } = req.body;
 
     const user = await User.findByPk(userId);
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-    if (user.approval_status !== "PENDING") {
-      return res.status(400).json({
-        success: false,
-        message: `User is already ${user.approval_status.toLowerCase()}`,
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
       });
     }
 
-    // ✅ Reject: keep inactive
-    user.approval_status = "REJECTED";
-    user.is_active       = false;
+    if (user.is_active) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot reject an active user",
+      });
+    }
+
+    // Keep user inactive
+    user.is_active = false;
     await user.save();
 
-    // ✅ Notify the user about rejection
+    // Create rejection notification
     await Notification.create({
       user_id:   user.id,
       message:   `Your registration request has been rejected.${reason ? ` Reason: ${reason}` : " Please contact support for more information."}`,
@@ -387,7 +383,6 @@ export const getAdminBookings = async (req, res) => {
 
 /* =====================================================
    PATCH /admin/bookings/:id/status
-   Approve / Reject booking + ✅ Rich notification
 ===================================================== */
 export const updateBookingStatus = async (req, res) => {
   try {
@@ -402,7 +397,6 @@ export const updateBookingStatus = async (req, res) => {
       });
     }
 
-    // ✅ Load booking WITH user + room details for rich notification
     const booking = await Booking.findOne({
       where: { booking_id: id },
       include: [
@@ -415,7 +409,6 @@ export const updateBookingStatus = async (req, res) => {
     booking.status = status;
     await booking.save();
 
-    // ✅ Rich notification message with booking details
     const startDate = new Date(booking.start_datetime).toLocaleDateString("en-IN", {
       day: "numeric", month: "short", year: "numeric",
     });
@@ -439,9 +432,6 @@ export const updateBookingStatus = async (req, res) => {
       is_active: true,
     });
 
-    // ✅ Also create an ADMIN-facing notification for the activity log
-    // (user_id = admin's user_id — or use a dedicated admin notification approach)
-    // We store user_id = booking.user_id but type = BOOKING so admin dashboard picks it up
     res.json({ success: true, message: `Booking ${status.toLowerCase()} successfully` });
   } catch (err) {
     console.error("Status update error:", err);

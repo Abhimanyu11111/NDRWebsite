@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../src/config/db.js";
 import User from "./User.js";
-import Room from "./Room.js";
+import Room from "./Slot.js";
 
 const Booking = sequelize.define(
   "Booking",
@@ -167,7 +167,7 @@ const Booking = sequelize.define(
 );
 
 /* Relations */
-Booking.belongsTo(User, { foreignKey: "user_id", as: "user" });
-Booking.belongsTo(Room, { foreignKey: "room_id", as: "room" });
+// Booking.belongsTo(User, { foreignKey: "user_id", as: "user" });
+// Booking.belongsTo(Room, { foreignKey: "room_id", as: "room" });
 
 export default Booking;

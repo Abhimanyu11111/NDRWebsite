@@ -1,5 +1,10 @@
 import { DataTypes } from 'sequelize';
 import sequelize from "../src/config/db.js";
+import Booking from "./Booking.js";
+import Payment from "./Payment.js";
+
+
+
 
 
 const User = sequelize.define('User', {
@@ -58,5 +63,17 @@ const User = sequelize.define('User', {
   createdAt: 'created_at',
   updatedAt: 'updated_at'
 });
+
+// YE ADD KARNA HAI
+// User.hasMany(Booking, {
+//   foreignKey: "user_id",
+//   as: "bookings"
+// });
+
+// User.hasMany(Payment, {
+//   foreignKey: "user_id",
+//   as: "payments"
+// });
+
 
 export default User;

@@ -26,9 +26,9 @@ function Register() {
     city: "",
     state: "",
     pincode: "",
-    id_proof_type: "",           // ✅ Fixed: organization_type → id_proof_type
-    id_proof_number: "",          // ✅ Fixed: Added new field
-    identity_certificate: null    // ✅ Fixed: certificate → identity_certificate
+    id_proof_type: "",           //  organization_type → id_proof_type
+    id_proof_number: "",          //  Added new field
+    identity_certificate: null    //  certificate → identity_certificate
   });
 
   const [loading, setLoading] = useState(false);
@@ -37,7 +37,7 @@ function Register() {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    if (e.target.name === "identity_certificate") {  // ✅ Fixed: certificate → identity_certificate
+    if (e.target.name === "identity_certificate") {  // certificate → identity_certificate
       setFormData({ ...formData, identity_certificate: e.target.files[0] });
     } else {
       setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -291,7 +291,7 @@ function Register() {
               </label>
               <select
                 style={selectInput}
-                name="id_proof_type"  // ✅ Fixed: organization_type → id_proof_type
+                name="id_proof_type"  //  Fixed: organization_type → id_proof_type
                 onChange={handleChange}
                 required
               >
@@ -305,7 +305,7 @@ function Register() {
               </select>
             </div>
 
-            {/* ✅ NEW FIELD ADDED */}
+            {/*  NEW FIELD ADDED */}
             <div style={formGroup}>
               <label style={formLabel}>
                 <Hash size={16} />
@@ -328,7 +328,7 @@ function Register() {
               <input
                 style={formInput}
                 type="file"
-                name="identity_certificate"  // ✅ Fixed: certificate → identity_certificate
+                name="identity_certificate"  //  Fixed: certificate → identity_certificate
                 accept=".pdf,.jpg,.png"
                 onChange={handleChange}
                 required
