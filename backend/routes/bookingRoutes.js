@@ -1,5 +1,6 @@
 import express from "express";
 import authMiddleware from "../middleware/auth.js";
+import { verifyAdmin } from "../middleware/adminAuth.js";
 import * as bookingController from "../controllers/bookingController.js";
 
 const router = express.Router();
@@ -16,8 +17,6 @@ router.post(
 );
 
 // Get booking preview with pricing
-console.log("authMiddleware:", authMiddleware);
-console.log("getBookingPreview:", bookingController.getBookingPreview);
 router.post(
   "/preview",
   authMiddleware,
@@ -38,6 +37,13 @@ router.get(
   bookingController.getUserBookings
 );
 
+// Get booking details for admin
+router.get(
+  "/admin/:booking_id",
+  verifyAdmin,
+  bookingController.getAdminBookingDetails
+);
+
 // Get calendar view of bookings for a room
 router.get(
   "/calendar",
@@ -51,8 +57,5 @@ router.put(
   authMiddleware,
   bookingController.cancelBooking
 );
-
-console.log("calendar fn:", bookingController.getBookingCalendar);
-console.log("user bookings fn:", bookingController.getUserBookings);
 
 export default router;

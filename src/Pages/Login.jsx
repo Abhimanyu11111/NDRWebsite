@@ -1,10 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { Mail, Lock, LogIn, Shield, AlertCircle } from "lucide-react";
-// import govtEmblemImg from "../assets/images/Emblem.png"
-import govtEmblemImg from "../assets/images/emblem1.png"
-
+import { Mail, Lock, LogIn, AlertCircle, Sparkles } from "lucide-react";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -30,11 +27,9 @@ function Login() {
         { email, password }
       );
 
-      // save auth data
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
-      // redirect to dashboard (BookVDR)
       navigate("/book-vdr");
     } catch (err) {
       setError(err.response?.data?.msg || "Login failed. Please try again.");
@@ -45,28 +40,22 @@ function Login() {
 
   return (
     <div style={pageWrapper}>
-      {/* GOVERNMENT HEADER */}
-      <div style={header}>
-        <div className = "container" style={headerContent}>
-          <div style={govEmblem}>
-            {/* <Shield size={40} strokeWidth={2.5} style={{ color: "#ff6f00" }} /> */}
-            <img style = {{width : "100%" , height : "100%"}} src={govtEmblemImg} alt="" />
-          </div>
-          <div style={headerText}>
-            <h1 style={headerTitle}>National Data Repository</h1>
-            <p style={headerSubtitle}>Government of India | Secure Login Portal</p>
-          </div>
-        </div>
-      </div>
+      {/* Animated gradient background */}
+      <div style={gradientBg}></div>
+      <div style={meshPattern}></div>
 
       {/* MAIN CONTENT */}
       <div style={contentContainer}>
         <div style={loginCard}>
+          <div style={cardGlow}></div>
+          
           <div style={cardHeader}>
-            <LogIn size={32} strokeWidth={2.5} style={{ color: "#0d47a1" }} />
+            <div style={iconBadge}>
+              <LogIn size={24} strokeWidth={2.5} style={{ color: "#0d47a1" }} />
+            </div>
             <div>
-              <h2 style={cardTitle}>User Login</h2>
-              <p style={cardSubtitle}>Enter your credentials to access the system</p>
+              <h2 style={cardTitle}>Welcome Back</h2>
+              <p style={cardSubtitle}>Enter your credentials to access your account</p>
             </div>
           </div>
 
@@ -83,14 +72,16 @@ function Login() {
                 <Mail size={16} strokeWidth={2.5} />
                 Email Address
               </label>
-              <input
-                type="email"
-                placeholder="Enter your registered email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={formInput}
-                disabled={loading}
-              />
+              <div style={inputWrapper}>
+                <input
+                  type="email"
+                  placeholder="Enter your registered email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={formInput}
+                  disabled={loading}
+                />
+              </div>
             </div>
 
             <div style={formGroup}>
@@ -98,14 +89,16 @@ function Login() {
                 <Lock size={16} strokeWidth={2.5} />
                 Password
               </label>
-              <input
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={formInput}
-                disabled={loading}
-              />
+              <div style={inputWrapper}>
+                <input
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={formInput}
+                  disabled={loading}
+                />
+              </div>
             </div>
 
             <button 
@@ -117,52 +110,42 @@ function Login() {
               }}
               disabled={loading}
             >
+              <div style={buttonGlow}></div>
               {loading ? (
                 <>
                   <div style={spinner}></div>
-                  <span>Logging in...</span>
+                  <span>Authenticating...</span>
                 </>
               ) : (
                 <>
                   <LogIn size={18} strokeWidth={2.5} />
-                  <span>Login to Dashboard</span>
+                  <span>Access Dashboard</span>
+                  <Sparkles size={16} strokeWidth={2.5} style={{ marginLeft: 'auto' }} />
                 </>
               )}
             </button>
           </form>
 
           <div style={footer}>
-            <div style={divider}></div>
+            <div style={divider}>
+              <span style={dividerText}>or</span>
+            </div>
             <div style={footerLinks}>
               <a href="/Register" style={footerLink}>
+                <span style={linkDot}></span>
                 Create New Account
               </a>
-              <span style={footerSeparator}>|</span>
               <a href="/help" style={footerLink}>
+                <span style={linkDot}></span>
                 Need Help?
               </a>
             </div>
           </div>
         </div>
 
-        {/* SECURITY NOTICE */}
-        <div style={securityNotice}>
-          <Shield size={20} strokeWidth={2.5} style={{ color: "#0d47a1" }} />
-          <div>
-            <p style={securityTitle}>Secure Login</p>
-            <p style={securityText}>
-              This is a secure government portal. All login attempts are monitored and logged for security purposes.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* FOOTER BAR */}
-      <div style={footerBar}>
-        <div style={footerBarContent}>
-          <p style={footerBarText}>
-            © 2026 National Data Repository, Government of India. All rights reserved.
-          </p>
+        {/* Footer Copyright */}
+        <div style={copyrightText}>
+          © 2026 National Data Repository, Government of India
         </div>
       </div>
 
@@ -173,15 +156,27 @@ function Login() {
             to { transform: rotate(360deg); }
           }
 
+          @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+
+          @keyframes glow {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 0.8; }
+          }
+
           input:focus {
             border-color: #0d47a1 !important;
-            box-shadow: 0 0 0 3px rgba(13, 71, 161, 0.1) !important;
+            box-shadow: 0 0 0 4px rgba(13, 71, 161, 0.1), 0 8px 16px rgba(0,0,0,0.1) !important;
+            transform: translateY(-1px);
           }
 
           button:hover:not(:disabled) {
-            background-color: #002171 !important;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+            background: linear-gradient(135deg, #0d47a1 0%, #1565c0 100%) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(13, 71, 161, 0.3) !important;
           }
 
           button:active:not(:disabled) {
@@ -189,8 +184,8 @@ function Login() {
           }
 
           a:hover {
-            color: #002171 !important;
-            text-decoration: underline !important;
+            color: #0d47a1 !important;
+            transform: translateX(4px);
           }
         `}
       </style>
@@ -200,115 +195,127 @@ function Login() {
 
 export default Login;
 
-// ================= PROFESSIONAL GOVERNMENT STYLES =================
+// ================= PREMIUM STYLES =================
 
 const pageWrapper = {
   minHeight: "100vh",
-  backgroundColor: "#f1f5f9",
-  fontFamily: "'Segoe UI', 'Roboto', system-ui, -apple-system, sans-serif",
+  backgroundColor: "#0f172a",
+  fontFamily: "'Inter', 'Segoe UI', 'Roboto', system-ui, -apple-system, sans-serif",
   display: "flex",
-  flexDirection: "column"
+  flexDirection: "column",
+  position: "relative",
+  overflow: "hidden"
 };
 
-const header = {
-  backgroundColor: "#0d47a1",
-  borderBottom: "4px solid #ff6f00",
-  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-  padding: "24px 0"
+const gradientBg = {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0d47a1 100%)",
+  backgroundSize: "200% 200%",
+  animation: "gradientShift 15s ease infinite",
+  opacity: 0.9
 };
 
-const headerContent = {
-  // maxWidth: "1200px",
-  // margin: "0 auto",
-  // padding: "0 24px",
-  display: "flex",
-  alignItems: "center",
-  gap: "20px"
-};
-
-const govEmblem = {
-  width: "80px",
-  // height: "80px",
-  // backgroundColor: "#ffffff",
-  borderRadius: "8px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  // boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
-};
-
-const headerText = {
-  color: "white"
-};
-
-const headerTitle = {
-  margin: "0 0 6px 0",
-  fontSize: "28px",
-  fontWeight: "600",
-  letterSpacing: "0.3px"
-};
-
-const headerSubtitle = {
-  margin: 0,
-  fontSize: "15px",
-  opacity: 0.95,
-  fontWeight: "400"
+const meshPattern = {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundImage: `radial-gradient(circle at 20% 50%, rgba(13, 71, 161, 0.2) 0%, transparent 50%),
+                    radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.2) 0%, transparent 50%)`,
+  opacity: 0.6
 };
 
 const contentContainer = {
   flex: 1,
-  maxWidth: "480px",
+  maxWidth: "460px",
   margin: "0 auto",
-  padding: "48px 24px",
-  width: "100%"
+  padding: "60px 24px 40px 24px",
+  width: "100%",
+  position: "relative",
+  zIndex: 1,
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center"
 };
 
 const loginCard = {
-  backgroundColor: "white",
-  borderRadius: "8px",
-  border: "1px solid #e2e8f0",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-  overflow: "hidden"
+  backgroundColor: "rgba(255, 255, 255, 0.98)",
+  borderRadius: "24px",
+  border: "1px solid rgba(255,255,255,0.2)",
+  boxShadow: "0 20px 60px rgba(0,0,0,0.3), 0 0 1px rgba(255,255,255,0.5)",
+  overflow: "hidden",
+  backdropFilter: "blur(20px)",
+  position: "relative"
+};
+
+const cardGlow = {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  height: "4px",
+  background: "linear-gradient(90deg, #0d47a1, #1565c0, #0d47a1)",
+  backgroundSize: "200% 100%",
+  animation: "gradientShift 3s ease infinite"
 };
 
 const cardHeader = {
-  padding: "32px 32px 24px 32px",
-  borderBottom: "2px solid #f1f5f9",
+  padding: "40px 36px 28px 36px",
+  borderBottom: "1px solid rgba(0,0,0,0.05)",
   display: "flex",
   alignItems: "flex-start",
   gap: "16px"
 };
 
+const iconBadge = {
+  width: "48px",
+  height: "48px",
+  borderRadius: "12px",
+  background: "linear-gradient(135deg, rgba(13, 71, 161, 0.1) 0%, rgba(21, 101, 192, 0.1) 100%)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: "1px solid rgba(13, 71, 161, 0.2)"
+};
+
 const cardTitle = {
-  margin: "0 0 4px 0",
-  fontSize: "22px",
-  fontWeight: "600",
-  color: "#0f172a"
+  margin: "0 0 6px 0",
+  fontSize: "26px",
+  fontWeight: "700",
+  color: "#0f172a",
+  letterSpacing: "-0.5px"
 };
 
 const cardSubtitle = {
   margin: 0,
   fontSize: "14px",
   color: "#64748b",
-  fontWeight: "400"
+  fontWeight: "500",
+  letterSpacing: "0.2px"
 };
 
 const errorBox = {
-  margin: "24px 32px 0 32px",
-  padding: "14px 16px",
+  margin: "28px 36px 0 36px",
+  padding: "16px 18px",
   backgroundColor: "#fef2f2",
   border: "1px solid #fecaca",
-  borderRadius: "6px",
+  borderRadius: "12px",
   display: "flex",
   alignItems: "center",
-  gap: "10px",
+  gap: "12px",
   color: "#991b1b",
   fontSize: "14px",
-  fontWeight: "500"
+  fontWeight: "600",
+  boxShadow: "0 4px 12px rgba(239, 68, 68, 0.1)"
 };
 
 const form = {
-  padding: "32px"
+  padding: "32px 36px 36px 36px"
 };
 
 const formGroup = {
@@ -320,45 +327,64 @@ const formLabel = {
   alignItems: "center",
   gap: "8px",
   fontSize: "14px",
-  fontWeight: "600",
-  color: "#334155",
-  marginBottom: "8px"
+  fontWeight: "700",
+  color: "#1e293b",
+  marginBottom: "10px",
+  letterSpacing: "0.2px"
+};
+
+const inputWrapper = {
+  position: "relative"
 };
 
 const formInput = {
   width: "100%",
-  padding: "12px 16px",
-  border: "1px solid #cbd5e1",
-  borderRadius: "6px",
+  padding: "14px 18px",
+  border: "2px solid #e2e8f0",
+  borderRadius: "12px",
   fontSize: "15px",
   color: "#1e293b",
   outline: "none",
-  transition: "all 0.2s",
+  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
   fontFamily: "inherit",
-  backgroundColor: "white"
+  backgroundColor: "#f8fafc",
+  fontWeight: "500"
 };
 
 const submitButton = {
   width: "100%",
-  padding: "14px",
-  backgroundColor: "#0d47a1",
+  padding: "16px 24px",
+  background: "linear-gradient(135deg, #0d47a1 0%, #1565c0 100%)",
   color: "white",
   border: "none",
-  borderRadius: "6px",
+  borderRadius: "12px",
   fontSize: "15px",
-  fontWeight: "600",
+  fontWeight: "700",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   gap: "10px",
-  transition: "all 0.2s",
-  boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-  marginTop: "8px"
+  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+  boxShadow: "0 8px 20px rgba(13, 71, 161, 0.25)",
+  marginTop: "12px",
+  letterSpacing: "0.3px",
+  position: "relative",
+  overflow: "hidden"
+};
+
+const buttonGlow = {
+  position: "absolute",
+  top: "-50%",
+  left: "-50%",
+  width: "200%",
+  height: "200%",
+  background: "radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)",
+  animation: "glow 2s ease-in-out infinite"
 };
 
 const spinner = {
-  width: "16px",
-  height: "16px",
+  width: "18px",
+  height: "18px",
   border: "2px solid rgba(255,255,255,0.3)",
   borderTopColor: "white",
   borderRadius: "50%",
@@ -366,76 +392,59 @@ const spinner = {
 };
 
 const footer = {
-  padding: "24px 32px 32px 32px"
+  padding: "28px 36px 36px 36px"
 };
 
 const divider = {
-  height: "1px",
-  backgroundColor: "#e2e8f0",
-  marginBottom: "20px"
+  position: "relative",
+  textAlign: "center",
+  marginBottom: "24px"
+};
+
+const dividerText = {
+  position: "relative",
+  display: "inline-block",
+  padding: "0 16px",
+  fontSize: "12px",
+  color: "#94a3b8",
+  fontWeight: "600",
+  backgroundColor: "rgba(255,255,255,0.98)",
+  zIndex: 1,
+  letterSpacing: "0.5px",
+  textTransform: "uppercase"
 };
 
 const footerLinks = {
   display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  gap: "12px",
-  fontSize: "14px"
+  flexDirection: "column",
+  gap: "14px",
+  alignItems: "center"
 };
 
 const footerLink = {
-  color: "#0d47a1",
+  color: "#475569",
   textDecoration: "none",
-  fontWeight: "500",
-  transition: "all 0.2s"
-};
-
-const footerSeparator = {
-  color: "#cbd5e1",
-  fontWeight: "300"
-};
-
-const securityNotice = {
-  marginTop: "24px",
-  padding: "20px",
-  backgroundColor: "#f8fafc",
-  border: "1px solid #e2e8f0",
-  borderRadius: "8px",
-  display: "flex",
-  gap: "14px",
-  alignItems: "flex-start"
-};
-
-const securityTitle = {
-  margin: "0 0 6px 0",
-  fontSize: "14px",
   fontWeight: "600",
-  color: "#0f172a"
+  fontSize: "14px",
+  transition: "all 0.3s ease",
+  display: "flex",
+  alignItems: "center",
+  gap: "8px"
 };
 
-const securityText = {
-  margin: 0,
-  fontSize: "13px",
-  color: "#64748b",
-  lineHeight: "1.6"
+const linkDot = {
+  width: "6px",
+  height: "6px",
+  borderRadius: "50%",
+  backgroundColor: "#0d47a1",
+  display: "inline-block"
 };
 
-const footerBar = {
-  backgroundColor: "#1e293b",
-  borderTop: "3px solid #ff6f00",
-  padding: "20px 0"
-};
-
-const footerBarContent = {
-  maxWidth: "1200px",
-  margin: "0 auto",
-  padding: "0 24px",
-  textAlign: "center"
-};
-
-const footerBarText = {
-  margin: 0,
-  fontSize: "13px",
-  color: "#cbd5e1",
-  fontWeight: "400"
+const copyrightText = {
+  marginTop: "32px",
+  textAlign: "center",
+  fontSize: "12px",
+  color: "rgba(255,255,255,0.5)",
+  fontWeight: "500",
+  letterSpacing: "0.3px"
 };

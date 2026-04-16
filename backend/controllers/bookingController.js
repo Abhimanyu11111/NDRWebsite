@@ -1,9 +1,10 @@
 import sequelize from "../src/config/db.js";
 import Booking from "../models/Booking.js";
 import DatasetLock from "../models/DatasetLock.js";
-import Room from "../models/Slot.js";
+import Room from "../models/Room.js";
 import User from "../models/User.js";
 import Notification from "../models/Notification.js";
+import Payment from "../models/Payment.js";
 import { Op } from "sequelize";
 
 import { generateBookingId } from "../utils/dateHelpers.js";
@@ -192,6 +193,12 @@ export const createBooking = async (req, res) => {
       dataCatalogue,
       weekendNotice,
       halfDaySlot,
+      license_type,
+      room_type,
+      block_name,
+      data_category,
+      data_subcategory,
+      data_requirements,
     } = req.body;
 
     if (!room_id || !bookingType || !start_datetime) {
@@ -280,6 +287,12 @@ export const createBooking = async (req, res) => {
         room_price:            roomPrice,
         total_price:           totalPrice,
         status:                finalStatus,
+        license_type:          license_type || null,
+        room_type:             room_type || null,
+        block_name:            block_name || null,
+        data_category:         data_category || null,
+        data_subcategory:      data_subcategory || null,
+        data_requirements:     data_requirements || null,
       },
       { transaction: t }
     );
@@ -329,6 +342,116 @@ export const getUserBookings = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: "Failed to fetch bookings" });
+  }
+};
+
+/* =====================================================
+   ADMIN BOOKING DETAILS
+===================================================== */
+export const getAdminBookingDetails = async (req, res) => {
+  try {
+    const { booking_id } = req.params;
+
+    const booking = await Booking.findOne({
+      where: { booking_id },
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: [
+            "id",
+            "name",
+            "email",
+            "phone",
+            "company",
+            "role",
+            "is_active",
+            "created_at",
+          ],
+        },
+        {
+          model: Room,
+          as: "room",
+          attributes: [
+            "id",
+            "title",
+            "description",
+            "capacity",
+            "hourly_rate",
+            "half_day_rate",
+            "full_day_rate",
+            "license_type",
+            "room_type",
+            "is_active",
+          ],
+        },
+        {
+          model: DatasetLock,
+          as: "datasetLocks",
+          required: false,
+        },
+      ],
+      order: [[{ model: DatasetLock, as: "datasetLocks" }, "locked_at", "DESC"]],
+    });
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    const payments = await Payment.findAll({
+      where: { booking_id },
+      order: [["created_at", "DESC"]],
+    });
+
+    const latestPayment = payments[0] || null;
+
+    return res.json({
+      success: true,
+      booking: {
+        id: booking.id,
+        booking_id: booking.booking_id,
+        booking_type: booking.booking_type,
+        status: booking.status,
+        payment_status: booking.payment_status,
+        payment_id: booking.payment_id,
+        dataset_locked: booking.dataset_locked,
+        first_accessed_at: booking.first_accessed_at,
+        access_suspended: booking.access_suspended,
+        start_datetime: booking.start_datetime,
+        end_datetime: booking.end_datetime,
+        duration_minutes: booking.duration_minutes,
+        working_days: booking.working_days,
+        working_day_surcharge: booking.working_day_surcharge,
+        room_price: booking.room_price,
+        data_price: booking.data_price,
+        discount_amount: booking.discount_amount,
+        total_price: booking.total_price,
+        weekend_notice: booking.weekend_notice,
+        data_catalogue: booking.data_catalogue || [],
+        data_category: booking.data_category,
+        data_subcategory: booking.data_subcategory,
+        data_requirements: booking.data_requirements,
+        license_type: booking.license_type,
+        room_type: booking.room_type,
+        block_name: booking.block_name,
+        created_at: booking.created_at,
+        updated_at: booking.updated_at,
+        user: booking.user,
+        room: booking.room,
+        datasetLocks: booking.datasetLocks || [],
+        payments,
+        latestPayment,
+      },
+    });
+  } catch (err) {
+    console.error("Admin booking details error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch booking details",
+    });
   }
 };
 
@@ -429,4 +552,54 @@ export const confirmBookingAfterPayment = async (bookingId, transaction) => {
 
   await lockDatasetsForBooking(booking, transaction);
   return booking;
+};
+
+
+/**
+ * Get booking statistics for user's My Account page
+ */
+export const getUserBookingStats = async (req, res) => {
+  try {
+    const userId = req.user.id; // From auth middleware
+
+    const bookings = await Booking.findAll({
+      where: { user_id: userId },
+      include: [
+        {
+          model: Room,
+          as: 'room',
+          attributes: ['title', 'room_type']
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
+
+    // Calculate total days booked
+    const totalDays = bookings.reduce((sum, booking) => {
+      return sum + booking.working_days;
+    }, 0);
+
+    // Group by status
+    const stats = {
+      total_bookings: bookings.length,
+      total_days_booked: totalDays,
+      pending: bookings.filter(b => b.status === 'PENDING').length,
+      confirmed: bookings.filter(b => b.status === 'CONFIRMED').length,
+      completed: bookings.filter(b => b.status === 'COMPLETED').length,
+      cancelled: bookings.filter(b => b.status === 'CANCELLED').length,
+      recent_bookings: bookings.slice(0, 5) // Last 5 bookings
+    };
+
+    res.status(200).json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    console.error('Get user booking stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch booking statistics',
+      error: error.message
+    });
+  }
 };

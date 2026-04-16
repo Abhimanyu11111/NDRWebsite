@@ -1,22 +1,40 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import axios from "../api/axiosClient";
 import styles from "../Component/Styles/BookVDR.module.css";
 import AvailabilityCalendar from "./AvailabilityCalendar";
+import SearchableBlockDropdown from '../Component/SearchableBlockDropdown';
 
 /* ====================== CONSTANTS ====================== */
 const DURATION_MAP = {
   FULL_DAY: 1440,
   MULTI_DAY: "range",
-  ONE_WEEK: 10080,
 };
 
 const MONTHS = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December",
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
-const DAYS_SHORT = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+const DAYS_SHORT = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
+
+//  License Types
+const LICENSE_TYPES = [
+  { value: "DSG", label: "DSG (Desicion Space Geosciences)" },
+  { value: "PETREL", label: "Petrel" },
+  { value: "KINGDOM", label: "Kingdom" },
+  { value: "GEOGRAPHIX", label: "GeoGraphix" },
+  { value: "HAMPSON_RUSSELL", label: "Hampson-Russell" },
+  { value: "OTHER", label: "Other" },
+];
+
+//  Room Types
+const ROOM_TYPES = [
+  { value: "OALP", label: "OALP (Open Acreage Licensing Policy)" },
+  { value: "DSF", label: "DSF (Discovered Small Field)" },
+  { value: "CBM", label: "CBM (Coal Bed Methane)" },
+  { value: "GENERAL", label: "General Data Room" },
+];
 
 /* ====================== HELPERS ====================== */
 const sameDay = (a, b) =>
@@ -54,7 +72,7 @@ function MiniCalendar({
     if (!checkIn || !date) return false;
     const end = checkOut || hoverDate;
     if (!end) return false;
-    return date > checkIn && date < end;
+    return date >= checkIn && date <= end;
   };
 
   return (
@@ -108,7 +126,7 @@ function MiniCalendar({
               key={date.getTime()}
               className={cls}
               onClick={(e) => {
-                e.stopPropagation(); // ✅ FIX: prevent outside-click handler from firing
+                e.stopPropagation();
                 !disabled && onDayClick(date);
               }}
               onMouseEnter={() => !disabled && onDayHover(date)}
@@ -129,19 +147,22 @@ export default function BookVDR() {
   const [roomId, setRoomId] = useState("");
   const [durationType, setDurationType] = useState("MULTI_DAY");
 
-  // Data Catalogue
-  const [dataCategory, setDataCategory] = useState("");
-  const [dataSubCategory, setDataSubCategory] = useState("");
-  const [dataRequirements, setDataRequirements] = useState("");
+  //  License & Room Type
+  const [licenseType, setLicenseType] = useState("");
+  const [roomType, setRoomType] = useState("GENERAL");
+  const [blockNames, setBlockNames] = useState([]);
 
-  // Calendar
+  // Calendar -  FIX: Initialize with default values
   const [checkIn, setCheckIn] = useState(null);
   const [checkOut, setCheckOut] = useState(null);
   const [calOpen, setCalOpen] = useState(false);
-  const [selectingFor, setSelectingFor] = useState("checkin"); // 'checkin' | 'checkout'
+  const [selectingFor, setSelectingFor] = useState("checkin");
   const [hoverDate, setHoverDate] = useState(null);
-  const [viewYear, setViewYear] = useState(null);
-  const [viewMonth, setViewMonth] = useState(null);
+
+  //  FIX: Initialize with current date values
+  const today = new Date();
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
 
   const [calendarBookings, setCalendarBookings] = useState([]);
   const [weekendNotice, setWeekendNotice] = useState("");
@@ -150,23 +171,24 @@ export default function BookVDR() {
   const [userProfile, setUserProfile] = useState(null);
 
   const calRef = useRef(null);
+  const calDropdownRef = useRef(null);
   const bookingFormRef = useRef(null);
   const inactivityTimerRef = useRef(null);
   const warningTimerRef = useRef(null);
 
   /* --- Min bookable date: today + 3 days --- */
-  const minDate = (() => {
+  const minDate = React.useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     d.setDate(d.getDate() + 3);
     return d;
-  })();
+  }, []);
 
   /* --- Init view month --- */
   useEffect(() => {
     setViewYear(minDate.getFullYear());
     setViewMonth(minDate.getMonth());
-  }, []);
+  }, [minDate]);
 
   /* --- Auth check --- */
   useEffect(() => {
@@ -191,6 +213,8 @@ export default function BookVDR() {
   useEffect(() => {
     const handleLogout = () => {
       localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      sessionStorage.clear();
       alert("You have been logged out due to inactivity.");
       window.location.href = "/login";
     };
@@ -206,7 +230,7 @@ export default function BookVDR() {
       warningTimerRef.current = setTimeout(showWarning, 25 * 60 * 1000);
       inactivityTimerRef.current = setTimeout(handleLogout, INACTIVITY_TIMEOUT);
     };
-    const events = ["mousedown","mousemove","keypress","scroll","touchstart","click"];
+    const events = ["mousedown", "mousemove", "keypress", "scroll", "touchstart", "click"];
     events.forEach((e) => document.addEventListener(e, resetTimer));
     resetTimer();
     return () => {
@@ -227,18 +251,22 @@ export default function BookVDR() {
   }, []);
 
   /* --- Fetch calendar bookings --- */
-  const fetchCalendar = async (room_id) => {
+  const fetchCalendar = useCallback(async (room_id) => {
     const res = await axios.get(`/booking/calendar?room_id=${room_id}`);
     setCalendarBookings(res.data.bookings || []);
-  };
+  }, []);
+
   useEffect(() => {
-    if (roomId) fetchCalendar(roomId);
-  }, [roomId]);
+    if (!roomId) return;
+    const load = async () => {
+      await fetchCalendar(roomId);
+    };
+    load();
+  }, [roomId, fetchCalendar]);
 
   /* --- Close calendar on outside click --- */
   useEffect(() => {
     const handler = (e) => {
-      // ✅ FIX: Only close if click is truly outside the calendar ref
       if (calRef.current && !calRef.current.contains(e.target)) {
         setCalOpen(false);
       }
@@ -253,11 +281,12 @@ export default function BookVDR() {
     setCheckIn(null);
     setCheckOut(null);
     setCalOpen(false);
+    setError("");
   };
 
   /* --- Open calendar for checkin or checkout --- */
   const openCal = (for_, e) => {
-    if (e) e.stopPropagation(); // ✅ FIX: stop event bubbling to document
+    if (e) e.stopPropagation();
     setSelectingFor(for_);
     setCalOpen(true);
     if (for_ === "checkout" && checkOut) {
@@ -270,6 +299,9 @@ export default function BookVDR() {
       setViewYear(minDate.getFullYear());
       setViewMonth(minDate.getMonth());
     }
+    setTimeout(() => {
+      calDropdownRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 80);
   };
 
   /* --- Day click logic --- */
@@ -277,12 +309,6 @@ export default function BookVDR() {
     if (durationType === "FULL_DAY") {
       const co = new Date(date);
       co.setDate(co.getDate() + 1);
-      setCheckIn(date);
-      setCheckOut(co);
-      setCalOpen(false);
-    } else if (durationType === "ONE_WEEK") {
-      const co = new Date(date);
-      co.setDate(co.getDate() + 7);
       setCheckIn(date);
       setCheckOut(co);
       setCalOpen(false);
@@ -322,18 +348,15 @@ export default function BookVDR() {
   };
 
   /* --- Booking summary values --- */
-  const durationLabel = {
-    MULTI_DAY: "Multiple Days",
-    ONE_WEEK: "1 Week",
-  }[durationType];
-
   const diffDays =
     checkIn && checkOut
-      ? Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24))
+      ? durationType === "FULL_DAY"
+        ? 1
+        : Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24))
       : null;
 
   const isReady = checkIn && checkOut && !isDateRangeBlocked() &&
-                  dataCategory && dataRequirements.trim().length >= 50;
+    licenseType && roomType;
 
   /* --- Handle date selection from availability calendar --- */
   const handleDateSelectFromCalendar = (selection) => {
@@ -343,10 +366,6 @@ export default function BookVDR() {
     if (durationType === "FULL_DAY") {
       const co = new Date(selectedDate);
       co.setDate(co.getDate() + 1);
-      setCheckOut(co);
-    } else if (durationType === "ONE_WEEK") {
-      const co = new Date(selectedDate);
-      co.setDate(co.getDate() + 7);
       setCheckOut(co);
     } else {
       setCheckOut(null);
@@ -365,12 +384,12 @@ export default function BookVDR() {
       const bookingRes = await axios.post("/booking/create", {
         room_id: roomId,
         bookingType: durationType,
-        start_datetime: checkIn,
-        end_datetime: checkOut,
+        start_datetime: checkIn.toISOString(),
+        end_datetime: checkOut.toISOString(),
         weekendNotice,
-        data_category: dataCategory,
-        data_subcategory: dataSubCategory,
-        data_requirements: dataRequirements,
+        license_type: licenseType,
+        room_type: roomType,
+        block_name: blockNames.join(', '),
       });
       const bookingId = bookingRes.data.booking_id;
       const paymentRes = await axios.post("/payment/initiate", { booking_id: bookingId });
@@ -439,163 +458,19 @@ export default function BookVDR() {
       <div className={styles.bookingGrid} ref={bookingFormRef}>
         {/* LEFT */}
         <div>
-          {/* ROOM + DURATION */}
-          <div className={styles.card}>
-            <h3 className={styles.cardTitle}>Select Room</h3>
-            <p className={styles.cardSubtitle}>Choose your preferred VDR</p>
-
-            <div className={styles.formGroup}>
-              <label>Room</label>
-              <select
-                className={styles.formSelect}
-                value={roomId}
-                onChange={(e) => setRoomId(e.target.value)}
-              >
-                {rooms.map((r) => (
-                  <option key={r.id} value={r.id}>{r.title}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className={styles.formGroup}>
-              <label>Booking Type</label>
-              <div className={styles.durationTabs}>
-                {[
-                  { val: "MULTI_DAY", label: "📅 Multiple Days" },
-                  { val: "ONE_WEEK",  label: "🗓️ 1 Week" },
-                ].map(({ val, label }) => (
-                  <button
-                    key={val}
-                    type="button"
-                    className={`${styles.durationTab} ${durationType === val ? styles.durationTabActive : ""}`}
-                    onClick={() => handleDurationChange(val)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* DATA CATALOGUE SECTION */}
-          <div className={styles.card}>
-            <h3 className={styles.cardTitle}>Data Catalogue</h3>
-            <p className={styles.cardSubtitle}>Select the data you wish to access in VDR</p>
-
-            <div className={styles.formGroup}>
-              <label>Main Category <span className={styles.required}>*</span></label>
-              <select
-                className={styles.formSelect}
-                value={dataCategory}
-                onChange={(e) => {
-                  setDataCategory(e.target.value);
-                  setDataSubCategory("");
-                }}
-              >
-                <option value="">Select Category...</option>
-                <option value="sedimentary_basins">Sedimentary Basins</option>
-                <option value="seismic_data">Seismic Data</option>
-                <option value="well_data">Well Data</option>
-                <option value="geological_maps">Geological Maps</option>
-                <option value="production_data">Production Data</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
-            {dataCategory && dataCategory !== "other" && (
-              <div className={styles.formGroup}>
-                <label>Sub-Category <span className={styles.required}>*</span></label>
-                <select
-                  className={styles.formSelect}
-                  value={dataSubCategory}
-                  onChange={(e) => setDataSubCategory(e.target.value)}
-                >
-                  <option value="">Select Sub-Category...</option>
-                  {dataCategory === "sedimentary_basins" && (
-                    <>
-                      <option value="krishna_godavari">Krishna-Godavari Basin</option>
-                      <option value="mumbai_offshore">Mumbai Offshore Basin</option>
-                      <option value="cauvery">Cauvery Basin</option>
-                      <option value="cambay">Cambay Basin</option>
-                      <option value="assam_arakan">Assam-Arakan Basin</option>
-                      <option value="rajasthan">Rajasthan Basin</option>
-                    </>
-                  )}
-                  {dataCategory === "seismic_data" && (
-                    <>
-                      <option value="2d_seismic">2D Seismic</option>
-                      <option value="3d_seismic">3D Seismic</option>
-                      <option value="4d_seismic">4D Seismic</option>
-                      <option value="avo_analysis">AVO Analysis</option>
-                    </>
-                  )}
-                  {dataCategory === "well_data" && (
-                    <>
-                      <option value="well_logs">Well Logs</option>
-                      <option value="core_data">Core Data</option>
-                      <option value="drill_stem_test">Drill Stem Test</option>
-                      <option value="completion_data">Completion Data</option>
-                    </>
-                  )}
-                  {dataCategory === "geological_maps" && (
-                    <>
-                      <option value="structural_maps">Structural Maps</option>
-                      <option value="isopach_maps">Isopach Maps</option>
-                      <option value="facies_maps">Facies Maps</option>
-                      <option value="bathymetry">Bathymetry Maps</option>
-                    </>
-                  )}
-                  {dataCategory === "production_data" && (
-                    <>
-                      <option value="daily_production">Daily Production</option>
-                      <option value="reservoir_performance">Reservoir Performance</option>
-                      <option value="decline_curves">Decline Curves</option>
-                      <option value="pvt_analysis">PVT Analysis</option>
-                    </>
-                  )}
-                </select>
-              </div>
-            )}
-
-            <div className={styles.formGroup}>
-              <label>
-                Data Requirements Detail <span className={styles.required}>*</span>
-              </label>
-              <p className={styles.fieldHelper}>
-                Please provide detailed information about the specific data you need to access
-              </p>
-              <textarea
-                className={styles.formTextarea}
-                placeholder="Example: I need 3D seismic data for Block KG-DWN-2005/1 covering the period 2018-2023, including processed volumes and interpretation reports. Also require well log data from wells KG-A1, KG-A2, and KG-A3 with gamma ray, resistivity, and sonic logs."
-                value={dataRequirements}
-                onChange={(e) => setDataRequirements(e.target.value)}
-                rows={6}
-                required
-              />
-              <div className={styles.charCount}>
-                {dataRequirements.length} / 1000 characters
-              </div>
-            </div>
-          </div>
-
-          {/* DATE PICKER */}
+          {/*  DATE PICKER - Now appears FIRST */}
           <div className={styles.card}>
             <h3 className={styles.cardTitle}>Select Dates</h3>
             <p className={styles.cardSubtitle}>
-              {durationType === "MULTI_DAY" && "Pick check-in then check-out date"}
-              {durationType === "ONE_WEEK" && "Pick start date — checkout auto set to +7 days"}
+              {durationType === "MULTI_DAY" && "Pick start then end date"}
             </p>
 
-            {/* ✅ FIX: calRef moved to wrapper div that contains both fields AND dropdown */}
             <div className={styles.dateFieldsRow} ref={calRef}>
-              {/* Check-in */}
+              {/* Start Date */}
               <div
                 className={`${styles.dateField} ${calOpen && selectingFor === "checkin" ? styles.dateFieldActive : ""}`}
-                onClick={(e) => openCal("checkin", e)}  // ✅ FIX: pass event to stopPropagation
+                onClick={(e) => openCal("checkin", e)}
               >
-                <div className={styles.dateFieldLabel}>
-                  <span className={styles.dateFieldIcon}>✈</span> CHECK-IN
-                </div>
                 {checkIn ? (
                   <>
                     <div className={styles.dateFieldValue}>{formatDisplay(checkIn)}</div>
@@ -604,25 +479,21 @@ export default function BookVDR() {
                     </div>
                   </>
                 ) : (
-                  <div className={styles.dateFieldPlaceholder}>Add Date</div>
+                  <div className={styles.dateFieldPlaceholder}>Select Start Date</div>
                 )}
               </div>
 
               <div className={styles.dateFieldDivider}>→</div>
 
-              {/* Check-out */}
+              {/* End Date */}
               <div
-                className={`${styles.dateField} ${
-                  durationType === "MULTI_DAY" && calOpen && selectingFor === "checkout"
+                className={`${styles.dateField} ${durationType === "MULTI_DAY" && calOpen && selectingFor === "checkout"
                     ? styles.dateFieldActive : ""
-                } ${durationType !== "MULTI_DAY" ? styles.dateFieldReadonly : ""}`}
+                  }`}
                 onClick={(e) => {
-                  if (durationType === "MULTI_DAY" && checkIn) openCal("checkout", e); // ✅ FIX: pass event
+                  if (durationType === "MULTI_DAY" && checkIn) openCal("checkout", e);
                 }}
               >
-                <div className={styles.dateFieldLabel}>
-                  <span className={styles.dateFieldIcon}>🏁</span> CHECK-OUT
-                </div>
                 {checkOut ? (
                   <>
                     <div className={styles.dateFieldValue}>{formatDisplay(checkOut)}</div>
@@ -631,19 +502,17 @@ export default function BookVDR() {
                     </div>
                   </>
                 ) : (
-                  <div className={styles.dateFieldPlaceholder}>
-                    {durationType === "MULTI_DAY" ? "Add Date" : "Auto"}
-                  </div>
+                  <div className={styles.dateFieldPlaceholder}>Select End Date</div>
                 )}
               </div>
 
-              {/* Calendar Dropdown */}
-              {calOpen && viewYear !== null && (
+              {/*  CALENDAR DROPDOWN - Fixed condition */}
+              {calOpen && (
                 <div
                   className={styles.calDropdown}
-                  onClick={(e) => e.stopPropagation()} // ✅ FIX: clicks inside dropdown won't close it
+                  ref={calDropdownRef}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  {/* Info strip */}
                   <div className={styles.calInfoStrip}>
                     <span>📌</span>
                     <span>
@@ -652,11 +521,10 @@ export default function BookVDR() {
                     </span>
                   </div>
 
-                  {/* Selecting label */}
                   <div className={styles.calSelectingLabel}>
                     {selectingFor === "checkin"
-                      ? "🟦 Select Check-in Date"
-                      : "🟩 Select Check-out Date"}
+                      ? "🟦 Select Start Date"
+                      : "🟩 Select End Date"}
                   </div>
 
                   <MiniCalendar
@@ -679,13 +547,72 @@ export default function BookVDR() {
             {/* Duration info */}
             {checkIn && checkOut && (
               <div className={styles.durationInfo}>
-                ✅ <strong>{diffDays} {diffDays === 1 ? "Day" : "Days"}</strong> &nbsp;·&nbsp;
+                <strong>{diffDays} {diffDays === 1 ? "Day" : "Days"}</strong> &nbsp;·&nbsp;
                 {formatFull(checkIn)} → {formatFull(checkOut)}
                 {isDateRangeBlocked() && (
                   <span className={styles.blockedWarning}> &nbsp;⚠️ These dates overlap with an existing booking</span>
                 )}
               </div>
             )}
+          </div>
+
+          {/* ROOM + DETAILS */}
+          <div className={styles.card}>
+            <h3 className={styles.cardTitle}>Select Room</h3>
+            <p className={styles.cardSubtitle}>Choose your preferred VDR</p>
+
+            <div className={styles.formGroup}>
+              <label>Room</label>
+              <select
+                className={styles.formSelect}
+                value={roomId}
+                onChange={(e) => setRoomId(e.target.value)}
+              >
+                {rooms.map((r) => (
+                  <option key={r.id} value={r.id}>{r.title}</option>
+                ))}
+              </select>
+            </div>
+
+            {/*  License Type */}
+            <div className={styles.formGroup}>
+              <label>License Type <span className={styles.required}>*</span></label>
+              <select
+                className={styles.formSelect}
+                value={licenseType}
+                onChange={(e) => setLicenseType(e.target.value)}
+                required
+              >
+                <option value="">Select License...</option>
+                {LICENSE_TYPES.map((lt) => (
+                  <option key={lt.value} value={lt.value}>{lt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/*  Room Type */}
+            <div className={styles.formGroup}>
+              <label>Type of Data Room <span className={styles.required}>*</span></label>
+              <select
+                className={styles.formSelect}
+                value={roomType}
+                onChange={(e) => setRoomType(e.target.value)}
+                required
+              >
+                {ROOM_TYPES.map((rt) => (
+                  <option key={rt.value} value={rt.value}>{rt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Designated Block/Area - UPDATED */}
+            <div className={styles.formGroup}>
+              <label>Designated Block/Area</label>
+              <SearchableBlockDropdown
+                value={blockNames}
+                onChange={(selected) => setBlockNames(selected)}
+              />
+            </div>
           </div>
         </div>
 
@@ -703,49 +630,45 @@ export default function BookVDR() {
                     <strong>{rooms.find((r) => r.id === roomId)?.title}</strong>
                   </div>
                   <div className={styles.previewDivider} />
+
                   <div className={styles.previewRow}>
-                    <span>Type:</span>
-                    <strong>{durationLabel}</strong>
+                    <span>License:</span>
+                    <strong>{LICENSE_TYPES.find(lt => lt.value === licenseType)?.label}</strong>
                   </div>
                   <div className={styles.previewDivider} />
+
+                  <div className={styles.previewRow}>
+                    <span>Room Type:</span>
+                    <strong>{ROOM_TYPES.find(rt => rt.value === roomType)?.label}</strong>
+                  </div>
+                  <div className={styles.previewDivider} />
+
+                  {blockNames.length > 0 && (
+                    <>
+                      <div className={styles.previewRow}>
+                        <span>Block/Area:</span>
+                        <strong>{blockNames.join(', ')}</strong>
+                      </div>
+                      <div className={styles.previewDivider} />
+                    </>
+                  )}
+
                   <div className={styles.previewRow}>
                     <span>Check-in:</span>
                     <strong>{formatFull(checkIn)}</strong>
                   </div>
                   <div className={styles.previewDivider} />
+
                   <div className={styles.previewRow}>
                     <span>Check-out:</span>
                     <strong>{formatFull(checkOut)}</strong>
                   </div>
                   <div className={styles.previewDivider} />
+
                   <div className={styles.previewRow}>
                     <span>Duration:</span>
                     <strong>{diffDays} {diffDays === 1 ? "Day" : "Days"}</strong>
                   </div>
-
-                  {dataCategory && (
-                    <>
-                      <div className={styles.previewDivider} />
-                      <div className={styles.previewRow}>
-                        <span>Data Category:</span>
-                        <strong style={{ textTransform: 'capitalize' }}>
-                          {dataCategory.replace(/_/g, ' ')}
-                        </strong>
-                      </div>
-                    </>
-                  )}
-
-                  {dataSubCategory && (
-                    <>
-                      <div className={styles.previewDivider} />
-                      <div className={styles.previewRow}>
-                        <span>Sub-Category:</span>
-                        <strong style={{ textTransform: 'capitalize' }}>
-                          {dataSubCategory.replace(/_/g, ' ')}
-                        </strong>
-                      </div>
-                    </>
-                  )}
                 </div>
 
                 <div className={styles.formGroup}>
@@ -773,15 +696,15 @@ export default function BookVDR() {
             ) : (
               <div className={styles.noPreview}>
                 <p>
-                  {!dataCategory
-                    ? "Please select a data category to proceed"
-                    : !dataRequirements || dataRequirements.trim().length < 50
-                    ? "Please provide detailed data requirements (minimum 50 characters)"
+                  {isDateRangeBlocked()
+                    ? "Selected dates are unavailable — they overlap with an existing booking"
                     : !checkIn
-                    ? "Please select a check-in date"
-                    : !checkOut
-                    ? "Please select a check-out date"
-                    : "Selected dates are unavailable"}
+                      ? "Please select a check-in date"
+                      : !checkOut
+                        ? "Please select a check-out date"
+                        : !licenseType
+                          ? "Please select a license type to proceed"
+                          : "Please select room type"}
                 </p>
               </div>
             )}

@@ -156,10 +156,10 @@
   box-shadow: var(--shadow);
   transition: var(--transition);
   position: relative;
-  /* ✅ FIX: overflow: hidden REMOVED — was clipping the calendar dropdown */
+  /* ✅ FIX: overflow removed - was clipping calendar */
+  /* overflow: hidden; */ 
 }
 
-/* ✅ FIX: accent bar now uses box-shadow trick instead of pseudo-element with overflow */
 .card::before {
   content: '';
   position: absolute;
@@ -176,6 +176,7 @@
 .card:hover {
   box-shadow: var(--shadow-lg);
   transform: translateY(-3px);
+  z-index: 10;
 }
 
 .card:hover::before {
@@ -325,10 +326,11 @@
   align-items: stretch;
   border: 2px solid var(--border);
   border-radius: var(--radius);
-  /* ✅ FIX: overflow: hidden REMOVED — was clipping the dropdown */
   position: relative;
   background: var(--card);
   transition: var(--transition);
+  /* ✅ FIX: overflow removed - was clipping calendar */
+  /* overflow: hidden; */
 }
 
 .dateFieldsRow:hover {
@@ -341,6 +343,7 @@
   padding: 1.25rem;
   cursor: pointer;
   transition: var(--transition);
+  border-radius: var(--radius);
 }
 
 .dateField:hover {
@@ -404,25 +407,36 @@
   position: absolute;
   top: calc(100% + 12px);
   left: 0;
-  z-index: 9999; /* ✅ FIX: Higher z-index so it appears above everything */
-  background: var(--card);
-  border: 2px solid var(--border);
+  right: 0;
+  z-index: 10000; 
+  background: white; /* ✅ FIX: Pure white background */
+  border: 3px solid var(--accent); /* ✅ FIX: Thick orange border for visibility */
   border-radius: var(--radius);
   padding: 1.5rem;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.15); /* ✅ FIX: stronger shadow */
+  box-shadow: 0 25px 50px rgba(0,0,0,0.3), 
+              0 10px 20px rgba(249,115,22,0.2),
+              0 0 0 1px rgba(0,0,0,0.1); /* ✅ FIX: Triple shadow for depth */
+  animation: slideDown 0.25s ease;
+  margin: 0;
+  max-width: 100%;
   min-width: 340px;
-  animation: slideDown 0.2s ease;
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { 
+    opacity: 0; 
+    transform: translateY(-15px) scale(0.95); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
 }
 
 .calInfoStrip {
   display: flex;
   gap: 8px;
-  background: rgba(249,115,22,0.1);
+  background: rgba(249,115,22,0.15); /* ✅ Slightly darker for contrast */
   border-left: 4px solid var(--accent);
   border-radius: 8px;
   padding: 12px;
@@ -431,42 +445,58 @@
   margin-bottom: 1rem;
 }
 
+.calInfoStrip span:first-child {
+  font-size: 1.2em;
+}
+
 .calSelectingLabel {
-  font-size: 0.85em;
-  font-weight: 700;
+  font-size: 0.9em;
+  font-weight: 800; /* ✅ Bolder text */
   color: var(--text);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid var(--border);
+  padding: 0.75rem;
+  background: linear-gradient(to right, rgba(249,115,22,0.1), transparent);
+  border-left: 4px solid var(--accent);
+  border-radius: 4px;
 }
 
 /* Mini Calendar */
-.miniCal { width: 100%; }
+.miniCal { 
+  width: 100%;
+  background: white; /* ✅ Ensure white background */
+}
 
 .calNav {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--border);
 }
 
 .calNavBtn {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border: 2px solid var(--border);
   border-radius: 8px;
   background: var(--input);
-  font-size: 1.2em;
+  font-size: 1.3em;
+  font-weight: bold;
   cursor: pointer;
   transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .calNavBtn:hover:not(:disabled) {
   background: var(--accent);
   border-color: var(--accent);
   color: white;
+  transform: scale(1.1);
 }
 
 .calNavBtn:disabled {
@@ -475,24 +505,26 @@
 }
 
 .calMonthTitle {
-  font-size: 1em;
-  font-weight: 700;
+  font-size: 1.1em;
+  font-weight: 800;
   color: var(--text);
 }
 
 .calGrid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: 6px; /* ✅ Slightly more gap */
+  padding: 0.5rem 0;
 }
 
 .calDayHead {
   text-align: center;
-  font-size: 0.7em;
-  font-weight: 700;
+  font-size: 0.75em;
+  font-weight: 800;
   color: var(--text-muted);
-  padding: 6px;
+  padding: 8px;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .calDay {
@@ -500,55 +532,54 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.95em;
+  border-radius: 8px;
   cursor: pointer;
   transition: var(--transition);
+  border: 2px solid transparent;
+  background: var(--input);
 }
 
 .calDay:hover:not(.calDayDisabled) {
   background: var(--accent);
   color: white;
-  transform: scale(1.1);
+  transform: scale(1.15);
+  border-color: var(--accent);
+  box-shadow: 0 4px 8px rgba(249,115,22,0.3);
 }
 
 .calDayDisabled {
-  color: var(--border);
+  color: #cbd5e1;
+  background: #f8fafc;
   cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.calDayDisabled:hover {
+  transform: none;
+  background: #f8fafc;
 }
 
 .calDayToday {
   border: 2px solid var(--accent);
-  font-weight: 800;
+  font-weight: 900;
+  background: white;
 }
 
 .calDayStart,
 .calDayEnd {
   background: var(--accent) !important;
   color: white !important;
-  box-shadow: 0 2px 8px rgba(249,115,22,0.3);
+  box-shadow: 0 4px 12px rgba(249,115,22,0.4);
+  border-color: var(--accent-hover) !important;
+  font-weight: 900;
 }
 
 .calDayInRange {
-  background: rgba(249,115,22,0.1);
+  background: rgba(249,115,22,0.15);
   color: var(--accent);
-}
-
-/* ===================== INFO BARS ===================== */
-.durationInfo {
-  margin-top: 1rem;
-  padding: 1rem;
-  background: var(--success-light);
-  border-left: 4px solid var(--success);
-  border-radius: 8px;
-  font-size: 0.85em;
-  color: var(--success);
-  font-weight: 600;
-}
-
-.blockedWarning {
-  color: var(--danger);
-  font-weight: 700;
+  border-color: rgba(249,115,22,0.2);
 }
 
 /* ===================== BOOKING SUMMARY ===================== */
@@ -644,6 +675,11 @@
   to { transform: rotate(360deg); }
 }
 
+/* ===================== AVAILABILITY SECTION ===================== */
+.availabilitySection {
+  margin-bottom: 2.5rem;
+}
+
 /* ===================== RESPONSIVE ===================== */
 @media (max-width: 968px) {
   .bookingGrid { grid-template-columns: 1fr; }
@@ -662,6 +698,13 @@
     border: none; 
     border-top: 2px solid var(--border); 
     padding: 10px 0; 
+  }
+  
+  /* ✅ Mobile calendar fix */
+  .calDropdown {
+    left: -1rem;
+    right: -1rem;
+    width: auto;
   }
 }
 

@@ -20,7 +20,7 @@ const expireCompletedBookings = async () => {
     booking.status = "COMPLETED";
     await booking.save();
 
-    // ✅ Release dataset locks on expiry
+    //  Release dataset locks on expiry
     await DatasetLock.update(
       { status: "EXPIRED", released_at: now },
       { where: { booking_id: booking.booking_id, status: "ACTIVE" } }
@@ -53,7 +53,7 @@ const expireUnpaidBookings = async () => {
 };
 
 // ─── 3. Enforce 4-day continuous access window ────────────────────────────────
-// ✅ NEW – suspends access after 96 continuous hours even if calendar days remain
+//  NEW – suspends access after 96 continuous hours even if calendar days remain
 const enforceContinuousAccessLimit = async () => {
   const cutoff = new Date(Date.now() - MAX_CONTINUOUS_ACCESS_HOURS * 60 * 60 * 1000);
 
@@ -69,7 +69,7 @@ const enforceContinuousAccessLimit = async () => {
     booking.access_suspended = true;
     await booking.save();
 
-    // ✅ Release dataset locks when access window closes
+    //  Release dataset locks when access window closes
     await DatasetLock.update(
       { status: "EXPIRED", released_at: new Date() },
       { where: { booking_id: booking.booking_id, status: "ACTIVE" } }
@@ -85,7 +85,7 @@ const enforceContinuousAccessLimit = async () => {
 };
 
 // ─── 4. Release expired dataset locks (safety net) ───────────────────────────
-// ✅ NEW – catches any locks whose expires_at passed but status wasn't updated
+//  NEW – catches any locks whose expires_at passed but status wasn't updated
 const releaseExpiredLocks = async () => {
   const [updated] = await DatasetLock.update(
     { status: "EXPIRED", released_at: new Date() },
@@ -112,8 +112,8 @@ export const startBookingExpiryCron = () => {
       const [completed, unpaid, suspended, locks] = await Promise.all([
         expireCompletedBookings(),
         expireUnpaidBookings(),
-        enforceContinuousAccessLimit(),   // ✅ NEW
-        releaseExpiredLocks(),            // ✅ NEW
+        enforceContinuousAccessLimit(),
+        releaseExpiredLocks(),
       ]);
 
       if (completed || unpaid || suspended || locks) {
@@ -124,9 +124,9 @@ export const startBookingExpiryCron = () => {
         );
       }
     } catch (err) {
-      console.error("❌ Booking expiry cron error:", err);
+      console.error(" Booking expiry cron error:", err);
     }
   });
 
-  console.log("✅ Booking expiry cron started");
+  console.log(" Booking expiry cron started");
 };

@@ -33,7 +33,7 @@ export const registerUser = async (req, res) => {
       is_active: true
     });
 
-    console.log('✅ Registration saved:', registration.id);
+    console.log(' Registration saved:', registration.id);
 
     res.json({
       success: true,
@@ -42,7 +42,7 @@ export const registerUser = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Registration error:', error);
+    console.error(' Registration error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to submit registration',

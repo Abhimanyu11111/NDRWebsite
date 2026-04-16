@@ -43,6 +43,20 @@ const Room = sequelize.define(
       defaultValue: 0,
     },
 
+    // ✅ NEW FIELDS
+    license_type: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: 'License software type (DSG/Petrel/etc)'
+    },
+
+    room_type: {
+      type: DataTypes.ENUM('OALP', 'DSF', 'CBM', 'GENERAL'),
+      allowNull: false,
+      defaultValue: 'GENERAL',
+      comment: 'Type of data room'
+    },
+
     is_active: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

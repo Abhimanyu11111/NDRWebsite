@@ -99,7 +99,7 @@ const Home2 = () => {
             </div>
 
             <div className={styles.right}>
-              <img src={hero_img} alt="NDR" />
+              {/* <img src={hero_img} alt="NDR" /> */}
             </div>
           </section>
         </div>

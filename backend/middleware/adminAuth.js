@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 
-// ✅ Admin verification
+//Admin verification
 export const verifyAdmin = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
@@ -16,7 +16,7 @@ export const verifyAdmin = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // ✅ FIXED - Check for ADMIN role (uppercase)
+    //  Check for ADMIN role (uppercase)
     if (decoded.role !== "ADMIN") {
       return res.status(403).json({ 
         success: false,
@@ -34,7 +34,7 @@ export const verifyAdmin = (req, res, next) => {
   }
 };
 
-// ✅ User authentication (for regular users)
+// User authentication (for regular users)
 export const authenticateToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
 

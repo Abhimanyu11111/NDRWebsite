@@ -1,8 +1,5 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../src/config/db.js";
-import User from "./User.js";
-import Room from "./Slot.js";
-
 const Booking = sequelize.define(
   "Booking",
   {
@@ -29,16 +26,9 @@ const Booking = sequelize.define(
     },
 
     booking_type: {
-      type: DataTypes.ENUM("HOURLY", "HALF_DAY", "FULL_DAY", "MULTI_DAY"),
+      type: DataTypes.ENUM("FULL_DAY", "MULTI_DAY"),  // ✅ UPDATED: Removed HOURLY, HALF_DAY, ONE_WEEK
       allowNull: false,
       defaultValue: "FULL_DAY",
-    },
-
-    //  NEW – AM or PM for HALF_DAY bookings
-    half_day_slot: {
-      type: DataTypes.ENUM("AM", "PM"),
-      allowNull: true,
-      comment: "Required when booking_type = HALF_DAY",
     },
 
     /* Slot-based core fields */
@@ -63,14 +53,12 @@ const Booking = sequelize.define(
     start_time: { type: DataTypes.TIME,     allowNull: true },
     end_time:   { type: DataTypes.TIME,     allowNull: true },
 
-    //  Working days – auto-calculated on create/update
     working_days: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 1,
     },
 
-    //  NEW – surcharge for working days beyond free limit
     working_day_surcharge: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
@@ -78,10 +66,45 @@ const Booking = sequelize.define(
       comment: "Extra charge when working days exceed MAX_FREE_WORKING_DAYS",
     },
 
+    // ✅ NEW FIELDS
+    license_type: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: "Selected license type (DSG/Petrel/etc)"
+    },
+
+    room_type: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      comment: "Room type at booking time"
+    },
+
+    block_name: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: "Designated block/area for data access"
+    },
+
     data_catalogue: {
       type: DataTypes.JSON,
       allowNull: true,
       comment: "Selected dataset IDs (array)",
+    },
+
+    // ✅ UPDATED: Separate fields for better querying
+    data_category: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+
+    data_subcategory: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+
+    data_requirements: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
 
     room_price: {
@@ -113,7 +136,6 @@ const Booking = sequelize.define(
       allowNull: true,
     },
 
-    //  NEW – payment tracking fields
     payment_status: {
       type: DataTypes.ENUM("PENDING", "SUCCESS", "FAILED", "REFUNDED"),
       allowNull: false,
@@ -125,14 +147,12 @@ const Booking = sequelize.define(
       allowNull: true,
     },
 
-    //  NEW – dataset locked flag (set after payment success)
     dataset_locked: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
     },
 
-    //  NEW – 4-day continuous access tracking
     first_accessed_at: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -155,7 +175,7 @@ const Booking = sequelize.define(
     is_blocked: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: true,
+      defaultValue: false,
     },
   },
   {
@@ -165,9 +185,5 @@ const Booking = sequelize.define(
     updatedAt: "updated_at",
   }
 );
-
-/* Relations */
-// Booking.belongsTo(User, { foreignKey: "user_id", as: "user" });
-// Booking.belongsTo(Room, { foreignKey: "room_id", as: "room" });
 
 export default Booking;

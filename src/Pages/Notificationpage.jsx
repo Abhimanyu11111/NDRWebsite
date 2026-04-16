@@ -113,7 +113,7 @@ export default function NotificationsPage() {
     const markRead = async (id) => {
         try {
             setActionLoading((p) => ({ ...p, [id]: "read" }));
-            await api.patch(`/admin/notifications/${id}/read`);
+            await api.patch(`/admin/dashboard/notifications/${id}/read`);
             setNotifications((prev) =>
                 prev.map((n) => n.id === id ? { ...n, is_read: true } : n)
             );
@@ -128,7 +128,7 @@ export default function NotificationsPage() {
     const markUnread = async (id) => {
         try {
             setActionLoading((p) => ({ ...p, [id]: "unread" }));
-            await api.patch(`/admin/notifications/${id}/unread`);
+            await api.patch(`/admin/dashboard/notifications/${id}/unread`);
             setNotifications((prev) =>
                 prev.map((n) => n.id === id ? { ...n, is_read: false } : n)
             );
@@ -145,7 +145,7 @@ export default function NotificationsPage() {
 
         try {
             setActionLoading((p) => ({ ...p, [id]: "delete" }));
-            await api.delete(`/admin/notifications/${id}`);
+            await api.delete(`/admin/dashboard/notifications/${id}`);
             setNotifications((prev) => prev.filter((n) => n.id !== id));
             setSelectedNotifs((prev) => {
                 const next = new Set(prev);
@@ -162,7 +162,7 @@ export default function NotificationsPage() {
 
     const markAllRead = async () => {
         try {
-            await api.patch("/admin/notifications/read-all");
+            await api.patch("/admin/dashboard/notifications/read-all");
             setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
             setSuccessMsg("All notifications marked as read");
         } catch (err) {

@@ -60,7 +60,7 @@ export const requireRoomAccess = async (req, res, next) => {
         status:         "CONFIRMED",
         start_datetime: { [Op.lte]: new Date() },
         end_datetime:   { [Op.gte]: new Date() },
-        access_suspended: false,  // ✅ 4-day window check
+        access_suspended: false,  // 4-day window check
       },
     });
 
@@ -70,7 +70,7 @@ export const requireRoomAccess = async (req, res, next) => {
       return res.status(403).json({ success: false, message: "No active booking for this room." });
     }
 
-    // ✅ Record first access time (starts the 4-day continuous access clock)
+    //  Record first access time (starts the 4-day continuous access clock)
     if (!booking.first_accessed_at) {
       booking.first_accessed_at = new Date();
       await booking.save();
@@ -109,7 +109,7 @@ export const requireDatasetAccess = async (req, res, next) => {
   }
 
   try {
-    // ✅ Must have an ACTIVE lock (not just booking_datasets entry)
+    // Must have an ACTIVE lock (not just booking_datasets entry)
     const lock = await DatasetLock.findOne({
       where: {
         dataset_id: datasetId,
@@ -182,7 +182,7 @@ export const requireBookingOwnership = async (req, res, next) => {
  * Checks room access and optionally dataset access in one call.
  */
 const bookingAccess = async (req, res, next) => {
-  // ✅ Admin bypass
+  // Admin bypass
   if (req.user?.role === "admin" || req.user?.role === "superadmin") return next();
 
   const userId    = req.user?.id;
@@ -194,7 +194,7 @@ const bookingAccess = async (req, res, next) => {
   }
 
   try {
-    // ✅ Room-level check
+    // Room-level check
     const activeBooking = await Booking.findOne({
       where: {
         user_id:          userId,
@@ -210,7 +210,7 @@ const bookingAccess = async (req, res, next) => {
       return res.status(403).json({ success: false, message: "No active booking for this room." });
     }
 
-    // ✅ Dataset-level check (only if dataset_id is present)
+    // Dataset-level check (only if dataset_id is present)
     if (datasetId) {
       const lock = await DatasetLock.findOne({
         where: {
@@ -228,7 +228,7 @@ const bookingAccess = async (req, res, next) => {
       req.datasetLock = lock;
     }
 
-    // ✅ First access timestamp (starts 4-day clock)
+    //  First access timestamp (starts 4-day clock)
     if (!activeBooking.first_accessed_at) {
       activeBooking.first_accessed_at = new Date();
       await activeBooking.save();

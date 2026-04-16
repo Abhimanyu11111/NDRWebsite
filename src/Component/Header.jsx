@@ -83,7 +83,7 @@ const Header = () => {
             <Link to="/about">About NDR</Link>
 
             {/* Pages Dropdown */}
-            <div className={styles.dropdown}>
+            {/* <div className={styles.dropdown}>
               <span>Pages ▾</span>
               <div className={styles.dropdownContent}>
                 <Link to="/objective">Objective</Link>
@@ -92,10 +92,10 @@ const Header = () => {
                 <Link to="/policies">Policies</Link>
                 <Link to="/sedimentaryBasins">Sedimentary Basins</Link>
               </div>
-            </div>
+            </div> */}
 
             {/* Important Links Dropdown */}
-            <div className={styles.dropdown}>
+            {/* <div className={styles.dropdown}>
               <span>Important Links ▾</span>
               <div className={styles.dropdownContent}>
                 <a
@@ -141,10 +141,10 @@ const Header = () => {
                   Directorate General Of Mines Safety
                 </a>
               </div>
-            </div>
+            </div> */}
 
             {/* Download Dropdown */}
-            <div className={styles.dropdown}>
+            {/* <div className={styles.dropdown}>
               <span>Download ▾</span>
               <div className={styles.dropdownContent}>
                 <a
@@ -155,11 +155,13 @@ const Header = () => {
                   Data Price List & Policies
                 </a>
               </div>
-            </div>
-
+            </div> */}
+             <Link to="/objective">Objective</Link>
              <Link to="/book-vdr">VDR-Booking</Link>
 
-            <Link to="/contact">Contact</Link>
+            <Link to="/contact">Contact Us</Link>
+            <Link to="/policies">Policies</Link>
+             <Link to="/DownloadDataPriceListPolicies">Download Data Price List Policies</Link>
           </nav>
 
           {/* Search + Auth */}
@@ -182,7 +184,7 @@ const Header = () => {
               Log in
             </a>
 
-            <Link to="/registration" className={styles.registerBtn}>
+            <Link to="/Register" className={styles.registerBtn}>
               Register
             </Link>
           </div>

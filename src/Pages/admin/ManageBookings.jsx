@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Calendar, CheckCircle, Clock, XCircle, Search, Filter, Eye } from "lucide-react";
 import AdminNavbar from "/src/Component/AdminNavbar";
 import api from "../../api/axiosClient";
@@ -9,16 +9,21 @@ export default function ManageBookings() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [yearFilter, setYearFilter] = useState("All");
+  const [monthFilter, setMonthFilter] = useState("All");
+  const [roomTypeFilter, setRoomTypeFilter] = useState("All");
+  const [licenseTypeFilter, setLicenseTypeFilter] = useState("All");
+  const [priceSort, setPriceSort] = useState("None");
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        // ✅ FIX – correct URL
+        // correct URL
         const res = await api.get("/admin/dashboard/bookings");
         const data = res.data;
 
-        // ✅ FIX – handle both array and { bookings: [] } shape
+        //  handle both array and { bookings: [] } shape
         if (Array.isArray(data)) {
           setBookings(data);
         } else if (data?.bookings && Array.isArray(data.bookings)) {
@@ -38,15 +43,38 @@ export default function ManageBookings() {
     fetchBookings();
   }, []);
 
-  const filteredBookings = bookings.filter((b) => {
-    const matchesSearch =
-      b.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.userEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.userPhone?.includes(searchTerm) ||
-      b.booking_id?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "All" || b.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const availableYears = useMemo(() => {
+    const years = new Set(
+      bookings.map((b) => b.start_datetime ? new Date(b.start_datetime).getFullYear() : null).filter(Boolean)
+    );
+    return Array.from(years).sort((a, b) => b - a);
+  }, [bookings]);
+
+  const availableLicenseTypes = useMemo(() => {
+    const types = new Set(bookings.map((b) => b.license_type).filter(Boolean));
+    return Array.from(types).sort();
+  }, [bookings]);
+
+  const filteredBookings = useMemo(() => {
+    let result = bookings.filter((b) => {
+      const matchesSearch =
+        b.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        b.userEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        b.userPhone?.includes(searchTerm) ||
+        b.booking_id?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === "All" || b.status === statusFilter;
+      const year = b.start_datetime ? new Date(b.start_datetime).getFullYear() : null;
+      const month = b.start_datetime ? new Date(b.start_datetime).getMonth() + 1 : null;
+      const matchesYear = yearFilter === "All" || String(year) === yearFilter;
+      const matchesMonth = monthFilter === "All" || String(month) === monthFilter;
+      const matchesRoomType = roomTypeFilter === "All" || b.room_type === roomTypeFilter;
+      const matchesLicense = licenseTypeFilter === "All" || b.license_type === licenseTypeFilter;
+      return matchesSearch && matchesStatus && matchesYear && matchesMonth && matchesRoomType && matchesLicense;
+    });
+    if (priceSort === "Low") result = [...result].sort((a, b) => Number(a.total_price || 0) - Number(b.total_price || 0));
+    if (priceSort === "High") result = [...result].sort((a, b) => Number(b.total_price || 0) - Number(a.total_price || 0));
+    return result;
+  }, [bookings, searchTerm, statusFilter, yearFilter, monthFilter, roomTypeFilter, licenseTypeFilter, priceSort]);
 
   if (loading) {
     return (
@@ -117,7 +145,7 @@ export default function ManageBookings() {
                   Filter by Status
                 </label>
                 <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={selectInput}>
-                  <option>All</option>
+                  <option value="All">All Statuses</option>
                   <option value="CONFIRMED">CONFIRMED</option>
                   <option value="PENDING">PENDING</option>
                   <option value="CANCELLED">CANCELLED</option>
@@ -125,23 +153,112 @@ export default function ManageBookings() {
                   <option value="EXPIRED">EXPIRED</option>
                 </select>
               </div>
+
+              <div style={filterGroup}>
+                <label style={filterLabel}>
+                  <Filter size={16} strokeWidth={2.5} style={{ marginRight: "6px" }} />
+                  Room Type
+                </label>
+                <select value={roomTypeFilter} onChange={(e) => setRoomTypeFilter(e.target.value)} style={selectInput}>
+                  <option value="All">All Room Types</option>
+                  <option value="OALP">OALP</option>
+                  <option value="DSF">DSF</option>
+                  <option value="CBM">CBM</option>
+                  <option value="GENERAL">GENERAL</option>
+                </select>
+              </div>
+
+              <div style={filterGroup}>
+                <label style={filterLabel}>
+                  <Filter size={16} strokeWidth={2.5} style={{ marginRight: "6px" }} />
+                  License Type
+                </label>
+                <select value={licenseTypeFilter} onChange={(e) => setLicenseTypeFilter(e.target.value)} style={selectInput}>
+                  <option value="All">All License Types</option>
+                  {availableLicenseTypes.map((lt) => (
+                    <option key={lt} value={lt}>{lt}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={filterGroup}>
+                <label style={filterLabel}>
+                  <Filter size={16} strokeWidth={2.5} style={{ marginRight: "6px" }} />
+                  Filter by Year
+                </label>
+                <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} style={selectInput}>
+                  <option value="All">All Years</option>
+                  {availableYears.map((y) => (
+                    <option key={y} value={String(y)}>{y}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={filterGroup}>
+                <label style={filterLabel}>
+                  <Filter size={16} strokeWidth={2.5} style={{ marginRight: "6px" }} />
+                  Filter by Month
+                </label>
+                <select value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} style={selectInput}>
+                  <option value="All">All Months</option>
+                  <option value="1">January</option>
+                  <option value="2">February</option>
+                  <option value="3">March</option>
+                  <option value="4">April</option>
+                  <option value="5">May</option>
+                  <option value="6">June</option>
+                  <option value="7">July</option>
+                  <option value="8">August</option>
+                  <option value="9">September</option>
+                  <option value="10">October</option>
+                  <option value="11">November</option>
+                  <option value="12">December</option>
+                </select> 
+              </div>
+
+              <div style={filterGroup}>
+                <label style={filterLabel}>
+                  <Filter size={16} strokeWidth={2.5} style={{ marginRight: "6px" }} />
+                  Sort by Price
+                </label>
+                <select value={priceSort} onChange={(e) => setPriceSort(e.target.value)} style={selectInput}>
+                  <option value="None">Default Order</option>
+                  <option value="Low">Price: Low to High</option>
+                  <option value="High">Price: High to Low</option>
+                </select>
+              </div>
             </div>
 
-            {(searchTerm || statusFilter !== "All") && (
+            {(searchTerm || statusFilter !== "All" || yearFilter !== "All" || monthFilter !== "All" || roomTypeFilter !== "All" || licenseTypeFilter !== "All" || priceSort !== "None") && (
               <div style={activeFilters}>
                 <span style={activeFilterText}>Active Filters:</span>
                 {searchTerm && (
-                  <span style={filterTag}>
-                    Search: "{searchTerm}"
-                    <button onClick={() => setSearchTerm("")} style={removeFilter}><XCircle size={14} /></button>
-                  </span>
+                  <span style={filterTag}>Search: "{searchTerm}" <button onClick={() => setSearchTerm("")} style={removeFilter}><XCircle size={14} /></button></span>
                 )}
                 {statusFilter !== "All" && (
-                  <span style={filterTag}>
-                    Status: {statusFilter}
-                    <button onClick={() => setStatusFilter("All")} style={removeFilter}><XCircle size={14} /></button>
-                  </span>
+                  <span style={filterTag}>Status: {statusFilter} <button onClick={() => setStatusFilter("All")} style={removeFilter}><XCircle size={14} /></button></span>
                 )}
+                {roomTypeFilter !== "All" && (
+                  <span style={filterTag}>Room: {roomTypeFilter} <button onClick={() => setRoomTypeFilter("All")} style={removeFilter}><XCircle size={14} /></button></span>
+                )}
+                {licenseTypeFilter !== "All" && (
+                  <span style={filterTag}>License: {licenseTypeFilter} <button onClick={() => setLicenseTypeFilter("All")} style={removeFilter}><XCircle size={14} /></button></span>
+                )}
+                {yearFilter !== "All" && (
+                  <span style={filterTag}>Year: {yearFilter} <button onClick={() => setYearFilter("All")} style={removeFilter}><XCircle size={14} /></button></span>
+                )}
+                {monthFilter !== "All" && (
+                  <span style={filterTag}>Month: {["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(monthFilter)]} <button onClick={() => setMonthFilter("All")} style={removeFilter}><XCircle size={14} /></button></span>
+                )}
+                {priceSort !== "None" && (
+                  <span style={filterTag}>Price: {priceSort === "Low" ? "Low→High" : "High→Low"} <button onClick={() => setPriceSort("None")} style={removeFilter}><XCircle size={14} /></button></span>
+                )}
+                <button
+                  onClick={() => { setSearchTerm(""); setStatusFilter("All"); setYearFilter("All"); setMonthFilter("All"); setRoomTypeFilter("All"); setLicenseTypeFilter("All"); setPriceSort("None"); }}
+                  style={{ ...removeFilter, color: "#dc2626", fontSize: 13, fontWeight: 600, padding: "4px 8px" }}
+                >
+                  Clear All
+                </button>
               </div>
             )}
           </div>
@@ -153,12 +270,12 @@ export default function ManageBookings() {
                 <Calendar size={64} strokeWidth={1.5} style={{ color: "#94a3b8", marginBottom: "16px" }} />
                 <h3 style={emptyTitle}>No bookings found</h3>
                 <p style={emptyText}>
-                  {searchTerm || statusFilter !== "All"
+                  {(searchTerm || statusFilter !== "All" || yearFilter !== "All" || monthFilter !== "All" || roomTypeFilter !== "All" || licenseTypeFilter !== "All" || priceSort !== "None")
                     ? "Try adjusting your search or filter criteria"
                     : "No bookings have been made yet"}
                 </p>
-                {(searchTerm || statusFilter !== "All") && (
-                  <button onClick={() => { setSearchTerm(""); setStatusFilter("All"); }} style={clearFiltersButton}>
+                {(searchTerm || statusFilter !== "All" || yearFilter !== "All" || monthFilter !== "All" || roomTypeFilter !== "All" || licenseTypeFilter !== "All" || priceSort !== "None") && (
+                  <button onClick={() => { setSearchTerm(""); setStatusFilter("All"); setYearFilter("All"); setMonthFilter("All"); setRoomTypeFilter("All"); setLicenseTypeFilter("All"); setPriceSort("None"); }} style={clearFiltersButton}>
                     Clear All Filters
                   </button>
                 )}

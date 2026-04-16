@@ -2,7 +2,7 @@ import sequelize from "../src/config/db.js";
 import Payment from "../models/Payment.js";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
-import Room from "../models/Slot.js";
+import Room from "../models/Room.js";
 import { encrypt, decrypt } from "../utils/ccavenue.js";
 import qs from "querystring";
 import { generateInvoicePDF } from "../utils/invoiceGenerator.js";
@@ -11,7 +11,7 @@ import { confirmBookingAfterPayment } from "./bookingController.js";
 // ─── Constants ────────────────────────────────────────────────────────────────
 const MAX_PAYMENT_RETRIES = 3;
 
-// ✅ Production vs sandbox gateway URL
+//  Production vs sandbox gateway URL
 const CCAVENUE_URL =
   process.env.NODE_ENV === "production"
     ? "https://secure.ccavenue.com/transaction/transaction.do?command=initiateTransaction"
@@ -32,12 +32,12 @@ export const initiatePayment = async (req, res) => {
       return res.status(404).json({ success: false, message: "Booking not found or unauthorized" });
     }
 
-    // ✅ Already paid guard
+    //  Already paid guard
     if (booking.payment_status === "SUCCESS") {
       return res.status(400).json({ success: false, message: "This booking is already paid" });
     }
 
-    // ✅ Cannot pay for cancelled/expired booking
+    //  Cannot pay for cancelled/expired booking
     if (["CANCELLED", "COMPLETED", "EXPIRED"].includes(booking.status)) {
       return res.status(400).json({
         success: false,
@@ -45,7 +45,7 @@ export const initiatePayment = async (req, res) => {
       });
     }
 
-    // ✅ Check retry limit – don't allow payment if already failed too many times
+    //Check retry limit – don't allow payment if already failed too many times
     const failedAttempts = await Payment.count({
       where: { booking_id, status: "FAILED" },
     });
@@ -58,7 +58,7 @@ export const initiatePayment = async (req, res) => {
     }
 
     const user    = await User.findByPk(userId);
-    // ✅ Use server-computed amount – NEVER trust client-sent amount
+    // use server-computed amount – NEVER trust client-sent amount
     const amount  = parseFloat(booking.total_price);
     const orderId = `ORD_${Date.now()}_${booking_id}`;
 
@@ -75,7 +75,7 @@ export const initiatePayment = async (req, res) => {
       merchant_id:      process.env.CCAVENUE_MERCHANT_ID,
       order_id:         orderId,
       currency:         "INR",
-      amount:           amount.toFixed(2),   // ✅ Server-computed, not client
+      amount:           amount.toFixed(2),   //Server-computed, not client
       redirect_url:     process.env.CCAVENUE_REDIRECT_URL,
       cancel_url:       process.env.CCAVENUE_CANCEL_URL,
       language:         "EN",
@@ -91,7 +91,7 @@ export const initiatePayment = async (req, res) => {
       delivery_tel:     user.phone || "",
       merchant_param1:  booking_id,  // passed back in callback
       merchant_param2:  String(userId),
-      // ✅ Store expected amount in merchant_param3 for callback verification
+      // Store expected amount in merchant_param3 for callback verification
       merchant_param3:  amount.toFixed(2),
     };
 
@@ -101,7 +101,7 @@ export const initiatePayment = async (req, res) => {
       success:     true,
       encRequest:  encryptedData,
       accessCode:  process.env.CCAVENUE_ACCESS_CODE,
-      paymentUrl:  CCAVENUE_URL,   // ✅ Auto-switches prod/sandbox
+      paymentUrl:  CCAVENUE_URL,   // Auto-switches prod/sandbox
     });
   } catch (error) {
     console.error("Payment initiation error:", error);
@@ -111,7 +111,7 @@ export const initiatePayment = async (req, res) => {
 
 // ─── PAYMENT CALLBACK ─────────────────────────────────────────────────────────
 export const paymentResponse = async (req, res) => {
-  // ✅ Wrap in DB transaction – payment record + booking update + dataset lock = atomic
+  // Wrap in DB transaction – payment record + booking update + dataset lock = atomic
   const t = await sequelize.transaction();
 
   try {
@@ -124,7 +124,7 @@ export const paymentResponse = async (req, res) => {
     const decrypted    = decrypt(encryptedResponse, process.env.CCAVENUE_WORKING_KEY);
     const responseData = qs.parse(decrypted);
 
-    // ✅ Duplicate callback protection – check if this order was already processed
+    // Duplicate callback protection – check if this order was already processed
     const existingPayment = await Payment.findOne({
       where: { order_id: responseData.order_id },
       transaction: t,
@@ -137,7 +137,7 @@ export const paymentResponse = async (req, res) => {
       return res.redirect(`${process.env.FRONTEND_URL}/payment-failure?error=payment_not_found`);
     }
 
-    // ✅ Idempotency – already processed, redirect safely
+    // Idempotency – already processed, redirect safely
     if (existingPayment.status === "SUCCESS") {
       await t.rollback();
       return res.redirect(
@@ -147,7 +147,7 @@ export const paymentResponse = async (req, res) => {
 
     const bookingId = responseData.merchant_param1 || existingPayment.booking_id;
 
-    // ✅ Amount verification – compare server-stored vs gateway-reported amount
+    // Amount verification – compare server-stored vs gateway-reported amount
     const expectedAmount = parseFloat(responseData.merchant_param3 || 0);
     const reportedAmount = parseFloat(responseData.amount || 0);
 
@@ -168,7 +168,7 @@ export const paymentResponse = async (req, res) => {
       existingPayment.ccavenue_response  = decrypted;
       await existingPayment.save({ transaction: t });
 
-      // ✅ Confirm booking + lock datasets (single atomic operation)
+      // Confirm booking + lock datasets (single atomic operation)
       const booking = await confirmBookingAfterPayment(bookingId, t);
 
       // Update payment_id on booking
@@ -211,21 +211,21 @@ export const paymentResponse = async (req, res) => {
     existingPayment.ccavenue_response  = decrypted;
     await existingPayment.save({ transaction: t });
 
-    // ✅ Count total failures for this booking
+    //Count total failures for this booking
     const failCount = await Payment.count({
       where: { booking_id: bookingId, status: "FAILED" },
       transaction: t,
     });
 
     if (failCount >= MAX_PAYMENT_RETRIES) {
-      // ✅ Cancel only after max retries – not on first failure
+      // Cancel only after max retries – not on first failure
       await Booking.update(
         { status: "CANCELLED", payment_status: "FAILED" },
         { where: { booking_id: bookingId }, transaction: t }
       );
       console.log(`Booking ${bookingId} cancelled after ${failCount} failed payment attempts.`);
     } else {
-      // ✅ Keep PENDING – allow retry
+      // Keep PENDING – allow retry
       await Booking.update(
         { payment_status: "FAILED" },
         { where: { booking_id: bookingId }, transaction: t }
@@ -249,7 +249,7 @@ export const paymentResponse = async (req, res) => {
 };
 
 // ─── RETRY PAYMENT ────────────────────────────────────────────────────────────
-// ✅ NEW – explicit retry endpoint; same logic as initiate
+// NEW – explicit retry endpoint; same logic as initiate
 export const retryPayment = async (req, res) => {
   return initiatePayment(req, res);
 };

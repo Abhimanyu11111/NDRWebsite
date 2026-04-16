@@ -1,6 +1,6 @@
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
-import Room from "../models/Slot.js";
+import Room from "../models/Room.js";
 import Payment from "../models/Payment.js";
 import Notification from "../models/Notification.js";
 import DatasetLock from "../models/DatasetLock.js";
@@ -86,6 +86,9 @@ export const getDashboardCounts = async (req, res) => {
       total_price:           b.total_price,
       payment_status:        b.payment_status,
       status:                b.status,
+      license_type:          b.license_type,
+      room_type:             b.room_type,
+      block_name:            b.block_name,
       created_at:            b.created_at,
     }));
 
@@ -186,6 +189,41 @@ export const markNotificationRead = async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error("Mark read error:", err);
+    res.status(500).json({ success: false, message: "Failed to update notification" });
+  }
+};
+
+/* =====================================================
+   DELETE /admin/notifications/:id
+===================================================== */
+export const deleteNotification = async (req, res) => {
+  try {
+    const notif = await Notification.findByPk(req.params.id);
+    if (!notif) return res.status(404).json({ success: false, message: "Notification not found" });
+
+    await notif.destroy();
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Delete notification error:", err);
+    res.status(500).json({ success: false, message: "Failed to delete notification" });
+  }
+};
+
+/* =====================================================
+   PATCH /admin/notifications/:id/unread
+===================================================== */
+export const markNotificationUnread = async (req, res) => {
+  try {
+    const notif = await Notification.findByPk(req.params.id);
+    if (!notif) return res.status(404).json({ success: false, message: "Notification not found" });
+
+    notif.is_read = false;
+    await notif.save();
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Mark unread error:", err);
     res.status(500).json({ success: false, message: "Failed to update notification" });
   }
 };
@@ -371,6 +409,8 @@ export const getAdminBookings = async (req, res) => {
         weekend_notice:        b.weekend_notice,
         status:                b.status,
         payment_status:        b.payment_status,
+        room_type:             b.room_type,
+        license_type:          b.license_type,
         created_at:            b.created_at,
       })),
       pagination: { total: count, page: parseInt(page), limit: parseInt(limit) },

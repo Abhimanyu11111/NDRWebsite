@@ -1,7 +1,7 @@
 // models/associations.js
 import User from './User.js';
 import Booking from './Booking.js';
-import Slot from './Slot.js';
+import Room from './Room.js';
 import Payment from './Payment.js';
 import DatasetLock from './DatasetLock.js';
 import Notification from './Notification.js';
@@ -32,7 +32,7 @@ Booking.belongsTo(User, {
   as: "user"
 });
 
-Booking.belongsTo(Slot, {
+Booking.belongsTo(Room, {
   foreignKey: "room_id",
   as: "room"
 });
@@ -46,7 +46,7 @@ Booking.hasMany(DatasetLock, {
 // ==========================================
 // SLOT (ROOM) ASSOCIATIONS
 // ==========================================
-Slot.hasMany(Booking, {
+Room.hasMany(Booking, {
   foreignKey: "room_id",
   as: "bookings"
 });
@@ -86,7 +86,7 @@ Notification.belongsTo(User, {
 export {
   User,
   Booking,
-  Slot,
+  Room,
   Payment,
   DatasetLock,
   Notification

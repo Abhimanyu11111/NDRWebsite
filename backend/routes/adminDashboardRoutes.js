@@ -3,7 +3,9 @@ import {
   getDashboardCounts,
   getAdminNotifications,
   markNotificationRead,
+  markNotificationUnread,
   markAllNotificationsRead,
+  deleteNotification,
   getAdminBookings,
   updateBookingStatus,
   getAdminPayments,
@@ -26,6 +28,8 @@ router.get("/counts", getDashboardCounts);
 router.get("/notifications", getAdminNotifications);
 router.patch("/notifications/read-all", markAllNotificationsRead);
 router.patch("/notifications/:id/read", markNotificationRead);
+router.patch("/notifications/:id/unread", markNotificationUnread);
+router.delete("/notifications/:id", deleteNotification);
 
 // Bookings
 router.get("/bookings", getAdminBookings);

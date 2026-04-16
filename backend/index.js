@@ -22,6 +22,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import paymentRoutes from './routes/paymentRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import registrationRoutes from './routes/registrationRoutes.js';
+import blockRoutes from './routes/blockRoutes.js'; // 👈 NEW IMPORT
 
 const app = express();
 
@@ -46,7 +47,9 @@ app.use("/api/admin/slots", slotAdminRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
 app.use("/api", userAdminRoutes);
 app.use('/api/user', userRoutes);
-app.use('/api/register', registrationRoutes); 
+app.use('/api/register', registrationRoutes);
+app.use('/api/blocks', blockRoutes); // 👈 NEW ROUTE
+
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
@@ -62,7 +65,7 @@ const startServer = async () => {
     console.log("✅ Booking expiry cron started");
 
     app.listen(PORT, () => {
-      console.log(`✅ Server running on http://localhost:${PORT}`);
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
     });
   } catch (error) {
     console.error("❌ Unable to start server:", error);
