@@ -16,10 +16,12 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      const isAdmin = localStorage.getItem("admin");
       localStorage.removeItem("token");
       localStorage.removeItem("refreshToken");
+      localStorage.removeItem("admin");
       sessionStorage.clear();
-      window.location.href = "/login";
+      window.location.href = isAdmin ? "/admin/login" : "/Login";
     }
     return Promise.reject(error);
   }

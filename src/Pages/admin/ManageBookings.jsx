@@ -292,6 +292,7 @@ export default function ManageBookings() {
                         <th style={tableHeader}>Type</th>
                         <th style={tableHeader}>Check-in</th>
                         <th style={tableHeader}>Check-out</th>
+                        <th style={tableHeader}>Days</th>
                         <th style={tableHeader}>Amount</th>
                         <th style={tableHeader}>Status</th>
                         <th style={tableHeader}>Actions</th>
@@ -378,6 +379,17 @@ function BookingRow({ booking, navigate, isEven }) {
       </td>
       <td style={tableCell}><span style={{ fontSize: 13, color: "#475569" }}>{booking.start_datetime ? new Date(booking.start_datetime).toLocaleDateString("en-IN") : "—"}</span></td>
       <td style={tableCell}><span style={{ fontSize: 13, color: "#475569" }}>{booking.end_datetime ? new Date(booking.end_datetime).toLocaleDateString("en-IN") : "—"}</span></td>
+      <td style={tableCell}>
+        {booking.start_datetime && booking.end_datetime ? (() => {
+          const rawDays = Math.round((new Date(booking.end_datetime) - new Date(booking.start_datetime)) / (1000 * 60 * 60 * 24));
+          const days = booking.booking_type === "FULL_DAY" ? rawDays : rawDays + 1;
+          return (
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", background: "#3b82f6", borderRadius: 20, padding: "3px 10px" }}>
+              {days} {days === 1 ? "Day" : "Days"}
+            </span>
+          );
+        })() : <span style={{ fontSize: 13, color: "#94a3b8" }}>—</span>}
+      </td>
       <td style={tableCell}>
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>₹{Number(booking.total_price || 0).toLocaleString("en-IN")}</span>

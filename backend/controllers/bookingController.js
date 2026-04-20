@@ -391,7 +391,7 @@ export const getAdminBookingDetails = async (req, res) => {
           required: false,
         },
       ],
-      order: [[{ model: DatasetLock, as: "datasetLocks" }, "locked_at", "DESC"]],
+      order: [["created_at", "DESC"]],
     });
 
     if (!booking) {

@@ -244,11 +244,26 @@ export default function BookVDR() {
   useEffect(() => {
     const fetchRooms = async () => {
       const res = await axios.get("/rooms");
-      setRooms(res.data.rooms || []);
-      if (res.data.rooms?.length) setRoomId(res.data.rooms[0].id);
+      const fetchedRooms = res.data.rooms || [];
+      setRooms(fetchedRooms);
+      if (fetchedRooms.length) {
+        setRoomId(fetchedRooms[0].id);
+        if (fetchedRooms[0].license_type) {
+          setLicenseType(fetchedRooms[0].license_type);
+        }
+      }
     };
     fetchRooms();
   }, []);
+
+  /* --- Auto-fill license type on room change --- */
+  useEffect(() => {
+    if (!roomId || !rooms.length) return;
+    const selectedRoom = rooms.find((r) => String(r.id) === String(roomId));
+    if (selectedRoom?.license_type) {
+      setLicenseType(selectedRoom.license_type);
+    }
+  }, [roomId, rooms]);
 
   /* --- Fetch calendar bookings --- */
   const fetchCalendar = useCallback(async (room_id) => {
@@ -352,7 +367,7 @@ export default function BookVDR() {
     checkIn && checkOut
       ? durationType === "FULL_DAY"
         ? 1
-        : Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24))
+        : Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)) + 1
       : null;
 
   const isReady = checkIn && checkOut && !isDateRangeBlocked() &&

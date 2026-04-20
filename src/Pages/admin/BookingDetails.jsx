@@ -164,6 +164,13 @@ export default function BookingDetails() {
               Retry
             </button>
           </div>
+        ) : !booking ? (
+          <div style={styles.stateCard}>
+            <p style={{ ...styles.stateText, color: "#b91c1c" }}>Booking data could not be loaded.</p>
+            <button onClick={() => navigate("/admin/managebookings")} style={styles.retryButton}>
+              Back to Bookings
+            </button>
+          </div>
         ) : (
           <>
             <div style={styles.hero}>
@@ -329,13 +336,20 @@ export default function BookingDetails() {
                   </div>
 
                   <div style={styles.badgeRow}>
-                    {(booking.data_catalogue || []).length ? (
-                      booking.data_catalogue.map((item) => (
-                        <span key={item} style={styles.datasetBadge}>{item}</span>
-                      ))
-                    ) : (
-                      <span style={styles.emptyText}>No datasets selected.</span>
-                    )}
+                    {(() => {
+                      let catalogue = booking.data_catalogue;
+                      if (typeof catalogue === "string") {
+                        try { catalogue = JSON.parse(catalogue); } catch { catalogue = []; }
+                      }
+                      if (!Array.isArray(catalogue)) catalogue = [];
+                      return catalogue.length ? (
+                        catalogue.map((item) => (
+                          <span key={item} style={styles.datasetBadge}>{item}</span>
+                        ))
+                      ) : (
+                        <span style={styles.emptyText}>No datasets selected.</span>
+                      );
+                    })()}
                   </div>
 
                   <p style={styles.descriptionText}>
