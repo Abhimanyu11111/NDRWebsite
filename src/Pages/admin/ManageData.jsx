@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Hotel, Plus, Trash2, IndianRupee, Home } from "lucide-react";
 import api from "../../api/axiosClient";
-import AdminNavbar from "/src/component/AdminNavbar";
+import AdminNavbar from "/src/Component/AdminNavbar";
 
 export default function ManageData() {
   const [rooms, setRooms] = useState([]);
