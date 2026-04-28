@@ -7,6 +7,8 @@ export default function ManageData() {
   const [rooms, setRooms] = useState([]);
   const [newRoom, setNewRoom] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [actionError, setActionError] = useState(null);
 
   // ===== GET ROOMS =====
   const fetchRooms = async () => {
@@ -25,34 +27,34 @@ export default function ManageData() {
         setRooms([]);
         console.warn("Unexpected rooms response shape:", data);
       }
-    } catch (error) {
-      console.log("Error Fetching Rooms", error);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to load rooms.");
       setRooms([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // ===== ADD ROOM =====
   const addRoom = async () => {
     if (!newRoom.trim()) return;
+    setActionError(null);
     try {
       await api.post("/rooms", { title: newRoom });
       setNewRoom("");
       fetchRooms();
-    } catch (error) {
-      console.log("Error Adding Room", error);
+    } catch (err) {
+      setActionError(err.response?.data?.message || "Failed to add room.");
     }
   };
 
-  // ===== DELETE ROOM =====
   const deleteRoom = async (id) => {
     if (!window.confirm("Delete room permanently?")) return;
+    setActionError(null);
     try {
       await api.delete(`/rooms/${id}`);
       fetchRooms();
-    } catch (error) {
-      console.log("Error Deleting Room", error);
+    } catch (err) {
+      setActionError(err.response?.data?.message || "Failed to delete room.");
     }
   };
 
@@ -68,6 +70,24 @@ export default function ManageData() {
           <div style={spinnerWrapper}>
             <div style={spinner}></div>
             <p style={loadingText}>Loading rooms...</p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <AdminNavbar />
+        <div style={loadingContainer}>
+          <div style={{ textAlign: "center" }}>
+            <Hotel size={48} color="#ef4444" style={{ marginBottom: 16 }} />
+            <h2 style={{ fontSize: 20, fontWeight: 600, color: "#0f172a", marginBottom: 8 }}>Failed to Load Rooms</h2>
+            <p style={{ color: "#64748b", marginBottom: 16 }}>{error}</p>
+            <button onClick={() => { setError(null); setLoading(true); fetchRooms(); }} style={{ padding: "10px 24px", background: "#3b82f6", color: "white", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600 }}>
+              Retry
+            </button>
           </div>
         </div>
       </>
@@ -93,6 +113,12 @@ export default function ManageData() {
         </div>
 
         <div style={contentContainer}>
+          {actionError && (
+            <div style={{ padding: "14px 18px", marginBottom: 20, background: "#fee2e2", border: "1px solid #fecaca", borderRadius: 10, color: "#991b1b", fontWeight: 600, fontSize: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>{actionError}</span>
+              <button onClick={() => setActionError(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#991b1b", fontSize: 18, lineHeight: 1 }}>×</button>
+            </div>
+          )}
           {/* Add Room Card */}
           <div style={addRoomCard}>
             <h2 style={sectionTitle}>

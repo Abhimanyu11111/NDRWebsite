@@ -41,6 +41,16 @@ const Payment = sequelize.define(
       defaultValue: "INITIATED",
     },
 
+    transaction_status: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+
+    payment_method: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+
     ccavenue_response: {
       type: DataTypes.TEXT,
       allowNull: true,

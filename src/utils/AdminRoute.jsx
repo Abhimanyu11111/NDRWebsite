@@ -1,13 +1,14 @@
 import { Navigate } from "react-router-dom";
 
 export default function AdminRoute({ children }) {
+  let isAuthorized = false;
   try {
     const adminData = localStorage.getItem("admin");
+    const token = localStorage.getItem("token");
     const admin = adminData ? JSON.parse(adminData) : null;
-    
-    return admin ? children : <Navigate to="/admin/login" />;
-  } catch (error) {
-    console.error("AdminRoute error:", error);
-    return <Navigate to="/admin/login" />;
+    isAuthorized = !!(admin && token);
+  } catch {
+    isAuthorized = false;
   }
+  return isAuthorized ? children : <Navigate to="/admin/login" />;
 }

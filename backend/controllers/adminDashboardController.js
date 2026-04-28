@@ -368,17 +368,14 @@ export const rejectRegistration = async (req, res) => {
 ===================================================== */
 export const getAdminBookings = async (req, res) => {
   try {
-    const { status, type, page = 1, limit = 20, room_id } = req.query;
+    const { status, payment_status, page = 1, limit = 20, room_id } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     const where = {};
-    if (status)  where.status  = status;
-    if (room_id) where.room_id = room_id;
+    if (status)         where.status         = status;
+    if (payment_status) where.payment_status = payment_status;
+    if (room_id)        where.room_id        = room_id;
 
-    if (type === "WEEKEND") {
-      where.weekend_notice = { [Op.ne]: null };
-      where.status = "PENDING";
-    }
 
     const { count, rows } = await Booking.findAndCountAll({
       where,

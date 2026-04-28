@@ -228,10 +228,10 @@ export default function AvailabilityCalendar() {
       <div className={styles.calendarHeader}>
         <div className={styles.headerLeft}>
           <h2 className={styles.calendarTitle}>
-            Room Availability Calendar
+            Room Availability Calender
           </h2>
           <p className={styles.calendarSubtitle}>
-            View all rooms availability - Use booking form below to select dates
+            View all rooms availability use booking from below to select dates
           </p>
         </div>
         <div className={styles.headerRight}>

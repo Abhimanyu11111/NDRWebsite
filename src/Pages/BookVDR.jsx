@@ -14,7 +14,7 @@ const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
-const DAYS_SHORT = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+const DAYS_SHORT = ["S", "M", "T", "W", "T", "F", "S"];
 
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
 
@@ -62,11 +62,17 @@ function MiniCalendar({
 }) {
   const firstDay = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
 
-  const days = [];
-  for (let i = 0; i < firstDay; i++) days.push(null);
+  // Build 42-cell grid: prev overflow + current month + next overflow
+  const cells = [];
+  for (let i = firstDay - 1; i >= 0; i--)
+    cells.push({ date: new Date(viewYear, viewMonth - 1, daysInPrevMonth - i), overflow: true });
   for (let d = 1; d <= daysInMonth; d++)
-    days.push(new Date(viewYear, viewMonth, d));
+    cells.push({ date: new Date(viewYear, viewMonth, d), overflow: false });
+  const trailing = 42 - cells.length;
+  for (let d = 1; d <= trailing; d++)
+    cells.push({ date: new Date(viewYear, viewMonth + 1, d), overflow: true });
 
   const isInRange = (date) => {
     if (!checkIn || !date) return false;
@@ -78,43 +84,45 @@ function MiniCalendar({
   return (
     <div className={styles.miniCal}>
       <div className={styles.calNav}>
-        <button
-          className={styles.calNavBtn}
-          onClick={(e) => { e.stopPropagation(); onPrev(); }}
-          disabled={isPrevDisabled}
-          type="button"
-        >
-          ‹
-        </button>
-        <span className={styles.calMonthTitle}>
-          {MONTHS[viewMonth]} {viewYear}
-        </span>
-        <button
-          className={styles.calNavBtn}
-          onClick={(e) => { e.stopPropagation(); onNext(); }}
-          type="button"
-        >
-          ›
-        </button>
+        <div className={styles.calMonthLabel}>
+          <span className={styles.calMonthTitle}>
+            {MONTHS[viewMonth].slice(0, 3)} {viewYear}
+          </span>
+          <span className={styles.calDropArrow}>∨</span>
+        </div>
+        <div className={styles.calNavBtns}>
+          <button
+            className={styles.calNavBtn}
+            onClick={(e) => { e.stopPropagation(); onPrev(); }}
+            disabled={isPrevDisabled}
+            type="button"
+          >‹</button>
+          <button
+            className={styles.calNavBtn}
+            onClick={(e) => { e.stopPropagation(); onNext(); }}
+            type="button"
+          >›</button>
+        </div>
       </div>
 
       <div className={styles.calGrid}>
-        {DAYS_SHORT.map((d) => (
-          <div key={d} className={styles.calDayHead}>{d}</div>
+        {DAYS_SHORT.map((d, i) => (
+          <div key={i} className={styles.calDayHead}>{d}</div>
         ))}
 
-        {days.map((date, idx) => {
-          if (!date) return <div key={`e-${idx}`} />;
-
-          const disabled = date < minDate;
-          const isStart = checkIn && sameDay(date, checkIn);
-          const isEnd = checkOut && sameDay(date, checkOut);
-          const inRange = isInRange(date);
-          const isToday = sameDay(date, new Date());
+        {cells.map(({ date, overflow }, idx) => {
+          const disabled = overflow || date < minDate;
+          const isStart = !overflow && checkIn && sameDay(date, checkIn);
+          const isEnd = !overflow && checkOut && sameDay(date, checkOut);
+          const inRange = !overflow && isInRange(date);
+          const isToday = !overflow && sameDay(date, new Date());
 
           let cls = styles.calDay;
-          if (disabled) cls += ` ${styles.calDayDisabled}`;
-          else {
+          if (overflow) {
+            cls += ` ${styles.calDayOverflow}`;
+          } else if (disabled) {
+            cls += ` ${styles.calDayDisabled}`;
+          } else {
             if (isStart) cls += ` ${styles.calDayStart}`;
             else if (isEnd) cls += ` ${styles.calDayEnd}`;
             else if (inRange) cls += ` ${styles.calDayInRange}`;
@@ -123,13 +131,13 @@ function MiniCalendar({
 
           return (
             <div
-              key={date.getTime()}
+              key={idx}
               className={cls}
               onClick={(e) => {
                 e.stopPropagation();
-                !disabled && onDayClick(date);
+                if (!overflow && !disabled) onDayClick(date);
               }}
-              onMouseEnter={() => !disabled && onDayHover(date)}
+              onMouseEnter={() => !overflow && !disabled && onDayHover(date)}
             >
               {date.getDate()}
             </div>
@@ -139,6 +147,25 @@ function MiniCalendar({
     </div>
   );
 }
+
+/* ====================== LICENSE HELPERS ====================== */
+const LICENSE_TITLE_KEYWORDS = {
+  DSG:             ["DSG"],
+  PETREL:          ["PETREL", "PETRAL", "PETRA"],
+  KINGDOM:         ["KINGDOM"],
+  GEOGRAPHIX:      ["GEOGRAPHIX", "GEOGRAPH"],
+  HAMPSON_RUSSELL: ["HAMPSON", "RUSSELL", "HAMPSON_RUSSELL"],
+};
+
+const extractLicense = (room) => {
+  if (!room) return "";
+  if (room.license_type) return room.license_type;
+  const title = (room.title || "").toUpperCase();
+  const match = Object.entries(LICENSE_TITLE_KEYWORDS).find(([, keywords]) =>
+    keywords.some((kw) => title.includes(kw))
+  );
+  return match ? match[0] : "";
+};
 
 /* ====================== MAIN COMPONENT ====================== */
 export default function BookVDR() {
@@ -243,14 +270,17 @@ export default function BookVDR() {
   /* --- Fetch rooms --- */
   useEffect(() => {
     const fetchRooms = async () => {
-      const res = await axios.get("/rooms");
-      const fetchedRooms = res.data.rooms || [];
-      setRooms(fetchedRooms);
-      if (fetchedRooms.length) {
-        setRoomId(fetchedRooms[0].id);
-        if (fetchedRooms[0].license_type) {
-          setLicenseType(fetchedRooms[0].license_type);
+      try {
+        const res = await axios.get("/rooms");
+        const fetchedRooms = res.data.rooms || [];
+        setRooms(fetchedRooms);
+        if (fetchedRooms.length) {
+          setRoomId(fetchedRooms[0].id);
+          setLicenseType(extractLicense(fetchedRooms[0]));
         }
+      } catch (err) {
+        console.error("Failed to fetch rooms:", err);
+        setError("Failed to load rooms. Please refresh the page.");
       }
     };
     fetchRooms();
@@ -260,9 +290,7 @@ export default function BookVDR() {
   useEffect(() => {
     if (!roomId || !rooms.length) return;
     const selectedRoom = rooms.find((r) => String(r.id) === String(roomId));
-    if (selectedRoom?.license_type) {
-      setLicenseType(selectedRoom.license_type);
-    }
+    setLicenseType(extractLicense(selectedRoom));
   }, [roomId, rooms]);
 
   /* --- Fetch calendar bookings --- */
@@ -370,8 +398,22 @@ export default function BookVDR() {
         : Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)) + 1
       : null;
 
-  const isReady = checkIn && checkOut && !isDateRangeBlocked() &&
-    licenseType && roomType;
+  /* --- Pricing --- */
+  const selectedRoom = rooms.find((r) => String(r.id) === String(roomId));
+  const pricePerDay = selectedRoom ? (parseFloat(selectedRoom.full_day_rate) || 5000) : 5000;
+  const totalPrice = diffDays ? diffDays * pricePerDay : null;
+
+  const formatINR = (amount) =>
+    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
+
+  const formatSummaryDates = (start, end) => {
+    if (!start || !end) return "";
+    const s = start.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const e = end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    return `${s} - ${e}`;
+  };
+
+  const isReady = checkIn && checkOut && !isDateRangeBlocked() && roomType;
 
   /* --- Handle date selection from availability calendar --- */
   const handleDateSelectFromCalendar = (selection) => {
@@ -435,20 +477,33 @@ export default function BookVDR() {
       {/* HEADER */}
       <div className={styles.bookingHeader}>
         <div className={styles.headerContent}>
-          <div>
-            <h1>Virtual Data Room Booking</h1>
-            <p>
-              {userProfile ? (
-                <>Welcome, <strong>{userProfile.name}</strong>! </>
-              ) : null}
-              Select your room and dates
-            </p>
+          <div className={styles.headerTextGroup}>
+            <div className={styles.headerLogo}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+              </svg>
+            </div>
+            <div>
+              <h1>Virtual data room booking</h1>
+              <p>
+                {userProfile ? (
+                  <>Welcome, <strong>{userProfile.name}</strong>, select your room and dates</>
+                ) : (
+                  "Select your room and dates"
+                )}
+              </p>
+            </div>
           </div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <button
               className={styles.btnAccount}
               onClick={() => (window.location.href = "/account")}
             >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
               My Account
             </button>
             <button
@@ -458,6 +513,11 @@ export default function BookVDR() {
                 window.location.href = "/login";
               }}
             >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
               Logout
             </button>
           </div>
@@ -477,86 +537,65 @@ export default function BookVDR() {
           <div className={styles.card}>
             <h3 className={styles.cardTitle}>Select Dates</h3>
             <p className={styles.cardSubtitle}>
-              {durationType === "MULTI_DAY" && "Pick start then end date"}
+              Specify the duration for your dedicated virtual space
             </p>
 
-            <div className={styles.dateFieldsRow} ref={calRef}>
-              {/* Start Date */}
-              <div
-                className={`${styles.dateField} ${calOpen && selectingFor === "checkin" ? styles.dateFieldActive : ""}`}
-                onClick={(e) => openCal("checkin", e)}
-              >
-                {checkIn ? (
-                  <>
-                    <div className={styles.dateFieldValue}>{formatDisplay(checkIn)}</div>
-                    <div className={styles.dateFieldDay}>
-                      {checkIn.toLocaleDateString("en-US", { weekday: "long" })}
-                    </div>
-                  </>
-                ) : (
-                  <div className={styles.dateFieldPlaceholder}>Select Start Date</div>
-                )}
-              </div>
-
-              <div className={styles.dateFieldDivider}>→</div>
-
-              {/* End Date */}
-              <div
-                className={`${styles.dateField} ${durationType === "MULTI_DAY" && calOpen && selectingFor === "checkout"
-                    ? styles.dateFieldActive : ""
-                  }`}
-                onClick={(e) => {
-                  if (durationType === "MULTI_DAY" && checkIn) openCal("checkout", e);
-                }}
-              >
-                {checkOut ? (
-                  <>
-                    <div className={styles.dateFieldValue}>{formatDisplay(checkOut)}</div>
-                    <div className={styles.dateFieldDay}>
-                      {checkOut.toLocaleDateString("en-US", { weekday: "long" })}
-                    </div>
-                  </>
-                ) : (
-                  <div className={styles.dateFieldPlaceholder}>Select End Date</div>
-                )}
-              </div>
-
-              {/*  CALENDAR DROPDOWN - Fixed condition */}
-              {calOpen && (
+            <div className={styles.formGroup}>
+              <label className={styles.sectionLabel}>DATE RANGE</label>
+              <div className={styles.dateRangeRow} ref={calRef}>
+                <span className={styles.fromToText}>From</span>
                 <div
-                  className={styles.calDropdown}
-                  ref={calDropdownRef}
-                  onClick={(e) => e.stopPropagation()}
+                  className={`${styles.dateRangeInput} ${calOpen && selectingFor === "checkin" ? styles.dateRangeInputActive : ""}`}
+                  onClick={(e) => openCal("checkin", e)}
                 >
-                  <div className={styles.calInfoStrip}>
-                    <span>📌</span>
-                    <span>
-                      Earliest bookable: <strong>{formatDisplay(minDate)}</strong>
-                      &nbsp;|&nbsp; Bookings open 3 days in advance
-                    </span>
-                  </div>
-
-                  <div className={styles.calSelectingLabel}>
-                    {selectingFor === "checkin"
-                      ? "🟦 Select Start Date"
-                      : "🟩 Select End Date"}
-                  </div>
-
-                  <MiniCalendar
-                    viewYear={viewYear}
-                    viewMonth={viewMonth}
-                    minDate={minDate}
-                    checkIn={checkIn}
-                    checkOut={checkOut}
-                    hoverDate={hoverDate}
-                    onDayClick={handleDayClick}
-                    onDayHover={setHoverDate}
-                    onPrev={prevMonth}
-                    onNext={nextMonth}
-                    isPrevDisabled={isPrevDisabled}
-                  />
+                  <span className={checkIn ? styles.dateRangeValue : styles.dateRangePlaceholder}>
+                    {checkIn ? formatDisplay(checkIn) : "Select Date"}
+                  </span>
+                  <svg className={styles.calIconSvg} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
                 </div>
-              )}
+                <span className={styles.fromToText}>To</span>
+                <div
+                  className={`${styles.dateRangeInput} ${durationType === "MULTI_DAY" && calOpen && selectingFor === "checkout" ? styles.dateRangeInputActive : ""}`}
+                  onClick={(e) => { if (durationType === "MULTI_DAY" && checkIn) openCal("checkout", e); }}
+                >
+                  <span className={checkOut ? styles.dateRangeValue : styles.dateRangePlaceholder}>
+                    {checkOut ? formatDisplay(checkOut) : "Select Date"}
+                  </span>
+                  <svg className={styles.calIconSvg} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                </div>
+
+                {calOpen && (
+                  <div
+                    className={styles.calDropdown}
+                    ref={calDropdownRef}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MiniCalendar
+                      viewYear={viewYear}
+                      viewMonth={viewMonth}
+                      minDate={minDate}
+                      checkIn={checkIn}
+                      checkOut={checkOut}
+                      hoverDate={hoverDate}
+                      onDayClick={handleDayClick}
+                      onDayHover={setHoverDate}
+                      onPrev={prevMonth}
+                      onNext={nextMonth}
+                      isPrevDisabled={isPrevDisabled}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Duration info */}
@@ -574,55 +613,42 @@ export default function BookVDR() {
           {/* ROOM + DETAILS */}
           <div className={styles.card}>
             <h3 className={styles.cardTitle}>Select Room</h3>
-            <p className={styles.cardSubtitle}>Choose your preferred VDR</p>
+            <p className={styles.cardSubtitle}>Configure Your environment based on regulatory needs</p>
 
-            <div className={styles.formGroup}>
-              <label>Room</label>
-              <select
-                className={styles.formSelect}
-                value={roomId}
-                onChange={(e) => setRoomId(e.target.value)}
-              >
-                {rooms.map((r) => (
-                  <option key={r.id} value={r.id}>{r.title}</option>
-                ))}
-              </select>
+            <div className={styles.roomGrid}>
+              <div className={styles.formGroup}>
+                <label>ROOM</label>
+                <select
+                  className={styles.formSelect}
+                  value={roomId}
+                  onChange={(e) => setRoomId(e.target.value)}
+                >
+                  <option value="" disabled>Select specific room....</option>
+                  {rooms.map((r) => (
+                    <option key={r.id} value={r.id}>{r.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>TYPE OF THE DATA ROOM <span className={styles.required}>*</span></label>
+                <select
+                  className={styles.formSelect}
+                  value={roomType}
+                  onChange={(e) => setRoomType(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>Select specific room....</option>
+                  {ROOM_TYPES.map((rt) => (
+                    <option key={rt.value} value={rt.value}>{rt.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            {/*  License Type */}
+            {/* Designated Block/Area */}
             <div className={styles.formGroup}>
-              <label>License Type <span className={styles.required}>*</span></label>
-              <select
-                className={styles.formSelect}
-                value={licenseType}
-                onChange={(e) => setLicenseType(e.target.value)}
-                required
-              >
-                <option value="">Select License...</option>
-                {LICENSE_TYPES.map((lt) => (
-                  <option key={lt.value} value={lt.value}>{lt.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {/*  Room Type */}
-            <div className={styles.formGroup}>
-              <label>Type of Data Room <span className={styles.required}>*</span></label>
-              <select
-                className={styles.formSelect}
-                value={roomType}
-                onChange={(e) => setRoomType(e.target.value)}
-                required
-              >
-                {ROOM_TYPES.map((rt) => (
-                  <option key={rt.value} value={rt.value}>{rt.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Designated Block/Area - UPDATED */}
-            <div className={styles.formGroup}>
-              <label>Designated Block/Area</label>
+              <label>DESIGNATED BLOCK/AREA</label>
               <SearchableBlockDropdown
                 value={blockNames}
                 onChange={(selected) => setBlockNames(selected)}
@@ -633,60 +659,75 @@ export default function BookVDR() {
 
         {/* RIGHT — SUMMARY */}
         <div className={styles.stickyCard}>
-          <div className={styles.card}>
-            <h3 className={styles.cardTitle}>Booking Summary</h3>
-            <p className={styles.cardSubtitle}>Review your selection</p>
+          <div className={styles.summaryCard}>
+            <div className={styles.summaryHeader}>
+              <h3 className={styles.summaryTitle}>Booking Summary</h3>
+              <p className={styles.summarySubtitle}>Review your selection</p>
+            </div>
 
             {isReady ? (
               <>
-                <div className={styles.previewDetails}>
-                  <div className={styles.previewRow}>
-                    <span>Room:</span>
-                    <strong>{rooms.find((r) => r.id === roomId)?.title}</strong>
+                {/* ROOM INFO */}
+                <div className={styles.summarySection}>
+                  <div className={styles.summaryLabel}>Room Info</div>
+                  <div className={styles.summaryValue}>
+                    {rooms.find((r) => String(r.id) === String(roomId))?.title}
                   </div>
-                  <div className={styles.previewDivider} />
-
-                  <div className={styles.previewRow}>
-                    <span>License:</span>
-                    <strong>{LICENSE_TYPES.find(lt => lt.value === licenseType)?.label}</strong>
-                  </div>
-                  <div className={styles.previewDivider} />
-
-                  <div className={styles.previewRow}>
-                    <span>Room Type:</span>
-                    <strong>{ROOM_TYPES.find(rt => rt.value === roomType)?.label}</strong>
-                  </div>
-                  <div className={styles.previewDivider} />
-
-                  {blockNames.length > 0 && (
-                    <>
-                      <div className={styles.previewRow}>
-                        <span>Block/Area:</span>
-                        <strong>{blockNames.join(', ')}</strong>
-                      </div>
-                      <div className={styles.previewDivider} />
-                    </>
+                  {roomType && (
+                    <div className={styles.summaryValueSub}>
+                      {ROOM_TYPES.find((rt) => rt.value === roomType)?.label}
+                    </div>
                   )}
+                </div>
 
-                  <div className={styles.previewRow}>
-                    <span>Check-in:</span>
-                    <strong>{formatFull(checkIn)}</strong>
+                {/* LICENSE */}
+                {licenseType && (
+                  <div className={styles.summarySection}>
+                    <div className={styles.summaryLabel}>License</div>
+                    <div className={styles.summaryValue}>
+                      {LICENSE_TYPES.find((lt) => lt.value === licenseType)?.label || licenseType}
+                    </div>
                   </div>
-                  <div className={styles.previewDivider} />
+                )}
 
-                  <div className={styles.previewRow}>
-                    <span>Check-out:</span>
-                    <strong>{formatFull(checkOut)}</strong>
+                {/* BLOCK/AREA */}
+                {blockNames.length > 0 && (
+                  <div className={styles.summarySection}>
+                    <div className={styles.summaryLabel}>Block/Area</div>
+                    <div className={styles.summaryValue}>{blockNames.join(", ")}</div>
                   </div>
-                  <div className={styles.previewDivider} />
+                )}
 
-                  <div className={styles.previewRow}>
-                    <span>Duration:</span>
-                    <strong>{diffDays} {diffDays === 1 ? "Day" : "Days"}</strong>
+                <div className={styles.summaryDivider} />
+
+                {/* DATES + DURATION */}
+                <div className={styles.summaryDatesRow}>
+                  <div>
+                    <div className={styles.summaryLabel}>Dates</div>
+                    <div className={styles.summaryValue}>
+                      {formatSummaryDates(checkIn, checkOut)}
+                    </div>
+                  </div>
+                  <div className={styles.summaryDurationBlock}>
+                    <div className={styles.summaryLabel}>Duration</div>
+                    <div className={styles.summaryValue}>
+                      {diffDays} {diffDays === 1 ? "Day" : "Days"}
+                    </div>
                   </div>
                 </div>
 
-                <div className={styles.formGroup}>
+                <div className={styles.summaryDividerThick} />
+
+                {/* TOTAL */}
+                <div className={styles.summaryTotalRow}>
+                  <span className={styles.summaryTotalLabel}>Total Est.</span>
+                  <span className={styles.summaryTotalAmount}>{formatINR(totalPrice)}</span>
+                </div>
+
+                <div className={styles.summaryDivider} />
+
+                {/* Weekend notice */}
+                <div className={styles.formGroup} style={{ marginTop: "1rem" }}>
                   <label>Weekend Notice (if applicable)</label>
                   <textarea
                     className={styles.formSelect}
@@ -701,7 +742,7 @@ export default function BookVDR() {
                 {error && <p className={styles.errorMessage}>{error}</p>}
 
                 <button
-                  className={styles.btnConfirm}
+                  className={styles.btnProceed}
                   disabled={creating}
                   onClick={createBooking}
                 >
@@ -710,16 +751,17 @@ export default function BookVDR() {
               </>
             ) : (
               <div className={styles.noPreview}>
-                <p>
+                <svg className={styles.noPreviewIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <p className={styles.noPreviewTitle}>No dates selected yet</p>
+                <p className={styles.noPreviewDesc}>
                   {isDateRangeBlocked()
                     ? "Selected dates are unavailable — they overlap with an existing booking"
-                    : !checkIn
-                      ? "Please select a check-in date"
-                      : !checkOut
-                        ? "Please select a check-out date"
-                        : !licenseType
-                          ? "Please select a license type to proceed"
-                          : "Please select room type"}
+                    : "Select dates and room type to see your detailed booking summary and estimate costs."}
                 </p>
               </div>
             )}

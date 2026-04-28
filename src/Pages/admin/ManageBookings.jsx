@@ -1,12 +1,16 @@
 import { useEffect, useState, useMemo } from "react";
-import { Calendar, CheckCircle, Clock, XCircle, Search, Filter, Eye } from "lucide-react";
+import { Calendar, CheckCircle, Clock, XCircle, Search, Filter, Eye, Download } from "lucide-react";
 import AdminNavbar from "/src/Component/AdminNavbar";
 import api from "../../api/axiosClient";
 import { useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function ManageBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [yearFilter, setYearFilter] = useState("All");
@@ -30,10 +34,9 @@ export default function ManageBookings() {
           setBookings(data.bookings);
         } else {
           setBookings([]);
-          console.warn("Unexpected bookings response:", data);
         }
       } catch (err) {
-        console.log("Error fetching bookings:", err);
+        setFetchError(err.response?.data?.message || "Failed to load bookings.");
         setBookings([]);
       } finally {
         setLoading(false);
@@ -76,6 +79,83 @@ export default function ManageBookings() {
     return result;
   }, [bookings, searchTerm, statusFilter, yearFilter, monthFilter, roomTypeFilter, licenseTypeFilter, priceSort]);
 
+  const getExportRows = () =>
+    filteredBookings.map((b) => {
+      const start = b.start_datetime ? new Date(b.start_datetime) : null;
+      const end = b.end_datetime ? new Date(b.end_datetime) : null;
+      let days = "—";
+      if (start && end) {
+        const raw = Math.round((end - start) / (1000 * 60 * 60 * 24));
+        days = b.booking_type === "FULL_DAY" ? raw : raw + 1;
+      }
+      return {
+        "Booking ID": b.booking_id || "—",
+        "Customer Name": b.userName || "—",
+        "Email": b.userEmail || "—",
+        "Phone": b.userPhone || "—",
+        "Room": b.roomTitle || "—",
+        "Room Type": b.room_type || "—",
+        "Booking Type": b.booking_type
+          ? b.booking_type + (b.half_day_slot ? ` (${b.half_day_slot})` : "")
+          : "—",
+        "License Type": b.license_type || "—",
+        "Check-in": start ? start.toLocaleDateString("en-IN") : "—",
+        "Check-out": end ? end.toLocaleDateString("en-IN") : "—",
+        "Days": days,
+        "Amount (₹)": Number(b.total_price || 0),
+        "Surcharge (₹)": Number(b.working_day_surcharge || 0),
+        "Status": b.status || "—",
+      };
+    });
+
+  const exportCSV = () => {
+    const rows = getExportRows();
+    if (!rows.length) return;
+    const headers = Object.keys(rows[0]);
+    const csvLines = [
+      headers.join(","),
+      ...rows.map((r) =>
+        headers.map((h) => `"${String(r[h]).replace(/"/g, '""')}"`).join(",")
+      ),
+    ];
+    const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bookings_export_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportExcel = () => {
+    const rows = getExportRows();
+    if (!rows.length) return;
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Bookings");
+    XLSX.writeFile(wb, `bookings_export_${Date.now()}.xlsx`);
+  };
+
+  const exportPDF = () => {
+    const rows = getExportRows();
+    if (!rows.length) return;
+    const doc = new jsPDF({ orientation: "landscape" });
+    doc.setFontSize(14);
+    doc.text("Manage Bookings Report", 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Exported on: ${new Date().toLocaleString("en-IN")}  |  Records: ${rows.length}`, 14, 22);
+    const columns = Object.keys(rows[0]);
+    autoTable(doc, {
+      startY: 28,
+      head: [columns],
+      body: rows.map((r) => columns.map((c) => r[c])),
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [239, 246, 255] },
+    });
+    doc.save(`bookings_export_${Date.now()}.pdf`);
+  };
+
   if (loading) {
     return (
       <>
@@ -84,6 +164,24 @@ export default function ManageBookings() {
           <div style={spinnerWrapper}>
             <div style={spinner}></div>
             <p style={loadingText}>Loading bookings...</p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <>
+        <AdminNavbar />
+        <div style={loadingContainer}>
+          <div style={{ textAlign: "center" }}>
+            <Calendar size={48} color="#ef4444" style={{ marginBottom: 16 }} />
+            <h2 style={{ fontSize: 20, fontWeight: 600, color: "#0f172a", marginBottom: 8 }}>Failed to Load Bookings</h2>
+            <p style={{ color: "#64748b", marginBottom: 16 }}>{fetchError}</p>
+            <button onClick={() => window.location.reload()} style={{ padding: "10px 24px", background: "#3b82f6", color: "white", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600 }}>
+              Retry
+            </button>
           </div>
         </div>
       </>
@@ -101,9 +199,22 @@ export default function ManageBookings() {
               <h1 style={pageTitle}>Manage Bookings</h1>
               <p style={pageSubtitle}>View and manage all booking requests</p>
             </div>
-            <div style={headerStats}>
-              <span style={totalCount}>{bookings.length}</span>
-              <span style={totalLabel}>Total Bookings</span>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "12px" }}>
+              <div style={headerStats}>
+                <span style={totalCount}>{bookings.length}</span>
+                <span style={totalLabel}>Total Bookings</span>
+              </div>
+              {filteredBookings.length > 0 && (
+                <div style={exportGroup}>
+                  <span style={exportLabel}>
+                    <Download size={14} strokeWidth={2.5} style={{ marginRight: 4 }} />
+                    Export {filteredBookings.length} record{filteredBookings.length !== 1 ? "s" : ""}:
+                  </span>
+                  <button onClick={exportCSV} style={{ ...exportBtn, background: "#16a34a" }} onMouseEnter={(e) => e.currentTarget.style.background = "#15803d"} onMouseLeave={(e) => e.currentTarget.style.background = "#16a34a"}>CSV</button>
+                  <button onClick={exportExcel} style={{ ...exportBtn, background: "#2563eb" }} onMouseEnter={(e) => e.currentTarget.style.background = "#1d4ed8"} onMouseLeave={(e) => e.currentTarget.style.background = "#2563eb"}>Excel</button>
+                  <button onClick={exportPDF} style={{ ...exportBtn, background: "#dc2626" }} onMouseEnter={(e) => e.currentTarget.style.background = "#b91c1c"} onMouseLeave={(e) => e.currentTarget.style.background = "#dc2626"}>PDF</button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -320,11 +431,12 @@ export default function ManageBookings() {
 }
 
 /* ── Components ── */
-function StatCard({ icon: Icon, label, value, color, bgColor }) {
+// eslint-disable-next-line no-unused-vars
+function StatCard({ icon: IconComponent, label, value, color, bgColor }) {
   return (
     <div style={statCard}>
       <div style={{ ...iconBox, backgroundColor: bgColor }}>
-        <Icon size={28} strokeWidth={2.5} style={{ color }} />
+        <IconComponent size={28} strokeWidth={2.5} style={{ color }} />
       </div>
       <div style={statContent}>
         <p style={statLabel}>{label}</p>
@@ -470,3 +582,6 @@ const statusBadge = { display: "inline-flex", alignItems: "center", gap: "5px", 
 const viewButton = { padding: "8px 16px", backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: "600", cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: "6px" };
 const resultsFooter = { padding: "14px 20px", borderTop: "1px solid #e2e8f0", backgroundColor: "#f8fafc" };
 const resultsText = { fontSize: "14px", color: "#64748b" };
+const exportGroup = { display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end" };
+const exportLabel = { fontSize: "13px", color: "#64748b", fontWeight: "600", display: "flex", alignItems: "center" };
+const exportBtn = { padding: "7px 16px", color: "white", border: "none", borderRadius: "7px", fontSize: "13px", fontWeight: "700", cursor: "pointer", transition: "background 0.18s", letterSpacing: "0.03em" };

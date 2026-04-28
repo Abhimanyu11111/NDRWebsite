@@ -27,7 +27,10 @@ import blockRoutes from './routes/blockRoutes.js'; // 👈 NEW IMPORT
 const app = express();
 
 // MIDDLEWARES
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(useragentMiddleware());

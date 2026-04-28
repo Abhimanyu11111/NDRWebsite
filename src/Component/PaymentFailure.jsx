@@ -1,12 +1,14 @@
 import React, { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-// import styles from "./Styles/PaymentResult.module.css";
+import styles from "./Styles/PaymentResult.module.css";
 
 export default function PaymentFailure() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const bookingId = searchParams.get("booking_id");
-  const orderId = searchParams.get("order_id");
+  const orderId   = searchParams.get("order_id");
+  const reason    = searchParams.get("reason");
+  const canRetry  = searchParams.get("can_retry") !== "false"; // default true unless explicitly "false"
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -21,9 +23,15 @@ export default function PaymentFailure() {
         <div className={styles.iconFailure}>✕</div>
         <h1 className={styles.title}>Payment Failed</h1>
         <p className={styles.message}>
-          Unfortunately, your payment could not be processed. Please try again or contact support if the issue persists.
+          {canRetry
+            ? "Unfortunately, your payment could not be processed. Please try again or contact support if the issue persists."
+            : "Your payment has failed 3 times. This booking has been cancelled. Please create a new booking or contact support."}
         </p>
-        
+
+        {reason && (
+          <p className={styles.reasonText}>Reason: {reason}</p>
+        )}
+
         {bookingId && (
           <div className={styles.details}>
             <div className={styles.detailRow}>
@@ -40,15 +48,17 @@ export default function PaymentFailure() {
         )}
 
         <div className={styles.actions}>
-          <button 
-            className={styles.btnPrimary}
-            onClick={() => navigate('/book-vdr')}
-          >
-            Try Again
-          </button>
-          <button 
+          {canRetry && (
+            <button
+              className={styles.btnPrimary}
+              onClick={() => navigate("/account")}
+            >
+              Retry Payment
+            </button>
+          )}
+          <button
             className={styles.btnSecondary}
-            onClick={() => navigate('/account')}
+            onClick={() => navigate("/account")}
           >
             Go to My Account
           </button>

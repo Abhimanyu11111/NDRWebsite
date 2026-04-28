@@ -3,6 +3,7 @@ import Payment from "../models/Payment.js";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
 import Room from "../models/Room.js";
+import Notification from "../models/Notification.js";
 import { encrypt, decrypt } from "../utils/ccavenue.js";
 import qs from "querystring";
 import { generateInvoicePDF } from "../utils/invoiceGenerator.js";
@@ -169,11 +170,14 @@ export const paymentResponse = async (req, res) => {
       await existingPayment.save({ transaction: t });
 
       // Confirm booking + lock datasets (single atomic operation)
-      const booking = await confirmBookingAfterPayment(bookingId, t);
+      await confirmBookingAfterPayment(bookingId, t);
 
-      // Update payment_id on booking
+      // Update payment_id and sync payment_status on booking
       await Booking.update(
-        { payment_id: responseData.tracking_id || responseData.order_id },
+        {
+          payment_id:     responseData.tracking_id || responseData.order_id,
+          payment_status: "SUCCESS",
+        },
         { where: { booking_id: bookingId }, transaction: t }
       );
 
@@ -199,6 +203,23 @@ export const paymentResponse = async (req, res) => {
           trans_date:   responseData.trans_date,
         },
       }).catch((e) => console.error("Invoice generation failed:", e));
+
+      // Notify admin of completed booking for review
+      User.findOne({ where: { role: "ADMIN" } })
+        .then((adminUser) => {
+          if (!adminUser) return;
+          const startDate = new Date(fullBooking.start_datetime).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+          const endDate   = new Date(fullBooking.end_datetime).toLocaleDateString("en-IN",   { day: "numeric", month: "short", year: "numeric" });
+          return Notification.create({
+            user_id:   adminUser.id,
+            room_id:   fullBooking.room_id,
+            message:   `New booking completed: ${bookingId} by ${fullBooking.user.name} (${fullBooking.user.email}) for ${fullBooking.room.title} (${startDate} – ${endDate}). Amount paid: ₹${Number(fullBooking.total_price).toLocaleString("en-IN")}.`,
+            type:      "BOOKING",
+            is_read:   false,
+            is_active: true,
+          });
+        })
+        .catch((e) => console.error("Admin booking notification error:", e));
 
       return res.redirect(
         `${process.env.FRONTEND_URL}/payment-success?booking_id=${bookingId}&order_id=${responseData.order_id}`

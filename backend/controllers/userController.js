@@ -1,7 +1,7 @@
 import User from '../models/User.js';
 import Booking from '../models/Booking.js';
 import Payment from '../models/Payment.js';
-import Room from '../models/room.js';
+import Room from '../models/Room.js';
 
 // Get User Profile
 export const getUserProfile = async (req, res) => {

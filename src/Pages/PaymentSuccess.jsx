@@ -1,6 +1,10 @@
 export default function PaymentSuccess() {
-  // Transaction details
-  const transactionId = `TXN${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+  const urlParams = new URLSearchParams(window.location.search);
+  const bookingId = urlParams.get("booking_id");
+  const orderId = urlParams.get("order_id");
+
+  // Stable display ID: prefer real order_id, fallback to booking_id, then placeholder
+  const transactionId = orderId || bookingId || "—";
   const transactionDate = new Date().toLocaleString('en-IN', { 
     day: '2-digit', 
     month: 'short', 
@@ -377,23 +381,25 @@ export default function PaymentSuccess() {
               Download Receipt
             </button>
             
-            <button style={{
-              width: '100%',
-              backgroundColor: '#f3f4f6',
-              color: '#374151',
-              fontWeight: '600',
-              padding: '12px 24px',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              transition: 'background-color 0.2s'
-            }}
-            onMouseOver={(e) => e.target.style.backgroundColor = '#e5e7eb'}
-            onMouseOut={(e) => e.target.style.backgroundColor = '#f3f4f6'}
+            <button
+              onClick={() => { window.location.href = "/"; }}
+              style={{
+                width: '100%',
+                backgroundColor: '#f3f4f6',
+                color: '#374151',
+                fontWeight: '600',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e5e7eb'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
             >
               <svg style={{ width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />

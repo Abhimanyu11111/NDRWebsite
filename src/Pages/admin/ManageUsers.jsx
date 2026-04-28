@@ -16,17 +16,8 @@ export default function ManageUsers() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        // Try both possible URLs
-        let res;
-        try {
-          res = await api.get("/admin/users");
-        } catch {
-          res = await api.get("/admin/dashboard/users");
-        }
-
+        const res = await api.get("/admin/users");
         const data = res.data;
-
-        // Handle all response shapes
         if (Array.isArray(data)) {
           setUsers(data);
         } else if (data?.users && Array.isArray(data.users)) {
@@ -35,11 +26,9 @@ export default function ManageUsers() {
           setUsers(data.data);
         } else {
           setUsers([]);
-          console.warn("Unexpected users response shape:", data);
         }
       } catch (err) {
-        console.error("Error fetching users", err);
-        setError(err.response?.data?.message || "Failed to load users. Check server logs.");
+        setError(err.response?.data?.message || "Failed to load users.");
       } finally {
         setLoading(false);
       }

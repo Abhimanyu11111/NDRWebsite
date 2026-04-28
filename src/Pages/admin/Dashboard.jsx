@@ -50,7 +50,6 @@ export default function AdminDashboard() {
   const [bookingPage, setBookingPage] = useState(1);
   const [paymentPage, setPaymentPage] = useState(1);
   const [pauseRefresh, setPauseRefresh] = useState(false);
-  const [approvingId, setApprovingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [showUserMenu, setShowUserMenu] = useState(false);
 
@@ -109,21 +108,21 @@ export default function AdminDashboard() {
     }, AUTO_LOGOUT_TIME_MS - 60000); // Show warning 1 minute before logout
   }, []);
 
-  //  Handle auto logout
   const handleAutoLogout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("refreshToken");
+    localStorage.removeItem("admin");
     sessionStorage.clear();
-    window.location.href = "/login?reason=inactivity";
+    window.location.href = "/admin/login?reason=inactivity";
   }, []);
 
-  //  Handle manual logout
   const handleLogout = useCallback(() => {
     if (confirm("Are you sure you want to logout?")) {
       localStorage.removeItem("token");
       localStorage.removeItem("refreshToken");
+      localStorage.removeItem("admin");
       sessionStorage.clear();
-      window.location.href = "/login";
+      window.location.href = "/admin/login";
     }
   }, []);
 
@@ -182,7 +181,7 @@ export default function AdminDashboard() {
       const [dashRes, notifRes, approvalsRes, paymentsRes, regRes] = await Promise.allSettled([
         api.get("/admin/dashboard/counts"),
         api.get("/admin/dashboard/notifications?limit=20"),
-        api.get("/admin/dashboard/bookings?status=PENDING&type=WEEKEND"),
+        api.get("/admin/dashboard/bookings?status=CONFIRMED&payment_status=SUCCESS&limit=10"),
         api.get("/admin/dashboard/payments?status=FAILED&limit=10"),
         api.get("/admin/dashboard/registrations?status=PENDING&limit=50"),
       ]);
@@ -226,23 +225,6 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, [fetchAll, pauseRefresh]);
 
-  const handleApproval = async (bookingId, action) => {
-    try {
-      setApprovingId(bookingId);
-      setPauseRefresh(true);
-      await api.patch(`/admin/dashboard/bookings/${bookingId}/status`, {
-        status: action === "approve" ? "CONFIRMED" : "CANCELLED",
-      });
-      setPendingApprovals((prev) => prev.filter((b) => b.booking_id !== bookingId));
-      setSuccessMsg(`Booking ${action === "approve" ? "approved" : "rejected"} successfully`);
-      setTimeout(() => { fetchAll(true); setPauseRefresh(false); }, 1000);
-    } catch (err) {
-      setError(err.response?.data?.message || `Failed to ${action} booking`);
-      setPauseRefresh(false);
-    } finally {
-      setApprovingId(null);
-    }
-  };
 
   const handleApproveRegistration = async (userId, userName) => {
     try {
@@ -666,10 +648,10 @@ export default function AdminDashboard() {
           </div>
         )}
         {pendingApprovals.length > 0 && (
-          <div style={styles.alertBanner("#fef3c7", "#92400e", "#fde68a")} role="alert" aria-live="polite">
-            <AlertTriangle size={18} color="#d97706" aria-hidden="true" />
-            <span style={{ fontWeight: 600, color: "#92400e" }}>
-              {pendingApprovals.length} weekend booking{pendingApprovals.length > 1 ? "s" : ""} awaiting your approval
+          <div style={styles.alertBanner("#eff6ff", "#1e40af", "#bfdbfe")} role="alert" aria-live="polite">
+            <Calendar size={18} color="#3b82f6" aria-hidden="true" />
+            <span style={{ fontWeight: 600, color: "#1e40af" }}>
+              {pendingApprovals.length} recent booking{pendingApprovals.length > 1 ? "s" : ""} available for review
             </span>
           </div>
         )}
@@ -803,12 +785,12 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* PENDING WEEKEND APPROVALS */}
+        {/* RECENT BOOKINGS FOR REVIEW */}
         {pendingApprovals.length > 0 && (
           <div style={styles.section}>
             <h2 style={styles.sectionTitle}>
-              <ShieldAlert size={20} style={{ marginRight: 8, color: "#f59e0b" }} />
-              Pending Weekend Approvals
+              <Calendar size={20} style={{ marginRight: 8, color: "#3b82f6" }} />
+              Recent Bookings for Review
             </h2>
             <div style={styles.approvalList}>
               {pendingApprovals.map((b) => (
@@ -816,36 +798,26 @@ export default function AdminDashboard() {
                   <div style={{ flex: 1 }}>
                     <p style={styles.approvalId}>{b.booking_id}</p>
                     <p style={styles.approvalMeta}>
-                      {b.userName} · {b.roomTitle} · ₹{Number(b.total_price).toLocaleString("en-IN")}
+                      {b.userName} · {b.userEmail} · {b.roomTitle} · ₹{Number(b.total_price).toLocaleString("en-IN")}
                     </p>
                     <p style={styles.approvalDate}>
                       {new Date(b.start_datetime).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
                       {" – "}
                       {new Date(b.end_datetime).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
                     </p>
+                    {b.room_type && (
+                      <p style={{ fontSize: 12, color: "#6b7280", margin: "2px 0 0" }}>
+                        Type: {b.room_type}{b.license_type ? ` · License: ${b.license_type}` : ""}
+                      </p>
+                    )}
                     {b.weekend_notice && (
                       <p style={styles.weekendNotice}>📝 {b.weekend_notice}</p>
                     )}
                   </div>
-                  <div style={styles.approvalBtns}>
-                    <button
-                      onClick={() => handleApproval(b.booking_id, "approve")}
-                      style={styles.approveBtn}
-                      disabled={approvingId === b.booking_id}
-                      aria-label={`Approve booking ${b.booking_id}`}
-                    >
-                      {approvingId === b.booking_id ? <div style={styles.miniSpinner} /> : <Check size={14} />}
-                      {approvingId === b.booking_id ? "Processing…" : "Approve"}
-                    </button>
-                    <button
-                      onClick={() => handleApproval(b.booking_id, "reject")}
-                      style={styles.rejectBtn}
-                      disabled={approvingId === b.booking_id}
-                      aria-label={`Reject booking ${b.booking_id}`}
-                    >
-                      {approvingId === b.booking_id ? <div style={styles.miniSpinner} /> : <X size={14} />}
-                      {approvingId === b.booking_id ? "Processing…" : "Reject"}
-                    </button>
+                  <div style={{ display: "flex", alignItems: "center" }}>
+                    <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 600, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6, padding: "4px 10px" }}>
+                      Paid ✓
+                    </span>
                   </div>
                 </div>
               ))}
@@ -884,7 +856,19 @@ export default function AdminDashboard() {
                       <td style={styles.td}><span style={styles.failBadge}>{p.fail_count || 1}x failed</span></td>
                       <td style={styles.td}>{new Date(p.created_at).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</td>
                       <td style={styles.td}>
-                        <button style={styles.retryPaymentBtn} onClick={() => setSuccessMsg("Payment retry initiated")} aria-label={`Retry ${p.order_id}`}>
+                        <button
+                          style={styles.retryPaymentBtn}
+                          onClick={async () => {
+                            try {
+                              await api.post(`/admin/dashboard/payments/${p.order_id}/retry`);
+                              setSuccessMsg(`Payment retry initiated for ${p.order_id}`);
+                              setTimeout(() => fetchAll(true), 1500);
+                            } catch (err) {
+                              setError(err.response?.data?.message || "Failed to retry payment");
+                            }
+                          }}
+                          aria-label={`Retry ${p.order_id}`}
+                        >
                           <RotateCcw size={14} /> Retry
                         </button>
                       </td>
@@ -1132,11 +1116,17 @@ export default function AdminDashboard() {
 }
 
 // Helpers
+function csvCell(val) {
+  const str = String(val == null ? "" : val);
+  return str.includes(",") || str.includes('"') || str.includes("\n")
+    ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
 function exportCSV(data, filename) {
   const csv = [
     ["Order ID", "Booking ID", "User", "Amount", "Attempts", "Date"],
     ...data.map(p => [p.order_id, p.booking_id, p.userName || "—", p.amount, p.fail_count || 1, new Date(p.created_at).toLocaleDateString("en-IN")])
-  ].map(r => r.join(",")).join("\n");
+  ].map(r => r.map(csvCell).join(",")).join("\n");
   downloadCSV(csv, filename);
 }
 
@@ -1147,7 +1137,7 @@ function exportBookingsCSV(data) {
     new Date(b.start_datetime).toLocaleDateString("en-IN"),
     new Date(b.end_datetime).toLocaleDateString("en-IN"),
     b.total_price, b.status])
-  ].map(r => r.join(",")).join("\n");
+  ].map(r => r.map(csvCell).join(",")).join("\n");
   downloadCSV(csv, "bookings");
 }
 

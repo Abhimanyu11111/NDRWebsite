@@ -22,9 +22,6 @@ export default function LoginAdmin() {
         password
       });
 
-      console.log("API Response:", res.data);
-      console.log("Admin data:", res.data.admin);
-
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("admin", JSON.stringify(res.data.admin));
 

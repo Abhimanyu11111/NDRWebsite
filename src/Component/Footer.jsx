@@ -11,7 +11,7 @@ export default function Footer() {
 
     // Update visitor counter in DB + get total
     useEffect(() => {
-        fetch("http://localhost:5000/api/visitor/increment", {
+        fetch(`${import.meta.env.VITE_API_URL}/visitor/increment`, {
             method: "POST",
         })
             .then((res) => res.json())
@@ -25,7 +25,7 @@ export default function Footer() {
 
     // Log visitor info (IP, Location, Browser, Device)
     useEffect(() => {
-        fetch("http://localhost:5000/api/visitor/log", {
+        fetch(`${import.meta.env.VITE_API_URL}/visitor/log`, {
             method: "POST",
         }).catch((err) => console.log(err));
     }, []);

@@ -15,7 +15,7 @@ export const seoConfig = {
         description:
             "Learn about the National Data Repository (NDR), its mandate and role in managing exploration and production data in India.",
         keywords: "About NDR, National Data Repository India",
-        canonical: "http://localhost:5173/about"
+        canonical: `${BASE_URL}/about`
     },
 
 

@@ -10,32 +10,37 @@
 .filterSelect {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
   font-size: 14px;
   background: white;
   cursor: pointer;
   transition: border-color 0.2s;
+  color: #374151;
+  appearance: auto;
 }
 
 .filterSelect:focus {
   outline: none;
-  border-color: #0066cc;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
 }
 
 .searchInput {
   width: 100%;
-  padding: 12px 14px;
-  border: 2px solid #e0e0e0;
+  padding: 10px 14px;
+  border: 1.5px solid #e2e8f0;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
+  color: #374151;
+  margin-top: 6px;
 }
 
 .searchInput:focus {
   outline: none;
-  border-color: #0066cc;
-  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
 }
 
 .dropdownList {
@@ -108,11 +113,11 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: #e8f0fe;
-  color: #1a56db;
-  border: 1px solid #c3d7fd;
-  border-radius: 20px;
-  padding: 4px 10px;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 3px 8px;
   font-size: 12px;
   font-weight: 500;
 }
@@ -120,9 +125,9 @@
 .chipRemove {
   background: none;
   border: none;
-  color: #1a56db;
+  color: #93c5fd;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1;
   padding: 0;
   margin-left: 2px;
@@ -131,7 +136,7 @@
 }
 
 .chipRemove:hover {
-  color: #c0392b;
+  color: #1d4ed8;
 }
 
 /* ── Checkbox row in dropdown ── */

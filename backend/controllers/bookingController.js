@@ -206,6 +206,11 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing required booking fields" });
     }
 
+    if (bookingType === "MULTI_DAY" && !end_datetime) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: "end_datetime required for MULTI_DAY booking" });
+    }
+
     // Validate
     const { valid, errors } = await validateBookingRequest({
       startDatetime: new Date(start_datetime),
@@ -230,11 +235,6 @@ export const createBooking = async (req, res) => {
 
     //  ONE_WEEK + MULTI_DAY + all other types handled here
     const { start, end, durationMinutes } = resolveDuration(bookingType, start_datetime, end_datetime);
-
-    if (bookingType === "MULTI_DAY" && !end_datetime) {
-      await t.rollback();
-      return res.status(400).json({ success: false, message: "end_datetime required for MULTI_DAY booking" });
-    }
 
     const hasWeekend = hasWeekendInRange(start, end);
     if (hasWeekend && !weekendNotice) {
@@ -268,7 +268,7 @@ export const createBooking = async (req, res) => {
     const workingDaySurcharge = calcWorkingDaySurcharge(workingDays);
     const roomPrice           = calculateRoomPrice(bookingType, durationMinutes, room);
     const totalPrice          = roomPrice + workingDaySurcharge;
-    const finalStatus         = hasWeekend ? "PENDING" : "CONFIRMED";
+    const finalStatus         = "PENDING";
 
     const booking = await Booking.create(
       {
@@ -315,10 +315,7 @@ export const createBooking = async (req, res) => {
       totalPrice,
       workingDays,
       workingDaySurcharge,
-      message:
-        finalStatus === "PENDING"
-          ? "Booking created. Pending admin approval (weekend booking)."
-          : "Booking confirmed! Please complete payment.",
+      message: "Booking confirmed! Please complete payment.",
     });
   } catch (err) {
     await t.rollback();
@@ -544,9 +541,12 @@ export const confirmBookingAfterPayment = async (bookingId, transaction) => {
   });
 
   if (!booking) throw new Error(`Booking ${bookingId} not found`);
-  if (booking.status === "CONFIRMED") return booking;
+
+  // Idempotency: skip only if fully confirmed AND datasets already locked
+  if (booking.status === "CONFIRMED" && booking.dataset_locked) return booking;
 
   booking.status         = "CONFIRMED";
+  booking.payment_status = "SUCCESS";
   booking.dataset_locked = true;
   await booking.save({ transaction });
 
