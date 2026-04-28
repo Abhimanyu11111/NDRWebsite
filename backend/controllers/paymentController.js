@@ -26,7 +26,7 @@ export const initiatePayment = async (req, res) => {
 
     const booking = await Booking.findOne({
       where: { booking_id, user_id: userId },
-      include: [{ model: Room, attributes: ["title", "id"] }],
+      include: [{ model: Room, as: "room", attributes: ["title", "id"] }],
     });
 
     if (!booking) {
@@ -187,8 +187,8 @@ export const paymentResponse = async (req, res) => {
       const fullBooking = await Booking.findOne({
         where:   { booking_id: bookingId },
         include: [
-          { model: User, attributes: ["id", "name", "email", "phone", "company"] },
-          { model: Room, attributes: ["id", "title", "description"] },
+          { model: User, as: "user", attributes: ["id", "name", "email", "phone", "company"] },
+          { model: Room, as: "room", attributes: ["id", "title", "description"] },
         ],
       });
 

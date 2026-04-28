@@ -22,14 +22,29 @@ export default function Account() {
 
   const fetchData = async () => {
     try {
-      const [profileRes, bookingsRes, paymentsRes] = await Promise.all([
+      const [profileRes, bookingsRes, paymentsRes] = await Promise.allSettled([
         axios.get("/user/profile"),
         axios.get("/user/bookings"),
         axios.get("/user/payments"),
       ]);
-      setProfile(profileRes.data.user);
-      setBookings(bookingsRes.data.bookings);
-      setPayments(paymentsRes.data.payments);
+
+      if (profileRes.status === "fulfilled") {
+        setProfile(profileRes.value.data.user);
+      } else {
+        console.error("Profile fetch failed:", profileRes.reason);
+      }
+
+      if (bookingsRes.status === "fulfilled") {
+        setBookings(bookingsRes.value.data.bookings);
+      } else {
+        console.error("Bookings fetch failed:", bookingsRes.reason);
+      }
+
+      if (paymentsRes.status === "fulfilled") {
+        setPayments(paymentsRes.value.data.payments);
+      } else {
+        console.error("Payments fetch failed:", paymentsRes.reason);
+      }
     } catch (error) {
       console.error("Fetch error:", error);
     } finally {
