@@ -1,18 +1,48 @@
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const MIN_ADVANCE_DAYS = 3;
 export const MAX_ADVANCE_DAYS = 90;
+const INDIA_TIMEZONE = "Asia/Kolkata";
+
+const getIndiaDateParts = (value) => {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: INDIA_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = formatter.formatToParts(new Date(value));
+
+  return {
+    year: Number(parts.find((part) => part.type === "year")?.value),
+    month: Number(parts.find((part) => part.type === "month")?.value),
+    day: Number(parts.find((part) => part.type === "day")?.value),
+  };
+};
+
+const toIndiaDateOnly = (value) => {
+  const { year, month, day } = getIndiaDateParts(value);
+  return new Date(Date.UTC(year, month - 1, day));
+};
+
+const formatIndiaDateKey = (value) => {
+  const { year, month, day } = getIndiaDateParts(value);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+};
 
 // ─── Weekend helpers ──────────────────────────────────────────────────────────
 export const isWeekend = (date) => {
-  const day = date.getDay();
+  const day = toIndiaDateOnly(date).getUTCDay();
   return day === 0 || day === 6;
 };
 
 export const hasWeekendInRange = (start, end) => {
-  const d = new Date(start);
-  while (d <= end) {
-    if (isWeekend(d)) return true;
-    d.setDate(d.getDate() + 1);
+  const d = toIndiaDateOnly(start);
+  const endDay = toIndiaDateOnly(end);
+
+  while (d <= endDay) {
+    const day = d.getUTCDay();
+    if (day === 0 || day === 6) return true;
+    d.setUTCDate(d.getUTCDate() + 1);
   }
   return false;
 };
@@ -21,25 +51,21 @@ export const hasWeekendInRange = (start, end) => {
 
 //  Time strip karke sirf date compare karo
 export const violatesAdvanceRule = (startDatetime) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = toIndiaDateOnly(new Date());
 
   const minAllowed = new Date(today);
-  minAllowed.setDate(today.getDate() + MIN_ADVANCE_DAYS);
+  minAllowed.setUTCDate(today.getUTCDate() + MIN_ADVANCE_DAYS);
 
-  const startDay = new Date(startDatetime);
-  startDay.setHours(0, 0, 0, 0);
+  const startDay = toIndiaDateOnly(startDatetime);
 
   return startDay < minAllowed;
 };
 
 export const violatesMaxAdvanceRule = (startDatetime) => {
-  const maxAllowed = new Date();
-  maxAllowed.setHours(0, 0, 0, 0);
-  maxAllowed.setDate(maxAllowed.getDate() + MAX_ADVANCE_DAYS);
+  const maxAllowed = toIndiaDateOnly(new Date());
+  maxAllowed.setUTCDate(maxAllowed.getUTCDate() + MAX_ADVANCE_DAYS);
 
-  const startDay = new Date(startDatetime);
-  startDay.setHours(0, 0, 0, 0);
+  const startDay = toIndiaDateOnly(startDatetime);
 
   return startDay > maxAllowed;
 };
@@ -101,7 +127,7 @@ export const invalidateHolidayCache = () => {
 
 export const isHoliday = async (date, HolidayModel = null) => {
   const holidays = await getHolidaySet(HolidayModel);
-  const dateStr  = new Date(date).toISOString().slice(0, 10);
+  const dateStr  = formatIndiaDateKey(date);
   return holidays.has(dateStr);
 };
 

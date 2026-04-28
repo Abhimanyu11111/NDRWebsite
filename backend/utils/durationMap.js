@@ -22,19 +22,45 @@ export const HALF_DAY_SLOTS = {
   PM: { start: "14:00", end: "18:00" },
 };
 
+const INDIA_TIMEZONE = "Asia/Kolkata";
+
+const getIndiaDateParts = (value) => {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: INDIA_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = formatter.formatToParts(new Date(value));
+
+  return {
+    year: Number(parts.find((part) => part.type === "year")?.value),
+    month: Number(parts.find((part) => part.type === "month")?.value),
+    day: Number(parts.find((part) => part.type === "day")?.value),
+  };
+};
+
+const toIndiaDateOnly = (value) => {
+  const { year, month, day } = getIndiaDateParts(value);
+  return new Date(Date.UTC(year, month - 1, day));
+};
+
+const formatIndiaDateKey = (value) => {
+  const { year, month, day } = getIndiaDateParts(value);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+};
+
 // ─── Working-day helpers ──────────────────────────────────────────────────────
 export const countWorkingDays = (start, end, holidaySet = new Set()) => {
   let count = 0;
-  const cur = new Date(start);
-  cur.setHours(0, 0, 0, 0);
-  const endDay = new Date(end);
-  endDay.setHours(0, 0, 0, 0);
+  const cur = toIndiaDateOnly(start);
+  const endDay = toIndiaDateOnly(end);
 
   while (cur <= endDay) {
-    const day = cur.getDay();
-    const dateStr = cur.toISOString().slice(0, 10);
+    const day = cur.getUTCDay();
+    const dateStr = formatIndiaDateKey(cur);
     if (day !== 0 && day !== 6 && !holidaySet.has(dateStr)) count++;
-    cur.setDate(cur.getDate() + 1);
+    cur.setUTCDate(cur.getUTCDate() + 1);
   }
   return count;
 };
