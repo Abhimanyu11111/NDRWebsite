@@ -189,9 +189,9 @@ export default function ManageBookings() {
   }
 
   return (
-    <>
+    <div style={{ display: "flex", minHeight: "100vh" }}>
       <AdminNavbar />
-      <div style={pageWrapper}>
+      <div style={{ ...pageWrapper, flex: 1, overflow: "auto" }}>
         {/* Header */}
         <div style={headerSection}>
           <div style={headerContent}>
@@ -426,7 +426,7 @@ export default function ManageBookings() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

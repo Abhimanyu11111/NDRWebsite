@@ -1,327 +1,193 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
-import { 
-  LayoutDashboard, 
-  Users, 
-  Hotel, 
-  Calendar, 
-  User, 
-  Menu, 
-  X 
+import {
+  LayoutDashboard,
+  Users,
+  Database,
+  Calendar,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import Emblem from "../assets/images/emblem1.png";
 
 export default function AdminNavbar() {
   const [activeLink, setActiveLink] = useState(window.location.pathname);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   const navLinks = [
     { path: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { path: "/admin/manageusers", label: "Manage Users", icon: Users },
-    { path: "/admin/managedata", label: "Manage Data", icon: Hotel },
-    { path: "/admin/managebookings", label: "Manage Bookings", icon: Calendar }
+    { path: "/admin/manageusers", label: "Manage users", icon: Users },
+    { path: "/admin/managedata", label: "Manage Data", icon: Database },
+    { path: "/admin/managebookings", label: "Manage bookings", icon: Calendar },
   ];
 
+  const handleLogout = () => {
+    if (confirm("Are you sure you want to logout?")) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("admin");
+      sessionStorage.clear();
+      window.location.href = "/admin/login";
+    }
+  };
+
   return (
-    <nav style={navContainer}>
-      <div style={navContent}>
-        {/* Logo Section */}
-        <Link to="/admin/dashboard" style={logoSection}>
-          <img src={Emblem} alt="Logo" style={logoImage} />
-          <div style={logoText}>
-            <span style={brandName}>NDR (National Data Repository)</span>
-            <span style={brandTagline}>Management Portal</span>
-          </div>
-        </Link>
-
-        {/* Desktop Navigation */}
-        <div style={desktopNav}>
-          {navLinks.map((link) => {
-            const IconComponent = link.icon;
-            return (
-              <Link
-                key={link.path}
-                to={link.path}
-                style={{
-                  ...navLink,
-                  ...(activeLink === link.path ? navLinkActive : {})
-                }}
-                onClick={() => setActiveLink(link.path)}
-                onMouseEnter={(e) => {
-                  if (activeLink !== link.path) {
-                    e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.15)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (activeLink !== link.path) {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                  }
-                }}
-              >
-                <IconComponent size={18} strokeWidth={2.5} />
-                {link.label}
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* User Section */}
-        <div style={userSection}>
-          <div style={userInfo}>
-            <div style={userAvatar}>
-              <User size={20} strokeWidth={2.5} />
+    <aside
+      style={{
+        width: collapsed ? 72 : 240,
+        minHeight: "100vh",
+        background: "linear-gradient(180deg, #1e40af 0%, #312e81 100%)",
+        display: "flex",
+        flexDirection: "column",
+        transition: "width 0.3s ease",
+        flexShrink: 0,
+        position: "sticky",
+        top: 0,
+        height: "100vh",
+        overflowX: "hidden",
+        overflowY: "auto",
+        zIndex: 50,
+      }}
+    >
+      {/* Logo Section */}
+      <div
+        style={{
+          padding: "20px 14px",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          borderBottom: "1px solid rgba(255,255,255,0.12)",
+          position: "relative",
+          minHeight: 78,
+        }}
+      >
+        <img
+          src={Emblem}
+          alt="NDR Logo"
+          style={{ width: 38, height: 38, borderRadius: 10, objectFit: "cover", flexShrink: 0 }}
+        />
+        {!collapsed && (
+          <div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: "white", lineHeight: 1.3 }}>
+              NDR (National Data Repository)
             </div>
-            <div style={userDetails}>
-              <span style={userName}>Admin</span>
-              <span style={userRole}>Administrator</span>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", marginTop: 3 }}>
+              Management Portal
             </div>
           </div>
-        </div>
-
-        {/* Mobile Menu Button */}
+        )}
         <button
-          style={mobileMenuButton}
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          onClick={() => setCollapsed((c) => !c)}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          style={{
+            position: "absolute",
+            right: -13,
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: 26,
+            height: 26,
+            borderRadius: "50%",
+            background: "white",
+            border: "1.5px solid #e2e8f0",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+            zIndex: 10,
+          }}
         >
-          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          {collapsed ? (
+            <ChevronRight size={13} color="#475569" />
+          ) : (
+            <ChevronLeft size={13} color="#475569" />
+          )}
         </button>
       </div>
 
-      {/* Mobile Navigation */}
-      {isMobileMenuOpen && (
-        <div style={mobileNav}>
-          {navLinks.map((link) => {
-            const IconComponent = link.icon;
-            return (
-              <Link
-                key={link.path}
-                to={link.path}
-                style={{
-                  ...mobileNavLink,
-                  ...(activeLink === link.path ? mobileNavLinkActive : {})
-                }}
-                onClick={() => {
-                  setActiveLink(link.path);
-                  setIsMobileMenuOpen(false);
-                }}
-              >
-                <IconComponent size={20} strokeWidth={2.5} />
-                {link.label}
-              </Link>
-            );
-          })}
-        </div>
-      )}
-    </nav>
+      {/* Navigation Links */}
+      <nav style={{ flex: 1, padding: "14px 10px", display: "flex", flexDirection: "column", gap: 2 }}>
+        {navLinks.map((link) => {
+          const Icon = link.icon;
+          const isActive =
+            window.location.pathname === link.path || activeLink === link.path;
+          return (
+            <Link
+              key={link.path}
+              to={link.path}
+              title={collapsed ? link.label : ""}
+              onClick={() => setActiveLink(link.path)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: collapsed ? 0 : 12,
+                justifyContent: collapsed ? "center" : "flex-start",
+                padding: collapsed ? "12px 0" : "11px 14px",
+                borderRadius: 10,
+                textDecoration: "none",
+                color: isActive ? "white" : "rgba(255,255,255,0.65)",
+                background: isActive ? "rgba(255,255,255,0.18)" : "transparent",
+                fontWeight: isActive ? 600 : 500,
+                fontSize: 14,
+                transition: "all 0.2s ease",
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.1)";
+                  e.currentTarget.style.color = "white";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "rgba(255,255,255,0.65)";
+                }
+              }}
+            >
+              <Icon size={20} strokeWidth={2} style={{ flexShrink: 0 }} />
+              {!collapsed && <span>{link.label}</span>}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Logout Button */}
+      <div style={{ padding: "14px 10px", borderTop: "1px solid rgba(255,255,255,0.12)" }}>
+        <button
+          onClick={handleLogout}
+          title={collapsed ? "Logout" : ""}
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: collapsed ? "center" : "flex-start",
+            gap: collapsed ? 0 : 10,
+            padding: collapsed ? "11px 0" : "11px 14px",
+            background: "transparent",
+            border: "1.5px solid rgba(252,165,165,0.5)",
+            borderRadius: 10,
+            color: "#fca5a5",
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s",
+            whiteSpace: "nowrap",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(239,68,68,0.15)";
+            e.currentTarget.style.borderColor = "#fca5a5";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderColor = "rgba(252,165,165,0.5)";
+          }}
+        >
+          <LogOut size={18} style={{ flexShrink: 0 }} />
+          {!collapsed && <span>Logout</span>}
+        </button>
+      </div>
+    </aside>
   );
-}
-
-/* ================= STYLES ================= */
-
-const navContainer = {
-  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-
-  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-  position: "sticky",
-  top: 0,
-  zIndex: 100
-};
-
-const navContent = {
-  maxWidth: "1600px",
-  margin: "0 auto",
-  padding: "16px 24px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: "32px"
-};
-
-const logoSection = {
-  display: "flex",
-  alignItems: "center",
-  gap: "12px",
-  textDecoration: "none",
-  color: "white",
-  flexShrink: 0
-};
-
-const logoImage = {
-  width: "34px",
-  height: "48px",
-  borderRadius: "12px",
-  objectFit: "cover",
-  boxShadow: "0 4px 8px rgba(0,0,0,0.2)"
-};
-
-const logoText = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "2px"
-};
-
-const brandName = {
-  fontSize: "20px",
-  fontWeight: "700",
-  letterSpacing: "-0.5px"
-};
-
-const brandTagline = {
-  fontSize: "12px",
-  opacity: 0.9,
-  fontWeight: "500"
-};
-
-const desktopNav = {
-  display: "flex",
-  gap: "8px",
-  flex: 1,
-  justifyContent: "center"
-};
-
-const navLink = {
-  display: "flex",
-  alignItems: "center",
-  gap: "8px",
-  padding: "10px 20px",
-  color: "white",
-  textDecoration: "none",
-  fontSize: "15px",
-  fontWeight: "600",
-  borderRadius: "10px",
-  transition: "all 0.3s ease",
-  whiteSpace: "nowrap"
-};
-
-const navLinkActive = {
-  backgroundColor: "rgba(255,255,255,0.25)",
-  boxShadow: "0 4px 8px rgba(0,0,0,0.1)"
-};
-
-const userSection = {
-  display: "flex",
-  alignItems: "center",
-  gap: "12px",
-  flexShrink: 0
-};
-
-const userInfo = {
-  display: "flex",
-  alignItems: "center",
-  gap: "12px",
-  padding: "8px 16px",
-  backgroundColor: "rgba(255,255,255,0.15)",
-  borderRadius: "12px",
-  cursor: "pointer",
-  transition: "all 0.3s ease"
-};
-
-const userAvatar = {
-  width: "36px",
-  height: "36px",
-  borderRadius: "10px",
-  backgroundColor: "rgba(255,255,255,0.25)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  color: "white"
-};
-
-const userDetails = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "2px"
-};
-
-const userName = {
-  fontSize: "14px",
-  fontWeight: "700",
-  color: "white"
-};
-
-const userRole = {
-  fontSize: "12px",
-  opacity: 0.9,
-  color: "white"
-};
-
-const mobileMenuButton = {
-  display: "none",
-  fontSize: "24px",
-  background: "rgba(255,255,255,0.15)",
-  border: "none",
-  color: "white",
-  cursor: "pointer",
-  padding: "8px 12px",
-  borderRadius: "8px",
-  transition: "all 0.3s ease",
-  alignItems: "center",
-  justifyContent: "center"
-};
-
-const mobileNav = {
-  display: "none",
-  flexDirection: "column",
-  gap: "4px",
-  padding: "16px 24px",
-  borderTop: "1px solid rgba(255,255,255,0.15)",
-  animation: "slideDown 0.3s ease"
-};
-
-const mobileNavLink = {
-  display: "flex",
-  alignItems: "center",
-  gap: "12px",
-  padding: "12px 16px",
-  color: "white",
-  textDecoration: "none",
-  fontSize: "15px",
-  fontWeight: "600",
-  borderRadius: "8px",
-  transition: "all 0.3s ease"
-};
-
-const mobileNavLinkActive = {
-  backgroundColor: "rgba(255,255,255,0.25)"
-};
-
-// Add this style tag to your component or global CSS
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-@media (max-width: 968px) {
-  nav > div:first-child > div:nth-child(2) {
-    display: none !important;
-  }
-  nav > div:first-child > div:nth-child(3) {
-    display: none !important;
-  }
-  nav > div:first-child > button {
-    display: flex !important;
-  }
-  nav > div:last-child {
-    display: flex !important;
-  }
-}
-
-@media (max-width: 640px) {
-  nav > div:first-child > a > div {
-    display: none !important;
-  }
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-`;
-
-if (!document.head.querySelector('style[data-admin-navbar]')) {
-  styleSheet.setAttribute('data-admin-navbar', 'true');
-  document.head.appendChild(styleSheet);
 }

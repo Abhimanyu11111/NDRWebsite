@@ -77,9 +77,9 @@ export default function ManageUsers() {
   }
 
   return (
-    <>
+    <div style={{ display: "flex", minHeight: "100vh" }}>
       <AdminNavbar />
-      <div style={pageWrapper}>
+      <div style={{ ...pageWrapper, flex: 1, overflow: "auto" }}>
         {/* Header */}
         <div style={headerSection}>
           <div style={headerContent}>
@@ -222,7 +222,7 @@ export default function ManageUsers() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
