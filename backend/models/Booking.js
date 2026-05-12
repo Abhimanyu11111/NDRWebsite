@@ -26,9 +26,9 @@ const Booking = sequelize.define(
     },
 
     booking_type: {
-      type: DataTypes.ENUM("FULL_DAY", "MULTI_DAY"),  // ✅ UPDATED: Removed HOURLY, HALF_DAY, ONE_WEEK
+      type: DataTypes.ENUM("MULTI_DAY"),
       allowNull: false,
-      defaultValue: "FULL_DAY",
+      defaultValue: "MULTI_DAY",
     },
 
     /* Slot-based core fields */
@@ -66,7 +66,7 @@ const Booking = sequelize.define(
       comment: "Extra charge when working days exceed MAX_FREE_WORKING_DAYS",
     },
 
-    // ✅ NEW FIELDS
+    // NEW FIELDS
     license_type: {
       type: DataTypes.STRING(100),
       allowNull: true,
@@ -91,7 +91,7 @@ const Booking = sequelize.define(
       comment: "Selected dataset IDs (array)",
     },
 
-    // ✅ UPDATED: Separate fields for better querying
+    //  Separate fields for better querying
     data_category: {
       type: DataTypes.STRING(100),
       allowNull: true,

@@ -21,7 +21,7 @@ api.interceptors.response.use(
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("admin");
       sessionStorage.clear();
-      window.location.href = isAdmin ? "/admin/login" : "/Login";
+      window.location.href = isAdmin ? "/admin/login" : "/login";
     }
     return Promise.reject(error);
   }

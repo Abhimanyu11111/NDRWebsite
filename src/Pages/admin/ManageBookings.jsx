@@ -86,7 +86,7 @@ export default function ManageBookings() {
       let days = "—";
       if (start && end) {
         const raw = Math.round((end - start) / (1000 * 60 * 60 * 24));
-        days = b.booking_type === "FULL_DAY" ? raw : raw + 1;
+        days = raw + 1;
       }
       return {
         "Booking ID": b.booking_id || "—",
@@ -95,9 +95,7 @@ export default function ManageBookings() {
         "Phone": b.userPhone || "—",
         "Room": b.roomTitle || "—",
         "Room Type": b.room_type || "—",
-        "Booking Type": b.booking_type
-          ? b.booking_type + (b.half_day_slot ? ` (${b.half_day_slot})` : "")
-          : "—",
+        "Booking Type": b.booking_type || "—",
         "License Type": b.license_type || "—",
         "Check-in": start ? start.toLocaleDateString("en-IN") : "—",
         "Check-out": end ? end.toLocaleDateString("en-IN") : "—",
@@ -482,11 +480,9 @@ function BookingRow({ booking, navigate, isEven }) {
       <td style={tableCell}>
         <span style={{
           fontSize: 12, fontWeight: 700, padding: "3px 8px", borderRadius: 5,
-          background: booking.booking_type === "HALF_DAY" ? "#f0fdf4" : "#eff6ff",
-          color: booking.booking_type === "HALF_DAY" ? "#166534" : "#1e40af"
+          background: "#eff6ff", color: "#1e40af"
         }}>
           {booking.booking_type || "—"}
-          {booking.half_day_slot ? ` (${booking.half_day_slot})` : ""}
         </span>
       </td>
       <td style={tableCell}><span style={{ fontSize: 13, color: "#475569" }}>{booking.start_datetime ? new Date(booking.start_datetime).toLocaleDateString("en-IN") : "—"}</span></td>
@@ -494,7 +490,7 @@ function BookingRow({ booking, navigate, isEven }) {
       <td style={tableCell}>
         {booking.start_datetime && booking.end_datetime ? (() => {
           const rawDays = Math.round((new Date(booking.end_datetime) - new Date(booking.start_datetime)) / (1000 * 60 * 60 * 24));
-          const days = booking.booking_type === "FULL_DAY" ? rawDays : rawDays + 1;
+          const days = rawDays + 1;
           return (
             <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", background: "#3b82f6", borderRadius: 20, padding: "3px 10px" }}>
               {days} {days === 1 ? "Day" : "Days"}

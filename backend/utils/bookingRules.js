@@ -139,8 +139,6 @@ export const isNonWorkingDay = async (date, HolidayModel = null) => {
 // ─── Full booking validation ──────────────────────────────────────────────────
 export const validateBookingRequest = async ({
   startDatetime,
-  bookingType,
-  halfDaySlot = null,
   HolidayModel = null,
 }) => {
   const errors = [];
@@ -156,21 +154,10 @@ export const validateBookingRequest = async ({
     errors.push(`Booking cannot be made more than ${MAX_ADVANCE_DAYS} days in advance.`);
   }
 
-  // 3.  Weekend ALLOWED — advance notice ke saath book ho sakta hai
-  //    weekendNotice validation bookingController.js mein hoti hai
-  //    Yahan weekend ko BLOCK nahi karte
-
-  // 4. Public holiday — BLOCK karo
+  // 3. Public holiday — BLOCK karo
   const holiday = await isHoliday(start, HolidayModel);
   if (holiday) {
     errors.push(`${start.toISOString().slice(0, 10)} is a public holiday. Please choose another date.`);
-  }
-
-  // 5. HALF_DAY slot check
-  if (bookingType === "HALF_DAY") {
-    if (!halfDaySlot || !["AM", "PM"].includes(halfDaySlot.toUpperCase())) {
-      errors.push("HALF_DAY booking requires a valid slot: AM or PM.");
-    }
   }
 
   return { valid: errors.length === 0, errors };

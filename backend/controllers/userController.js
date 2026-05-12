@@ -38,14 +38,14 @@ export const getUserBookings = async (req, res) => {
   try {
     console.log('📝 Fetching bookings for user:', req.user.id);
 
-    // ✅ Get bookings WITHOUT joins
+    //  Get bookings WITHOUT joins
     const bookings = await Booking.findAll({
       where: { user_id: req.user.id },
       order: [['created_at', 'DESC']],
       raw: true  // Get plain objects
     });
 
-    // ✅ Manually fetch room details for each booking
+    //  Manually fetch room details for each booking
     const bookingsWithRooms = await Promise.all(
       bookings.map(async (booking) => {
         const room = await Room.findByPk(booking.room_id, {
@@ -78,14 +78,14 @@ export const getPaymentHistory = async (req, res) => {
   try {
     console.log('📝 Fetching payments for user:', req.user.id);
 
-    // ✅ Get payments WITHOUT joins
+    //  Get payments WITHOUT joins
     const payments = await Payment.findAll({
       where: { user_id: req.user.id },
       order: [['created_at', 'DESC']],
       raw: true
     });
 
-    // ✅ Manually fetch booking and room details
+    // Manually fetch booking and room details
     const paymentsWithDetails = await Promise.all(
       payments.map(async (payment) => {
         const booking = await Booking.findOne({

@@ -6,7 +6,6 @@ import SearchableBlockDropdown from '../Component/SearchableBlockDropdown';
 
 /* ====================== CONSTANTS ====================== */
 const DURATION_MAP = {
-  FULL_DAY: 1440,
   MULTI_DAY: "range",
 };
 
@@ -349,22 +348,13 @@ export default function BookVDR() {
 
   /* --- Day click logic --- */
   const handleDayClick = (date) => {
-    if (durationType === "FULL_DAY") {
-      const co = new Date(date);
-      co.setDate(co.getDate() + 1);
+    if (selectingFor === "checkin" || !checkIn || date <= checkIn) {
       setCheckIn(date);
-      setCheckOut(co);
-      setCalOpen(false);
+      setCheckOut(null);
+      setSelectingFor("checkout");
     } else {
-      // MULTI_DAY: user picks both
-      if (selectingFor === "checkin" || !checkIn || date <= checkIn) {
-        setCheckIn(date);
-        setCheckOut(null);
-        setSelectingFor("checkout");
-      } else {
-        setCheckOut(date);
-        setCalOpen(false);
-      }
+      setCheckOut(date);
+      setCalOpen(false);
     }
   };
 
@@ -393,9 +383,7 @@ export default function BookVDR() {
   /* --- Booking summary values --- */
   const diffDays =
     checkIn && checkOut
-      ? durationType === "FULL_DAY"
-        ? 1
-        : Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)) + 1
+      ? Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)) + 1
       : null;
 
   /* --- Pricing --- */
@@ -420,13 +408,8 @@ export default function BookVDR() {
     setRoomId(selection.room.id);
     const selectedDate = new Date(selection.date);
     setCheckIn(selectedDate);
-    if (durationType === "FULL_DAY") {
-      const co = new Date(selectedDate);
-      co.setDate(co.getDate() + 1);
-      setCheckOut(co);
-    } else {
-      setCheckOut(null);
-    }
+    setCheckOut(null);
+    setSelectingFor("checkout");
     if (bookingFormRef.current) {
       bookingFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -723,6 +706,9 @@ export default function BookVDR() {
                   <span className={styles.summaryTotalLabel}>Total Est.</span>
                   <span className={styles.summaryTotalAmount}>{formatINR(totalPrice)}</span>
                 </div>
+                <p style={{ fontSize: "11px", color: "#94a3b8", margin: "4px 0 0", lineHeight: 1.4 }}>
+                  + ₹50/working day beyond 3 working days (calculated at checkout)
+                </p>
 
                 <div className={styles.summaryDivider} />
 

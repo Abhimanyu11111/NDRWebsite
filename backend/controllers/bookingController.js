@@ -11,7 +11,6 @@ import { generateBookingId } from "../utils/dateHelpers.js";
 import { sendBookingConfirmation, sendSlotAvailableNotification } from "../src/services/emailService.js";
 
 import {
-  DURATION_MAP,
   countWorkingDays,
   calcWorkingDaySurcharge,
 } from "../utils/durationMap.js";
@@ -27,34 +26,17 @@ import {
 /* =====================================================
    PRICE CALCULATOR
 ===================================================== */
-const calculateRoomPrice = (bookingType, durationMinutes, room) => {
-  if (bookingType === "HOURLY")    return Math.ceil(durationMinutes / 60) * room.hourly_rate;
-  if (bookingType === "HALF_DAY")  return room.half_day_rate;
-  if (bookingType === "FULL_DAY")  return room.full_day_rate;
-  if (bookingType === "ONE_WEEK")  return 7 * room.full_day_rate;
-  if (bookingType === "MULTI_DAY") return Math.ceil(durationMinutes / 1440) * room.full_day_rate;
-  return 0;
+const calculateRoomPrice = (durationMinutes, room) => {
+  return Math.ceil(durationMinutes / 1440) * room.full_day_rate;
 };
 
 /* =====================================================
-   DURATION HELPER —  ONE_WEEK support
+   DURATION HELPER
 ===================================================== */
-const resolveDuration = (bookingType, start_datetime, end_datetime) => {
-  const start = new Date(start_datetime);
-  let end, durationMinutes;
-
-  if (bookingType === "MULTI_DAY") {
-    end             = new Date(end_datetime);
-    durationMinutes = Math.floor((end - start) / 60000);
-  } else if (bookingType === "ONE_WEEK") {
-    end             = new Date(start);
-    end.setDate(end.getDate() + 7);
-    durationMinutes = 10080; // 7 * 24 * 60
-  } else {
-    durationMinutes = DURATION_MAP[bookingType];
-    end             = new Date(start.getTime() + durationMinutes * 60000);
-  }
-
+const resolveDuration = (start_datetime, end_datetime) => {
+  const start         = new Date(start_datetime);
+  const end           = new Date(end_datetime);
+  const durationMinutes = Math.floor((end - start) / 60000);
   return { start, end, durationMinutes };
 };
 
@@ -127,28 +109,24 @@ export const checkAvailability = async (req, res) => {
 ===================================================== */
 export const getBookingPreview = async (req, res) => {
   try {
-    const { room_id, bookingType, start_datetime, end_datetime, halfDaySlot } = req.body;
+    const { room_id, start_datetime, end_datetime } = req.body;
 
-    if (!room_id || !bookingType || !start_datetime) {
-      return res.status(400).json({ success: false, message: "Missing required fields for preview" });
+    if (!room_id || !start_datetime || !end_datetime) {
+      return res.status(400).json({ success: false, message: "room_id, start_datetime, and end_datetime are required" });
     }
 
     const room = await Room.findByPk(room_id);
     if (!room) return res.status(404).json({ success: false, message: "Room not found" });
 
-    const { start, end, durationMinutes } = resolveDuration(bookingType, start_datetime, end_datetime);
+    const { start, end, durationMinutes } = resolveDuration(start_datetime, end_datetime);
 
     const holidaySet          = await getHolidaySet();
     const workingDays         = countWorkingDays(start, end, holidaySet);
     const workingDaySurcharge = calcWorkingDaySurcharge(workingDays);
-    const roomPrice           = calculateRoomPrice(bookingType, durationMinutes, room);
+    const roomPrice           = calculateRoomPrice(durationMinutes, room);
     const estimatedTotal      = roomPrice + workingDaySurcharge;
 
-    const { valid, errors } = await validateBookingRequest({
-      startDatetime: start,
-      bookingType,
-      halfDaySlot,
-    });
+    const { valid, errors } = await validateBookingRequest({ startDatetime: start });
 
     res.json({
       success: true,
@@ -157,8 +135,7 @@ export const getBookingPreview = async (req, res) => {
         start,
         end,
         durationMinutes,
-        bookingType,
-        halfDaySlot:        halfDaySlot || null,
+        bookingType: "MULTI_DAY",
         hasWeekend:         hasWeekendInRange(start, end),
         violatesAdvance:    violatesAdvanceRule(start),
         violatesMaxAdvance: violatesMaxAdvanceRule(start),
@@ -187,12 +164,10 @@ export const createBooking = async (req, res) => {
     const userId = req.user.id;
     const {
       room_id,
-      bookingType,
       start_datetime,
       end_datetime,
       dataCatalogue,
       weekendNotice,
-      halfDaySlot,
       license_type,
       room_type,
       block_name,
@@ -201,21 +176,14 @@ export const createBooking = async (req, res) => {
       data_requirements,
     } = req.body;
 
-    if (!room_id || !bookingType || !start_datetime) {
+    if (!room_id || !start_datetime || !end_datetime) {
       await t.rollback();
-      return res.status(400).json({ success: false, message: "Missing required booking fields" });
-    }
-
-    if (bookingType === "MULTI_DAY" && !end_datetime) {
-      await t.rollback();
-      return res.status(400).json({ success: false, message: "end_datetime required for MULTI_DAY booking" });
+      return res.status(400).json({ success: false, message: "room_id, start_datetime, and end_datetime are required" });
     }
 
     // Validate
     const { valid, errors } = await validateBookingRequest({
       startDatetime: new Date(start_datetime),
-      bookingType,
-      halfDaySlot,
     });
 
     if (!valid) {
@@ -233,8 +201,7 @@ export const createBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: "User or Room not found" });
     }
 
-    //  ONE_WEEK + MULTI_DAY + all other types handled here
-    const { start, end, durationMinutes } = resolveDuration(bookingType, start_datetime, end_datetime);
+    const { start, end, durationMinutes } = resolveDuration(start_datetime, end_datetime);
 
     const hasWeekend = hasWeekendInRange(start, end);
     if (hasWeekend && !weekendNotice) {
@@ -266,7 +233,7 @@ export const createBooking = async (req, res) => {
     const holidaySet          = await getHolidaySet();
     const workingDays         = countWorkingDays(start, end, holidaySet);
     const workingDaySurcharge = calcWorkingDaySurcharge(workingDays);
-    const roomPrice           = calculateRoomPrice(bookingType, durationMinutes, room);
+    const roomPrice           = calculateRoomPrice(durationMinutes, room);
     const totalPrice          = roomPrice + workingDaySurcharge;
     const finalStatus         = "PENDING";
 
@@ -275,8 +242,7 @@ export const createBooking = async (req, res) => {
         booking_id:            generateBookingId(),
         user_id:               userId,
         room_id,
-        booking_type:          bookingType,
-        half_day_slot:         bookingType === "HALF_DAY" ? halfDaySlot.toUpperCase() : null,
+        booking_type:          "MULTI_DAY",
         start_datetime:        start,
         end_datetime:          end,
         duration_minutes:      durationMinutes,

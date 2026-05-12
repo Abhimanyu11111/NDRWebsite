@@ -9,6 +9,7 @@ import {
   getAdminBookings,
   updateBookingStatus,
   getAdminPayments,
+  retryPayment,
   getDatasetLocks,
   getPendingRegistrations,
   approveRegistration,
@@ -37,6 +38,7 @@ router.patch("/bookings/:id/status", updateBookingStatus);
 
 // Payments
 router.get("/payments", getAdminPayments);
+router.post("/payments/:order_id/retry", retryPayment);
 
 // Dataset locks
 router.get("/dataset-locks", getDatasetLocks);

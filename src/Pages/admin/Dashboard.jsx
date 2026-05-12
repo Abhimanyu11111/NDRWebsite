@@ -1220,7 +1220,7 @@ const styles = {
   tr: { borderBottom: "1px solid #f1f5f9" },
   td: { padding: "13px 16px", fontSize: 14, color: "#334155" },
   code: { fontSize: 12, background: "#f1f5f9", padding: "2px 6px", borderRadius: 4, color: "#475569", fontFamily: "monospace" },
-  typeBadge: (type) => ({ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 5, background: type === "HALF_DAY" ? "#f0fdf4" : type === "MULTI_DAY" ? "#eff6ff" : type === "WEEKEND" ? "#fef3c7" : "#fafafa", color: type === "HALF_DAY" ? "#166534" : type === "MULTI_DAY" ? "#1e40af" : type === "WEEKEND" ? "#92400e" : "#475569", textTransform: "uppercase", letterSpacing: 0.3 }),
+  typeBadge: () => ({ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 5, background: "#eff6ff", color: "#1e40af", textTransform: "uppercase", letterSpacing: 0.3 }),
   failBadge: { fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 5, background: "#fee2e2", color: "#991b1b" },
   retryPaymentBtn: { display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 6, fontSize: 12, fontWeight: 600, color: "#1e40af", cursor: "pointer" },
   emptyState: { background: "white", borderRadius: 14, border: "1px solid #e2e8f0", padding: "48px 20px", textAlign: "center", color: "#94a3b8", fontSize: 15 },

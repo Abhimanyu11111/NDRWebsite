@@ -43,7 +43,7 @@ const Room = sequelize.define(
       defaultValue: 0,
     },
 
-    // ✅ NEW FIELDS
+    //  NEW FIELDS
     license_type: {
       type: DataTypes.STRING(100),
       allowNull: true,

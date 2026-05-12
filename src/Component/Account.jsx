@@ -91,11 +91,7 @@ export default function Account() {
 
   const bookingTypeLabel = (type) => {
     const map = {
-      FULL_DAY: "24 Hours",
       MULTI_DAY: "Multiple Days",
-      ONE_WEEK: "1 Week",
-      HOURLY: "Hourly",
-      HALF_HOUR: "30 Minutes",
     };
     return map[type] || type;
   };
@@ -224,14 +220,14 @@ export default function Account() {
                             ? String(b.working_days).padStart(2, "0")
                             : "—"}
                         </td>
-                        <td className={styles.amountCell}>$ {Number(b.total_price).toFixed(2)}</td>
+                        <td className={styles.amountCell}>₹ {Number(b.total_price).toFixed(2)}</td>
                         <td>
                           <span className={`${styles.badge} ${styles["pay" + b.payment_status]}`}>
                             {b.payment_status}
                           </span>
                         </td>
                         <td>
-                          {b.status === "CONFIRMED" && b.payment_status === "PENDING" ? (
+                          {b.payment_status === "PENDING" && (b.status === "PENDING" || b.status === "CONFIRMED") ? (
                             <button
                               className={styles.btnConfirm}
                               onClick={() => handlePayNow(b.booking_id)}
@@ -279,7 +275,7 @@ export default function Account() {
                         <td className={styles.monoCell}>{p.order_id}</td>
                         <td>{p.Booking?.Room?.title || "—"}</td>
                         <td>{formatDateShort(p.created_at)}</td>
-                        <td className={styles.amountCell}>$ {Number(p.amount).toFixed(2)}</td>
+                        <td className={styles.amountCell}>₹ {Number(p.amount).toFixed(2)}</td>
                         <td>{p.payment_method || "—"}</td>
                         <td>
                           <span className={`${styles.badge} ${styles["status" + p.status]}`}>

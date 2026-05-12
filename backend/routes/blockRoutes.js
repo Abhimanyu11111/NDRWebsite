@@ -44,7 +44,9 @@ router.get('/search', async (req, res) => {
       replacements.block_area = block_area;
     }
     
-    query += ` ORDER BY block_name ASC LIMIT 50`;
+    // Higher limit when browsing by regime only (no text search)
+    const limit = (regime && !q) ? 500 : 50;
+    query += ` ORDER BY block_name ASC LIMIT ${limit}`;
     
     const results = await sequelize.query(query, {
       replacements,

@@ -68,7 +68,7 @@ export const getDashboardCounts = async (req, res) => {
         { replacements: { since: last7Days }, type: sequelize.QueryTypes.SELECT }
       ),
 
-      User.count({ where: { is_active: false } }),
+      User.count({ where: { approval_status: 'PENDING', is_active: false } }),
     ]);
 
     const formattedBookings = recentBookings.map((b) => ({
@@ -78,7 +78,6 @@ export const getDashboardCounts = async (req, res) => {
       userEmail:             b.user?.email || "—",
       roomTitle:             b.room?.title || "—",
       booking_type:          b.booking_type,
-      half_day_slot:         b.half_day_slot,
       start_datetime:        b.start_datetime,
       end_datetime:          b.end_datetime,
       working_days:          b.working_days,
@@ -248,7 +247,7 @@ export const getPendingRegistrations = async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    const where = { is_active: false };
+    const where = { approval_status: 'PENDING', is_active: false };
 
     const { count, rows } = await User.findAndCountAll({
       where,
@@ -257,7 +256,7 @@ export const getPendingRegistrations = async (req, res) => {
       order:  [["created_at", "DESC"]],
       attributes: [
         "id", "name", "email", "phone", "company",
-        "is_active", "created_at",
+        "is_active", "approval_status", "created_at",
       ],
     });
 
@@ -296,6 +295,7 @@ export const approveRegistration = async (req, res) => {
 
     // Approve user
     user.is_active = true;
+    user.approval_status = 'APPROVED';
     await user.save();
 
     // Create notification
@@ -340,8 +340,9 @@ export const rejectRegistration = async (req, res) => {
       });
     }
 
-    // Keep user inactive
+    // Keep user inactive and mark as rejected
     user.is_active = false;
+    user.approval_status = 'REJECTED';
     await user.save();
 
     // Create rejection notification
@@ -397,7 +398,6 @@ export const getAdminBookings = async (req, res) => {
         userPhone:             b.user?.phone || "—",
         roomTitle:             b.room?.title || "—",
         booking_type:          b.booking_type,
-        half_day_slot:         b.half_day_slot,
         start_datetime:        b.start_datetime,
         end_datetime:          b.end_datetime,
         working_days:          b.working_days,
@@ -454,10 +454,10 @@ export const updateBookingStatus = async (req, res) => {
     });
 
     const statusMessages = {
-      CONFIRMED: `✅ Booking Confirmed! Your booking ${id} for ${booking.room?.title || "the room"} (${startDate} – ${endDate}) has been confirmed. Amount: ₹${Number(booking.total_price).toLocaleString("en-IN")}.`,
-      CANCELLED: `❌ Booking Cancelled. Your booking ${id} for ${booking.room?.title || "the room"} (${startDate} – ${endDate}) has been cancelled by admin.`,
-      COMPLETED: `🎉 Booking Completed. Your booking ${id} for ${booking.room?.title || "the room"} has been marked as completed. Thank you!`,
-      PENDING:   `⏳ Your booking ${id} status has been updated to pending review.`,
+      CONFIRMED: ` Booking Confirmed! Your booking ${id} for ${booking.room?.title || "the room"} (${startDate} – ${endDate}) has been confirmed. Amount: ₹${Number(booking.total_price).toLocaleString("en-IN")}.`,
+      CANCELLED: ` Booking Cancelled. Your booking ${id} for ${booking.room?.title || "the room"} (${startDate} – ${endDate}) has been cancelled by admin.`,
+      COMPLETED: ` Booking Completed. Your booking ${id} for ${booking.room?.title || "the room"} has been marked as completed. Thank you!`,
+      PENDING:   ` Your booking ${id} status has been updated to pending review.`,
     };
 
     await Notification.create({
@@ -522,6 +522,37 @@ export const getAdminPayments = async (req, res) => {
   } catch (err) {
     console.error("Admin payments error:", err);
     res.status(500).json({ success: false, message: "Failed to fetch payments" });
+  }
+};
+
+/* =====================================================
+   POST /admin/payments/:order_id/retry
+   Resets a FAILED payment to PENDING so the user can
+   re-initiate payment from their Account page.
+===================================================== */
+export const retryPayment = async (req, res) => {
+  try {
+    const { order_id } = req.params;
+    const payment = await Payment.findOne({ where: { order_id } });
+
+    if (!payment) {
+      return res.status(404).json({ success: false, message: "Payment not found" });
+    }
+    if (payment.status !== "FAILED") {
+      return res.status(400).json({ success: false, message: "Only FAILED payments can be retried" });
+    }
+
+    await payment.update({ status: "PENDING" });
+
+    const booking = await Booking.findOne({ where: { booking_id: payment.booking_id } });
+    if (booking) {
+      await booking.update({ payment_status: "PENDING" });
+    }
+
+    res.json({ success: true, message: "Payment reset to PENDING — user can now retry from their account" });
+  } catch (err) {
+    console.error("Retry payment error:", err);
+    res.status(500).json({ success: false, message: "Failed to retry payment" });
   }
 };
 

@@ -123,7 +123,7 @@ export default function App() {
 
           {/* USER ROUTES */}
           <Route path="/book-vdr" element={<BookVDR />} />
-          <Route path="/Login" element={<Login />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/Register" element={<Register />} />
 
           {/* ✅ NEW USER ACCOUNT & PAYMENT ROUTES */}

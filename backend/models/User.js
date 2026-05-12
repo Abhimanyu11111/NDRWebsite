@@ -1,7 +1,5 @@
 import { DataTypes } from 'sequelize';
 import sequelize from "../src/config/db.js";
-import Booking from "./Booking.js";
-import Payment from "./Payment.js";
 
 
 
@@ -46,6 +44,11 @@ const User = sequelize.define('User', {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: true
+  },
+  approval_status: {
+    type: DataTypes.ENUM('PENDING', 'APPROVED', 'REJECTED'),
+    allowNull: false,
+    defaultValue: 'APPROVED',
   },
   created_at: {
     type: DataTypes.DATE,

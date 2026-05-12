@@ -22,6 +22,7 @@ function Register() {
     email: "",
     phone: "",
     password: "",
+    company: "",
     address: "",
     city: "",
     state: "",
@@ -45,6 +46,18 @@ function Register() {
     setError("");
   };
 
+  const BLOCKED_DOMAINS = [
+    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "live.com",
+    "rediffmail.com", "ymail.com", "aol.com", "icloud.com", "protonmail.com",
+    "proton.me", "msn.com", "yahoo.in", "yahoo.co.in", "hotmail.co.in",
+    "zohomail.com", "mail.com", "gmx.com", "inbox.com", "yandex.com"
+  ];
+
+  const isPersonalEmail = (email) => {
+    const domain = email.split("@")[1]?.toLowerCase();
+    return domain ? BLOCKED_DOMAINS.includes(domain) : false;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -52,6 +65,12 @@ function Register() {
 
     if (!formData.name || !formData.email || !formData.phone || !formData.password) {
       setError("Please fill all required fields");
+      setLoading(false);
+      return;
+    }
+
+    if (isPersonalEmail(formData.email)) {
+      setError("Personal email addresses (Gmail, Outlook, Hotmail, Yahoo, etc.) are not allowed. Please use your official organization email.");
       setLoading(false);
       return;
     }
@@ -282,6 +301,20 @@ function Register() {
             <div style={sectionHeader}>
               <div style={sectionTitle}>Organization Details</div>
               <div style={sectionLine}></div>
+            </div>
+
+            <div style={formGroup}>
+              <label style={formLabel}>
+                <Building2 size={16} />
+                Company / Organisation Name <span style={requiredStar}>*</span>
+              </label>
+              <input
+                style={formInput}
+                name="company"
+                placeholder="Enter your company or organisation name"
+                onChange={handleChange}
+                required
+              />
             </div>
 
             <div style={formGroup}>

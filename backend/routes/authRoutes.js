@@ -126,6 +126,20 @@ router.post("/register", upload.single("identity_certificate"), async (req, res)
     });
   }
 
+  const BLOCKED_DOMAINS = [
+    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "live.com",
+    "rediffmail.com", "ymail.com", "aol.com", "icloud.com", "protonmail.com",
+    "proton.me", "msn.com", "yahoo.in", "yahoo.co.in", "hotmail.co.in",
+    "zohomail.com", "mail.com", "gmx.com", "inbox.com", "yandex.com"
+  ];
+  const emailDomain = email.split("@")[1]?.toLowerCase();
+  if (!emailDomain || BLOCKED_DOMAINS.includes(emailDomain)) {
+    return res.status(400).json({
+      success: false,
+      msg: "Personal email addresses (Gmail, Outlook, Hotmail, Yahoo, etc.) are not allowed. Please use your official organization email.",
+    });
+  }
+
   try {
     // Check duplicate email
     const [existing] = await sequelize.query(
@@ -142,10 +156,10 @@ router.post("/register", upload.single("identity_certificate"), async (req, res)
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // ✅ File path if uploaded
+    //  File path if uploaded
     const certificatePath = req.file ? req.file.path.replace(/\\/g, "/") : null;
 
-    // ✅ Insert user with approval_status = PENDING, is_active = 0
+    //  Insert user with approval_status = PENDING, is_active = 0
     // User cannot login until admin approves
     const [result] = await sequelize.query(
       `INSERT INTO users
@@ -171,7 +185,7 @@ router.post("/register", upload.single("identity_certificate"), async (req, res)
 
     const newUserId = result; // insertId from MySQL
 
-    // ✅ Create admin notification with full user details
+    //  Create admin notification with full user details
     await sequelize.query(
       `INSERT INTO notifications
         (user_id, message, type, is_read, is_active, created_at)
@@ -215,7 +229,7 @@ router.post("/login", async (req, res) => {
 
     const user = rows[0];
 
-    // ✅ Check approval status FIRST
+    //  Check approval status FIRST
     if (user.approval_status === "PENDING") {
       return res.status(403).json({
         success: false,
@@ -232,7 +246,7 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // ✅ Check is_active (blocked by admin after approval)
+    //  Check is_active (blocked by admin after approval)
     if (!user.is_active) {
       return res.status(403).json({
         success: false,

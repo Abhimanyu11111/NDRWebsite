@@ -30,14 +30,16 @@ function SearchableBlockDropdown({ value = [], onChange }) {
   // Search blocks with debounce
   useEffect(() => {
     const searchBlocks = async () => {
-      if (query.length < 2) {
+      // Fetch if regime selected (no query needed) OR query has 2+ chars
+      if (!selectedRegime && query.length < 2) {
         setOptions([]);
         return;
       }
 
       setLoading(true);
       try {
-        const params = new URLSearchParams({ q: query });
+        const params = new URLSearchParams();
+        if (query.length >= 2) params.append('q', query);
         if (selectedRegime) params.append('regime', selectedRegime);
 
         const res = await axios.get(`/blocks/search?${params}`);
@@ -86,7 +88,7 @@ function SearchableBlockDropdown({ value = [], onChange }) {
         <select
           className={styles.filterSelect}
           value={selectedRegime}
-          onChange={(e) => setSelectedRegime(e.target.value)}
+          onChange={(e) => { setSelectedRegime(e.target.value); setIsOpen(true); }}
         >
           <option value="">All Regimes</option>
           {regimes.map((regime, idx) => (
@@ -167,13 +169,13 @@ function SearchableBlockDropdown({ value = [], onChange }) {
                 </div>
               </div>
             ))
-          ) : query.length >= 2 ? (
+          ) : query.length >= 2 || selectedRegime ? (
             <div className={styles.dropdownItem}>
-              ❌ No blocks found for "{query}"
+              No blocks found{query.length >= 2 ? ` for "${query}"` : ''}{selectedRegime ? ` in ${selectedRegime}` : ''}
             </div>
           ) : (
             <div className={styles.dropdownItem}>
-              💡 Type at least 2 characters to search
+              💡 Select a regime or type at least 2 characters to search
             </div>
           )}
 
