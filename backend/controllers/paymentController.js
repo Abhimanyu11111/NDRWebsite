@@ -12,9 +12,9 @@ import { confirmBookingAfterPayment } from "./bookingController.js";
 // ─── Constants ────────────────────────────────────────────────────────────────
 const MAX_PAYMENT_RETRIES = 3;
 
-//  Production vs sandbox gateway URL
+//  Use CCAVENUE_ENV=production to switch to live gateway; defaults to test
 const CCAVENUE_URL =
-  process.env.NODE_ENV === "production"
+  process.env.CCAVENUE_ENV === "production"
     ? "https://secure.ccavenue.com/transaction/transaction.do?command=initiateTransaction"
     : "https://test.ccavenue.com/transaction/transaction.do?command=initiateTransaction";
 

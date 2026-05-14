@@ -44,7 +44,15 @@ const resolveDuration = (start_datetime, end_datetime) => {
    DATASET LOCK HELPER
 ===================================================== */
 const lockDatasetsForBooking = async (booking, transaction) => {
-  const datasetIds = booking.data_catalogue;
+  let datasetIds = booking.data_catalogue;
+  if (typeof datasetIds === "string") {
+    try {
+      datasetIds = JSON.parse(datasetIds);
+    } catch {
+      datasetIds = [];
+    }
+  }
+  if (!Array.isArray(datasetIds)) datasetIds = [];
   if (!datasetIds || datasetIds.length === 0) return;
 
   await DatasetLock.destroy({
@@ -272,6 +280,7 @@ export const createBooking = async (req, res) => {
       room:      room.title,
       startDate: start.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
       endDate:   end.toLocaleString("en-IN",   { timeZone: "Asia/Kolkata" }),
+      totalPrice,
     }).catch((e) => console.error("Email error:", e));
 
     res.status(201).json({
