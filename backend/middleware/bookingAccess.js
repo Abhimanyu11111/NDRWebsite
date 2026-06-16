@@ -15,6 +15,7 @@ const cacheGet = (key) => {
 const cacheSet = (key, value) => {
   _cache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
 };
+const isAdminRole = (role) => ["ADMIN", "SUPERADMIN"].includes(String(role || "").toUpperCase());
 export const invalidateAccessCache = (userId) => {
   for (const key of _cache.keys()) {
     if (key.startsWith(`acc:${userId}:`)) _cache.delete(key);
@@ -23,7 +24,7 @@ export const invalidateAccessCache = (userId) => {
 
 // ─── Admin bypass ─────────────────────────────────────────────────────────────
 export const adminBypass = (req, res, next) => {
-  if (req.user?.role === "admin" || req.user?.role === "superadmin") {
+  if (isAdminRole(req.user?.role)) {
     req.adminBypass = true;
   }
   next();
@@ -183,7 +184,7 @@ export const requireBookingOwnership = async (req, res, next) => {
  */
 const bookingAccess = async (req, res, next) => {
   // Admin bypass
-  if (req.user?.role === "admin" || req.user?.role === "superadmin") return next();
+  if (isAdminRole(req.user?.role)) return next();
 
   const userId    = req.user?.id;
   const roomId    = req.params.room_id || req.body.room_id;

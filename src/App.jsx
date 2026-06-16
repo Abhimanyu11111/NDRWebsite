@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Navigate, Routes, Route } from "react-router-dom";
 import SeoRouteHandler from "./seo/SeoRouteHandler";
 import "./App.css";
 
@@ -132,6 +132,7 @@ export default function App() {
           <Route path="/payment-failure" element={<PaymentFailurePage />} />
 
           {/* ADMIN LOGIN (PUBLIC) */}
+          <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
           <Route path="/admin/login" element={<LoginAdmin />} />
 
           {/* PROTECTED ADMIN ROUTES */}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, Shield, AlertCircle, Sparkles } from "lucide-react";
 import api from "../../api/axiosClient";
@@ -9,17 +9,41 @@ export default function LoginAdmin() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [captcha, setCaptcha] = useState(null);
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
   const navigate = useNavigate();
+
+  const loadCaptcha = async () => {
+    try {
+      const res = await api.get("/auth/captcha");
+      setCaptcha(res.data.captcha);
+      setCaptchaAnswer("");
+    } catch {
+      setError("Unable to load captcha. Please refresh the page.");
+    }
+  };
+
+  useEffect(() => {
+    loadCaptcha();
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+
+    if (!email || !password || !captchaAnswer) {
+      setError("Please enter email, password and captcha.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const res = await api.post("/auth/admin-login", {
         email,
-        password
+        password,
+        captchaToken: captcha?.token,
+        captchaAnswer
       });
 
       localStorage.setItem("token", res.data.token);
@@ -28,6 +52,7 @@ export default function LoginAdmin() {
       navigate("/admin/dashboard");
     } catch {
       setError("Invalid credentials. Please try again.");
+      loadCaptcha();
     } finally {
       setLoading(false);
     }
@@ -72,7 +97,7 @@ export default function LoginAdmin() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} style={form}>
+          <form onSubmit={handleLogin} style={form} autoComplete="off">
             <div style={formGroup}>
               <label style={formLabel}>
                 <Mail size={16} strokeWidth={2.5} />
@@ -85,6 +110,7 @@ export default function LoginAdmin() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   style={formInput}
+                  autoComplete="off"
                   disabled={loading}
                   required
                 />
@@ -103,6 +129,7 @@ export default function LoginAdmin() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   style={formInput}
+                  autoComplete="current-password"
                   disabled={loading}
                   required
                 />
@@ -118,6 +145,29 @@ export default function LoginAdmin() {
                     <Eye size={18} strokeWidth={2.5} />
                   )}
                 </button>
+              </div>
+            </div>
+
+            <div style={formGroup}>
+              <label style={formLabel}>Captcha</label>
+              <div style={captchaBox}>
+                <span style={captchaQuestion}>{captcha?.question || "Loading..."}</span>
+                <button type="button" onClick={loadCaptcha} style={captchaRefresh} disabled={loading}>
+                  Refresh
+                </button>
+              </div>
+              <div style={inputWrapper}>
+                <input
+                  type="text"
+                  placeholder="Enter captcha answer"
+                  value={captchaAnswer}
+                  onChange={(e) => setCaptchaAnswer(e.target.value)}
+                  style={formInput}
+                  autoComplete="off"
+                  inputMode="numeric"
+                  disabled={loading}
+                  required
+                />
               </div>
             </div>
 
@@ -487,4 +537,31 @@ const copyrightText = {
   color: "rgba(255,255,255,0.5)",
   fontWeight: "500",
   letterSpacing: "0.3px"
+};
+
+const captchaBox = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "12px",
+  marginBottom: "10px"
+};
+
+const captchaQuestion = {
+  padding: "10px 14px",
+  backgroundColor: "#f1f5f9",
+  border: "1px solid #cbd5e1",
+  borderRadius: "10px",
+  fontWeight: "700",
+  color: "#0f172a"
+};
+
+const captchaRefresh = {
+  border: "1px solid #fecaca",
+  background: "#fff",
+  color: "#dc2626",
+  borderRadius: "10px",
+  padding: "9px 12px",
+  fontWeight: "700",
+  cursor: "pointer"
 };

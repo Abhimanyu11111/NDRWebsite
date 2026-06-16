@@ -1,5 +1,11 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import { isActiveSession } from "../utils/sessionStore.js";
+
+const jwtOptions = {
+  issuer: process.env.JWT_ISSUER || "ndr-portal",
+  audience: process.env.JWT_AUDIENCE || "ndr-users",
+};
 
 /**
  * JWT Authentication Middleware
@@ -28,7 +34,18 @@ const authMiddleware = async (req, res, next) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET is required');
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, jwtOptions);
+
+    if (!isActiveSession(decoded.id, decoded.role || 'USER', token)) {
+      return res.status(401).json({
+        success: false,
+        message: 'Session expired. Please login again.'
+      });
+    }
 
     // Get user from database
     const user = await User.findByPk(decoded.id, {
@@ -51,6 +68,7 @@ const authMiddleware = async (req, res, next) => {
 
     // Attach user to request object
     req.user = user;
+    req.token = token;
     next();
 
   } catch (error) {
@@ -78,4 +96,4 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-module.exports = authMiddleware;
+export default authMiddleware;

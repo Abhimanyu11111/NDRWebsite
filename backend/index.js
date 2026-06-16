@@ -3,6 +3,12 @@ import "./src/config/env.js";
 import express from "express";
 import cors from "cors";
 import { express as useragentMiddleware } from "express-useragent";
+import {
+  blockUnsafeMethods,
+  corsOptions,
+  requireHttpsInProduction,
+  securityHeaders,
+} from "./middleware/security.js";
 
 import { startBookingExpiryCron } from "./cron/bookingExpiryCron.js";
 import sequelize from "./src/config/db.js";
@@ -24,14 +30,16 @@ import registrationRoutes from './routes/registrationRoutes.js';
 import blockRoutes from './routes/blockRoutes.js'; 
 
 const app = express();
+app.set("trust proxy", 1);
+app.disable("x-powered-by");
 
 // MIDDLEWARES
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
-  credentials: true,
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(requireHttpsInProduction);
+app.use(blockUnsafeMethods);
+app.use(securityHeaders);
+app.use(cors(corsOptions));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 app.use(useragentMiddleware());
 
 // STATIC FILES

@@ -1,4 +1,4 @@
-import Room from '../models/Room.js';  // Room.js se import (not Slot.js)
+import Room from '../models/Room.js';
 
 /**
  * Get all active rooms

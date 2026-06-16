@@ -14,7 +14,7 @@ export default function ManageData() {
 
   const fetchRooms = async () => {
     try {
-      const res = await api.get("/rooms");
+      const res = await api.get("/admin/rooms/all");
       const data = res.data;
       if (Array.isArray(data)) setRooms(data);
       else if (data?.rooms && Array.isArray(data.rooms)) setRooms(data.rooms);
@@ -33,7 +33,7 @@ export default function ManageData() {
     setActionError(null);
     setAddingRoom(true);
     try {
-      await api.post("/rooms", { title: newRoom });
+      await api.post("/admin/rooms/create", { title: newRoom });
       setNewRoom("");
       fetchRooms();
     } catch (err) {
@@ -47,7 +47,7 @@ export default function ManageData() {
     if (!window.confirm("Delete room permanently?")) return;
     setActionError(null);
     try {
-      await api.delete(`/rooms/${id}`);
+      await api.delete(`/admin/rooms/${id}`);
       fetchRooms();
     } catch (err) {
       setActionError(err.response?.data?.message || "Failed to delete room.");

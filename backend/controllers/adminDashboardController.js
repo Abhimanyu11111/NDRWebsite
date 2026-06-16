@@ -7,9 +7,8 @@ import DatasetLock from "../models/DatasetLock.js";
 import { Op } from "sequelize";
 import sequelize from "../src/config/db.js";
 
-/* =====================================================
+/* ==================================================
    GET /admin/dashboard/counts
-   Main stats + recent bookings + revenue chart
 ===================================================== */
 export const getDashboardCounts = async (req, res) => {
   try {

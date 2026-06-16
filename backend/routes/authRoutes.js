@@ -4,52 +4,146 @@ import jwt from "jsonwebtoken";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import sequelize from "../src/config/db.js";
+import authMiddleware from "../middleware/auth.js";
+import { rateLimit } from "../middleware/rateLimit.js";
+import { createCaptchaChallenge, verifyCaptchaChallenge } from "../utils/captcha.js";
+import { clearActiveSession, setActiveSession } from "../utils/sessionStore.js";
 
 const router = express.Router();
+const JWT_OPTIONS = {
+  issuer: process.env.JWT_ISSUER || "ndr-portal",
+  audience: process.env.JWT_AUDIENCE || "ndr-users",
+};
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  keyPrefix: "login",
+  message: "Too many login attempts. Please try again after 15 minutes.",
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  keyPrefix: "register-upload",
+  message: "Too many registration attempts. Please try again after 15 minutes.",
+});
+
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const phoneRegex = /^[6-9]\d{9}$/;
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{12,}$/;
+
+const requireJwtSecret = () => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET is required");
+  }
+  return process.env.JWT_SECRET;
+};
+
+const requireCaptcha = (req, res, next) => {
+  const captchaToken = req.body?.captchaToken;
+  const captchaAnswer = req.body?.captchaAnswer;
+  if (!verifyCaptchaChallenge({ token: captchaToken, answer: captchaAnswer })) {
+    return res.status(400).json({ success: false, msg: "Captcha verification failed" });
+  }
+  next();
+};
+
+router.get("/captcha", (req, res) => {
+  return res.json({ success: true, captcha: createCaptchaChallenge() });
+});
 
 // ── Multer setup for identity certificate upload ──────
 // Saves files to /uploads/identity_certificates/
 const uploadDir = "uploads/identity_certificates";
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename:    (req, file, cb) => {
-    // e.g. identity_1717000000000_originalname.jpg
-    const unique = `identity_${Date.now()}${path.extname(file.originalname)}`;
-    cb(null, unique);
-  },
-});
+const ALLOWED_UPLOADS = {
+  ".jpg": ["image/jpeg"],
+  ".jpeg": ["image/jpeg"],
+  ".png": ["image/png"],
+  ".pdf": ["application/pdf"],
+};
+
+const hasValidMagicBytes = (buffer, ext) => {
+  if ([".jpg", ".jpeg"].includes(ext)) return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  if (ext === ".png") return buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  if (ext === ".pdf") return buffer.subarray(0, 5).toString("ascii") === "%PDF-";
+  return false;
+};
+
+const validateUploadedCertificate = (file) => {
+  if (!file) return null;
+
+  const original = path.basename(file.originalname || "");
+  if (!original || original.includes("\0") || /%00/i.test(original)) {
+    throw new Error("Invalid file name");
+  }
+
+  if ((original.match(/\./g) || []).length !== 1) {
+    throw new Error("Multiple file extensions are not allowed");
+  }
+
+  const ext = path.extname(original).toLowerCase();
+  if (!ALLOWED_UPLOADS[ext]?.includes(file.mimetype)) {
+    throw new Error("Only JPG, PNG, and PDF files are allowed");
+  }
+
+  if (!hasValidMagicBytes(file.buffer, ext)) {
+    throw new Error("Uploaded file content does not match the file type");
+  }
+
+  return ext;
+};
+
+const saveCertificate = (file) => {
+  const ext = validateUploadedCertificate(file);
+  if (!ext) return null;
+
+  const filename = `identity_${Date.now()}_${crypto.randomBytes(12).toString("hex")}${ext}`;
+  const filePath = path.join(uploadDir, filename);
+  fs.writeFileSync(filePath, file.buffer, { flag: "wx" });
+  return filePath.replace(/\\/g, "/");
+};
 
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB max
   fileFilter: (req, file, cb) => {
-    const allowed = /jpeg|jpg|png|pdf/;
-    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-    const mime = allowed.test(file.mimetype);
-    if (ext && mime) return cb(null, true);
-    cb(new Error("Only JPG, PNG, PDF files are allowed"));
+    const original = file.originalname || "";
+    const ext = path.extname(path.basename(original)).toLowerCase();
+    if (original.includes("\0") || /%00/i.test(original)) {
+      return cb(new Error("Invalid file name"));
+    }
+    if (!ALLOWED_UPLOADS[ext]?.includes(file.mimetype)) {
+      return cb(new Error("Only JPG, PNG, and PDF files are allowed"));
+    }
+    return cb(null, true);
   },
 });
 
 /* =====================================================
    ADMIN LOGIN
 ===================================================== */
-router.post("/admin-login", async (req, res) => {
+router.post("/admin-login", loginLimiter, requireCaptcha, async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    if (!emailRegex.test(String(email || "")) || !password) {
+      return res.status(400).json({ success: false, msg: "Invalid credentials" });
+    }
+
     const [rows] = await sequelize.query(
       "SELECT * FROM users WHERE email = ? AND is_active = 1",
-      { replacements: [email] }
+      { replacements: [String(email).trim().toLowerCase()] }
     );
 
     if (rows.length === 0) {
       return res.status(400).json({
         success: false,
-        msg: "User not found or account is blocked",
+        msg: "Invalid credentials",
       });
     }
 
@@ -72,9 +166,10 @@ router.post("/admin-login", async (req, res) => {
 
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      requireJwtSecret(),
+      { ...JWT_OPTIONS, expiresIn: "30m" }
     );
+    setActiveSession(user.id, user.role, token);
 
     res.json({
       success: true,
@@ -105,7 +200,7 @@ router.post("/admin-login", async (req, res) => {
 ===================================================== */
 // upload.single("identity_certificate") handles the file field
 // All other text fields still come through req.body (multer parses multipart/form-data)
-router.post("/register", upload.single("identity_certificate"), async (req, res) => {
+router.post("/register", uploadLimiter, upload.single("identity_certificate"), requireCaptcha, async (req, res) => {
   const {
     name,
     email,
@@ -118,11 +213,28 @@ router.post("/register", upload.single("identity_certificate"), async (req, res)
     id_proof_type,
     id_proof_number,
   } = req.body;
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const normalizedPhone = String(phone || "").replace(/\D/g, "");
 
   if (!name || !email || !password) {
     return res.status(400).json({
       success: false,
       msg: "Name, email and password are required",
+    });
+  }
+
+  if (!emailRegex.test(normalizedEmail)) {
+    return res.status(400).json({ success: false, msg: "Please enter a valid email address" });
+  }
+
+  if (phone && !phoneRegex.test(normalizedPhone)) {
+    return res.status(400).json({ success: false, msg: "Please enter a valid 10 digit Indian mobile number" });
+  }
+
+  if (!passwordRegex.test(password)) {
+    return res.status(400).json({
+      success: false,
+      msg: "Password must be at least 12 characters and include uppercase, lowercase, number, and special character.",
     });
   }
 
@@ -132,7 +244,7 @@ router.post("/register", upload.single("identity_certificate"), async (req, res)
     "proton.me", "msn.com", "yahoo.in", "yahoo.co.in", "hotmail.co.in",
     "zohomail.com", "mail.com", "gmx.com", "inbox.com", "yandex.com"
   ];
-  const emailDomain = email.split("@")[1]?.toLowerCase();
+  const emailDomain = normalizedEmail.split("@")[1]?.toLowerCase();
   if (!emailDomain || BLOCKED_DOMAINS.includes(emailDomain)) {
     return res.status(400).json({
       success: false,
@@ -144,7 +256,7 @@ router.post("/register", upload.single("identity_certificate"), async (req, res)
     // Check duplicate email
     const [existing] = await sequelize.query(
       "SELECT id FROM users WHERE email = ?",
-      { replacements: [email] }
+      { replacements: [normalizedEmail] }
     );
 
     if (existing.length > 0) {
@@ -157,7 +269,7 @@ router.post("/register", upload.single("identity_certificate"), async (req, res)
     const hashedPassword = await bcrypt.hash(password, 10);
 
     //  File path if uploaded
-    const certificatePath = req.file ? req.file.path.replace(/\\/g, "/") : null;
+    const certificatePath = saveCertificate(req.file);
 
     //  Insert user with approval_status = PENDING, is_active = 0
     // User cannot login until admin approves
@@ -169,8 +281,8 @@ router.post("/register", upload.single("identity_certificate"), async (req, res)
       {
         replacements: [
           name,
-          email,
-          phone || null,
+          normalizedEmail,
+          normalizedPhone || null,
           hashedPassword,
           address || null,
           city || null,
@@ -193,7 +305,7 @@ router.post("/register", upload.single("identity_certificate"), async (req, res)
       {
         replacements: [
           newUserId,
-          `New registration request: ${name} (${email})${phone ? ` | Phone: ${phone}` : ""}${id_proof_type ? ` | ID: ${id_proof_type} - ${id_proof_number}` : ""}. Pending admin approval.`,
+          `New registration request: ${name} (${normalizedEmail})${normalizedPhone ? ` | Phone: ${normalizedPhone}` : ""}${id_proof_type ? ` | ID: ${id_proof_type} - ${id_proof_number}` : ""}. Pending admin approval.`,
         ],
       }
     );
@@ -204,6 +316,14 @@ router.post("/register", upload.single("identity_certificate"), async (req, res)
     });
   } catch (err) {
     console.error("Register error:", err);
+    if (
+      err.message?.includes("Invalid file") ||
+      err.message?.includes("Multiple file") ||
+      err.message?.includes("Uploaded file content") ||
+      err.message?.includes("Only JPG")
+    ) {
+      return res.status(400).json({ success: false, msg: err.message });
+    }
     res.status(500).json({ success: false, msg: "Server error during registration" });
   }
 });
@@ -211,23 +331,28 @@ router.post("/register", upload.single("identity_certificate"), async (req, res)
 /* =====================================================
    USER LOGIN — Blocks PENDING / REJECTED users
 ===================================================== */
-router.post("/login", async (req, res) => {
+router.post("/login", loginLimiter, requireCaptcha, async (req, res) => {
   const { email, password } = req.body;
+  const normalizedEmail = String(email || "").trim().toLowerCase();
 
   if (!email || !password) {
     return res.status(400).json({ success: false, msg: "Email and password are required" });
   }
 
+  if (!emailRegex.test(normalizedEmail)) {
+    return res.status(400).json({ success: false, msg: "Invalid email or password" });
+  }
+
   try {
     const [rows] = await sequelize.query(
       "SELECT * FROM users WHERE email = ?",
-      { replacements: [email] }
+      { replacements: [normalizedEmail] }
     );
 
     if (rows.length === 0) {
       return res.status(400).json({
         success: false,
-        msg: "No account found with this email",
+        msg: "Invalid email or password",
       });
     }
 
@@ -267,10 +392,11 @@ router.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { id: user.id, email: user.email, role: user.role || "USER" },
+      requireJwtSecret(),
+      { ...JWT_OPTIONS, expiresIn: "30m" }
     );
+    setActiveSession(user.id, user.role || "USER", token);
 
     res.json({
       success: true,
@@ -289,8 +415,63 @@ router.post("/login", async (req, res) => {
 });
 
 // ── Multer error handler ──────────────────────────────
+router.post("/change-password", authMiddleware, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ success: false, msg: "Current and new password are required" });
+  }
+
+  if (!passwordRegex.test(newPassword)) {
+    return res.status(400).json({
+      success: false,
+      msg: "New password must be at least 12 characters and include uppercase, lowercase, number, and special character.",
+    });
+  }
+
+  try {
+    const [rows] = await sequelize.query(
+      "SELECT id, password, role FROM users WHERE id = ? AND is_active = 1",
+      { replacements: [req.user.id] }
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, msg: "User not found" });
+    }
+
+    const user = rows[0];
+    const valid = await bcrypt.compare(currentPassword, user.password);
+    if (!valid) {
+      return res.status(400).json({ success: false, msg: "Current password is incorrect" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await sequelize.query(
+      "UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?",
+      { replacements: [hashedPassword, user.id] }
+    );
+
+    clearActiveSession(user.id, user.role || "USER");
+    return res.json({ success: true, msg: "Password changed successfully. Please login again." });
+  } catch (err) {
+    console.error("Change password error:", err);
+    return res.status(500).json({ success: false, msg: "Server error while changing password" });
+  }
+});
+
+router.post("/logout", authMiddleware, (req, res) => {
+  clearActiveSession(req.user.id, req.user.role || "USER");
+  return res.json({ success: true, msg: "Logged out successfully" });
+});
+
 router.use((err, req, res, next) => {
-  if (err instanceof multer.MulterError || err.message?.includes("Only JPG")) {
+  if (
+    err instanceof multer.MulterError ||
+    err.message?.includes("Only JPG") ||
+    err.message?.includes("Invalid file") ||
+    err.message?.includes("Multiple file") ||
+    err.message?.includes("Uploaded file content")
+  ) {
     return res.status(400).json({ success: false, msg: err.message });
   }
   next(err);

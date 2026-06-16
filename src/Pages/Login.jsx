@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, LogIn, AlertCircle, Sparkles } from "lucide-react";
@@ -8,14 +8,30 @@ function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [captcha, setCaptcha] = useState(null);
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
   const navigate = useNavigate();
+
+  const loadCaptcha = async () => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/auth/captcha`);
+      setCaptcha(res.data.captcha);
+      setCaptchaAnswer("");
+    } catch {
+      setError("Unable to load captcha. Please refresh the page.");
+    }
+  };
+
+  useEffect(() => {
+    loadCaptcha();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (!email || !password) {
-      setError("Please enter both email and password");
+    if (!email || !password || !captchaAnswer) {
+      setError("Please enter email, password and captcha");
       return;
     }
 
@@ -24,7 +40,7 @@ function Login() {
     try {
       const res = await axios.post(
         `${import.meta.env.VITE_API_URL}/auth/login`,
-        { email, password }
+        { email, password, captchaToken: captcha?.token, captchaAnswer }
       );
 
       localStorage.setItem("token", res.data.token);
@@ -33,6 +49,7 @@ function Login() {
       navigate("/book-vdr");
     } catch (err) {
       setError(err.response?.data?.msg || "Login failed. Please try again.");
+      loadCaptcha();
     } finally {
       setLoading(false);
     }
@@ -66,7 +83,7 @@ function Login() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={form}>
+          <form onSubmit={handleSubmit} style={form} autoComplete="off">
             <div style={formGroup}>
               <label style={formLabel}>
                 <Mail size={16} strokeWidth={2.5} />
@@ -79,6 +96,7 @@ function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   style={formInput}
+                  autoComplete="off"
                   disabled={loading}
                 />
               </div>
@@ -96,6 +114,29 @@ function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   style={formInput}
+                  autoComplete="current-password"
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            <div style={formGroup}>
+              <label style={formLabel}>Captcha</label>
+              <div style={captchaBox}>
+                <span style={captchaQuestion}>{captcha?.question || "Loading..."}</span>
+                <button type="button" onClick={loadCaptcha} style={captchaRefresh} disabled={loading}>
+                  Refresh
+                </button>
+              </div>
+              <div style={inputWrapper}>
+                <input
+                  type="text"
+                  placeholder="Enter captcha answer"
+                  value={captchaAnswer}
+                  onChange={(e) => setCaptchaAnswer(e.target.value)}
+                  style={formInput}
+                  autoComplete="off"
+                  inputMode="numeric"
                   disabled={loading}
                 />
               </div>
@@ -447,4 +488,31 @@ const copyrightText = {
   color: "rgba(255,255,255,0.5)",
   fontWeight: "500",
   letterSpacing: "0.3px"
+};
+
+const captchaBox = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "12px",
+  marginBottom: "10px"
+};
+
+const captchaQuestion = {
+  padding: "10px 14px",
+  backgroundColor: "#f1f5f9",
+  border: "1px solid #cbd5e1",
+  borderRadius: "10px",
+  fontWeight: "700",
+  color: "#0f172a"
+};
+
+const captchaRefresh = {
+  border: "1px solid #cbd5e1",
+  background: "#fff",
+  color: "#0d47a1",
+  borderRadius: "10px",
+  padding: "9px 12px",
+  fontWeight: "700",
+  cursor: "pointer"
 };

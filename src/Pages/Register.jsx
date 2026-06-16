@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import {
@@ -35,7 +35,23 @@ function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [captcha, setCaptcha] = useState(null);
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
   const navigate = useNavigate();
+
+  const loadCaptcha = async () => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/auth/captcha`);
+      setCaptcha(res.data.captcha);
+      setCaptchaAnswer("");
+    } catch {
+      setError("Unable to load captcha. Please refresh the page.");
+    }
+  };
+
+  useEffect(() => {
+    loadCaptcha();
+  }, []);
 
   const handleChange = (e) => {
     if (e.target.name === "identity_certificate") {  // certificate → identity_certificate
@@ -58,12 +74,15 @@ function Register() {
     return domain ? BLOCKED_DOMAINS.includes(domain) : false;
   };
 
+  const isStrongPassword = (value) =>
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{12,}$/.test(value);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    if (!formData.name || !formData.email || !formData.phone || !formData.password) {
+    if (!formData.name || !formData.email || !formData.phone || !formData.password || !captchaAnswer) {
       setError("Please fill all required fields");
       setLoading(false);
       return;
@@ -75,12 +94,26 @@ function Register() {
       return;
     }
 
+    if (!/^[6-9]\d{9}$/.test(formData.phone.replace(/\D/g, ""))) {
+      setError("Please enter a valid 10 digit Indian mobile number");
+      setLoading(false);
+      return;
+    }
+
+    if (!isStrongPassword(formData.password)) {
+      setError("Password must be at least 12 characters and include uppercase, lowercase, number, and special character.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const data = new FormData();
 
       Object.keys(formData).forEach((key) => {
         data.append(key, formData[key]);
       });
+      data.append("captchaToken", captcha?.token || "");
+      data.append("captchaAnswer", captchaAnswer);
 
       await axios.post(`${import.meta.env.VITE_API_URL}/auth/register`, data, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -90,6 +123,7 @@ function Register() {
       setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
       setError(err.response?.data?.msg || "Registration failed");
+      loadCaptcha();
     } finally {
       setLoading(false);
     }
@@ -168,7 +202,7 @@ function Register() {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} style={form}>
+          <form onSubmit={handleSubmit} style={form} autoComplete="off">
             {/* Personal Information Section */}
             <div style={sectionHeader}>
               <div style={sectionTitle}>Personal Information</div>
@@ -186,6 +220,7 @@ function Register() {
                   name="name"
                   placeholder="Enter your full name"
                   onChange={handleChange}
+                  autoComplete="off"
                   required
                 />
               </div>
@@ -201,6 +236,7 @@ function Register() {
                   name="email"
                   placeholder="your.email@example.com"
                   onChange={handleChange}
+                  autoComplete="off"
                   required
                 />
               </div>
@@ -217,6 +253,10 @@ function Register() {
                   name="phone"
                   placeholder="+91 XXXXX XXXXX"
                   onChange={handleChange}
+                  autoComplete="off"
+                  inputMode="numeric"
+                  pattern="[6-9][0-9]{9}"
+                  maxLength={10}
                   required
                 />
               </div>
@@ -232,6 +272,9 @@ function Register() {
                   name="password"
                   placeholder="Create a strong password"
                   onChange={handleChange}
+                  autoComplete="new-password"
+                  minLength={12}
+                  pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{12,}"
                   required
                 />
               </div>
@@ -253,6 +296,7 @@ function Register() {
                 name="address"
                 placeholder="House/Flat No., Street Name"
                 onChange={handleChange}
+                autoComplete="off"
               />
             </div>
 
@@ -267,6 +311,7 @@ function Register() {
                   name="city"
                   placeholder="Enter city"
                   onChange={handleChange}
+                  autoComplete="off"
                 />
               </div>
 
@@ -280,6 +325,7 @@ function Register() {
                   name="state"
                   placeholder="Enter state"
                   onChange={handleChange}
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -294,6 +340,10 @@ function Register() {
                 name="pincode"
                 placeholder="6-digit pincode"
                 onChange={handleChange}
+                autoComplete="off"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
               />
             </div>
 
@@ -313,6 +363,7 @@ function Register() {
                 name="company"
                 placeholder="Enter your company or organisation name"
                 onChange={handleChange}
+                autoComplete="off"
                 required
               />
             </div>
@@ -349,6 +400,7 @@ function Register() {
                 name="id_proof_number"
                 placeholder="Enter ID proof number (e.g., Registration No., GST No.)"
                 onChange={handleChange}
+                autoComplete="off"
                 required
               />
             </div>
@@ -362,8 +414,28 @@ function Register() {
                 style={formInput}
                 type="file"
                 name="identity_certificate"  //  Fixed: certificate → identity_certificate
-                accept=".pdf,.jpg,.png"
+                accept=".pdf,.jpg,.jpeg,.png"
                 onChange={handleChange}
+                required
+              />
+            </div>
+
+            <div style={formGroup}>
+              <label style={formLabel}>Captcha <span style={requiredStar}>*</span></label>
+              <div style={captchaBox}>
+                <span style={captchaQuestion}>{captcha?.question || "Loading..."}</span>
+                <button type="button" onClick={loadCaptcha} style={captchaRefresh} disabled={loading}>
+                  Refresh
+                </button>
+              </div>
+              <input
+                style={formInput}
+                name="captcha"
+                placeholder="Enter captcha answer"
+                value={captchaAnswer}
+                onChange={(e) => setCaptchaAnswer(e.target.value)}
+                autoComplete="off"
+                inputMode="numeric"
                 required
               />
             </div>
@@ -621,6 +693,33 @@ const spinner = {
 };
 
 const footer = { padding: "20px 28px 28px" };
+
+const captchaBox = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "12px",
+  marginBottom: "8px"
+};
+
+const captchaQuestion = {
+  padding: "10px 14px",
+  backgroundColor: "#f8fafc",
+  border: "1px solid #cbd5e1",
+  borderRadius: "6px",
+  fontWeight: 700,
+  color: "#0f172a"
+};
+
+const captchaRefresh = {
+  border: "1px solid #cbd5e1",
+  background: "#fff",
+  color: "#0d47a1",
+  borderRadius: "6px",
+  padding: "9px 12px",
+  fontWeight: 700,
+  cursor: "pointer"
+};
 
 const divider = {
   height: "1px",

@@ -10,6 +10,14 @@ export default function Account() {
   const [bookings, setBookings] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -52,9 +60,48 @@ export default function Account() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await axios.post("/auth/logout");
+    } catch {
+      // Local cleanup still protects the browser session if the server call fails.
+    }
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     navigate("/login");
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setPasswordError("");
+    setPasswordMessage("");
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("New password and confirmation do not match.");
+      return;
+    }
+
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{12,}$/.test(passwordForm.newPassword)) {
+      setPasswordError("Password must be at least 12 characters and include uppercase, lowercase, number, and special character.");
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const res = await axios.post("/auth/change-password", {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+      setPasswordMessage(res.data.msg || "Password changed successfully. Please login again.");
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setTimeout(() => navigate("/login"), 1500);
+    } catch (err) {
+      setPasswordError(err.response?.data?.msg || "Failed to change password.");
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   const handlePayNow = async (bookingId) => {
@@ -176,6 +223,12 @@ export default function Account() {
           >
             Payment History ({payments.length})
           </button>
+          <button
+            className={`${styles.tab} ${activeTab === "security" ? styles.tabActive : ""}`}
+            onClick={() => setActiveTab("security")}
+          >
+            Security
+          </button>
         </div>
 
         {/* ── BOOKINGS TAB ── */}
@@ -288,6 +341,54 @@ export default function Account() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === "security" && (
+          <div className={styles.tabContent}>
+            <form className={styles.passwordForm} onSubmit={handlePasswordChange} autoComplete="off">
+              <h2 className={styles.formTitle}>Change Password</h2>
+
+              {passwordError && <div className={styles.errorAlert}>{passwordError}</div>}
+              {passwordMessage && <div className={styles.successAlert}>{passwordMessage}</div>}
+
+              <label className={styles.formLabel}>Current Password</label>
+              <input
+                className={styles.formInput}
+                type="password"
+                value={passwordForm.currentPassword}
+                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                autoComplete="current-password"
+                required
+              />
+
+              <label className={styles.formLabel}>New Password</label>
+              <input
+                className={styles.formInput}
+                type="password"
+                value={passwordForm.newPassword}
+                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                autoComplete="new-password"
+                minLength={12}
+                pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{12,}"
+                required
+              />
+
+              <label className={styles.formLabel}>Confirm New Password</label>
+              <input
+                className={styles.formInput}
+                type="password"
+                value={passwordForm.confirmPassword}
+                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                autoComplete="new-password"
+                minLength={12}
+                required
+              />
+
+              <button className={styles.btnPrimary} type="submit" disabled={passwordLoading}>
+                {passwordLoading ? "Updating..." : "Update Password"}
+              </button>
+            </form>
           </div>
         )}
 

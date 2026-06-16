@@ -51,7 +51,7 @@ const lockDatasetsForBooking = async (booking, transaction) => {
     } catch {
       datasetIds = [];
     }
-  }
+  }  
   if (!Array.isArray(datasetIds)) datasetIds = [];
   if (!datasetIds || datasetIds.length === 0) return;
 
