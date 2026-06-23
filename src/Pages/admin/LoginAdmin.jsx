@@ -151,7 +151,11 @@ export default function LoginAdmin() {
             <div style={formGroup}>
               <label style={formLabel}>Captcha</label>
               <div style={captchaBox}>
-                <span style={captchaQuestion}>{captcha?.question || "Loading..."}</span>
+                {captcha?.image ? (
+                  <img src={captcha.image} alt="Captcha code" style={captchaImage} />
+                ) : (
+                  <span style={captchaQuestion}>{captcha?.question || "Loading..."}</span>
+                )}
                 <button type="button" onClick={loadCaptcha} style={captchaRefresh} disabled={loading}>
                   Refresh
                 </button>
@@ -164,7 +168,6 @@ export default function LoginAdmin() {
                   onChange={(e) => setCaptchaAnswer(e.target.value)}
                   style={formInput}
                   autoComplete="off"
-                  inputMode="numeric"
                   disabled={loading}
                   required
                 />
@@ -554,6 +557,14 @@ const captchaQuestion = {
   borderRadius: "10px",
   fontWeight: "700",
   color: "#0f172a"
+};
+
+const captchaImage = {
+  width: "160px",
+  height: "50px",
+  border: "1px solid #cbd5e1",
+  borderRadius: "10px",
+  backgroundColor: "#f8fafc"
 };
 
 const captchaRefresh = {

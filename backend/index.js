@@ -6,9 +6,12 @@ import { express as useragentMiddleware } from "express-useragent";
 import {
   blockUnsafeMethods,
   corsOptions,
+  rejectRequestSmuggling,
   requireHttpsInProduction,
   securityHeaders,
+  validateRequestPayload,
 } from "./middleware/security.js";
+import { rateLimit } from "./middleware/rateLimit.js";
 
 import { startBookingExpiryCron } from "./cron/bookingExpiryCron.js";
 import sequelize from "./src/config/db.js";
@@ -26,26 +29,36 @@ import adminDashboardRoutes from "./routes/adminDashboardRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import paymentRoutes from './routes/paymentRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import registrationRoutes from './routes/registrationRoutes.js';
 import blockRoutes from './routes/blockRoutes.js'; 
 
 const app = express();
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
 
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: Number(process.env.API_RATE_LIMIT_PER_MINUTE || 120),
+  keyPrefix: "api",
+  includeEmail: false,
+  message: "Too many requests. Please slow down and try again shortly.",
+});
+
 // MIDDLEWARES
 app.use(requireHttpsInProduction);
+app.use(rejectRequestSmuggling);
 app.use(blockUnsafeMethods);
 app.use(securityHeaders);
 app.use(cors(corsOptions));
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+app.use(validateRequestPayload);
 app.use(useragentMiddleware());
 
 // STATIC FILES
 app.use("/invoices", express.static("invoices"));
 
 // API ROUTES
+app.use("/api", apiLimiter);
 app.use("/api/auth", authRoutes);
 app.use("/api/rooms", roomRoutes);
 app.use("/api/slots", slotRoutes);
@@ -57,7 +70,6 @@ app.use("/api/admin/slots", slotAdminRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
 app.use("/api", userAdminRoutes);
 app.use('/api/user', userRoutes);
-app.use('/api/register', registrationRoutes);
 app.use('/api/blocks', blockRoutes); 
 
 const PORT = process.env.PORT || 5000;

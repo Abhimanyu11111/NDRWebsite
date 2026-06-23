@@ -39,7 +39,6 @@ const ManageUsers = lazy(() => import("./Pages/admin/ManageUsers"));
 const BookVDR = lazy(() => import("./Pages/BookVDR"));
 const Login = lazy(() => import("./Pages/Login"));
 const Register = lazy(() => import("./Pages/Register"));
-const RegistrationPage = lazy(() => import("./Pages/RegistrationPage"));
 const CopyrightPolicy = lazy(() => import("./Pages/CopyrightPolicy"));
 const Disclaimer = lazy(() => import("./Pages/Disclaimer"));
 const ComapPolicy = lazy(() => import("./Pages/ComapPolicy"));
@@ -100,7 +99,7 @@ export default function App() {
           <Route path="/researchInvest" element={<ResearchInvest />} />
           <Route path="/technologybehindNDR" element={<TechnologyBehindNDR />} />
           <Route path="/DownloadDataPriceListPolicies" element={<DownloadDataPriceListPolicies />} />
-          <Route path="/registration" element={<RegistrationPage />} />
+          <Route path="/registration" element={<Navigate to="/Register" replace />} />
           <Route path="/copyrightPolicy" element={<CopyrightPolicy />} />
           <Route path="/disclaimer" element={<Disclaimer />} />
           <Route path="/comapPolicy" element={<ComapPolicy />} />

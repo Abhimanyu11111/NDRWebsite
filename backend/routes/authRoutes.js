@@ -34,6 +34,12 @@ const uploadLimiter = rateLimit({
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const phoneRegex = /^[6-9]\d{9}$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{12,}$/;
+const pincodeRegex = /^\d{6}$/;
+
+const cleanText = (value, maxLength = 255) => {
+  const text = String(value || "").trim();
+  return text ? text.slice(0, maxLength) : null;
+};
 
 const requireJwtSecret = () => {
   if (!process.env.JWT_SECRET) {
@@ -206,6 +212,7 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), r
     email,
     phone,
     password,
+    company,
     address,
     city,
     state,
@@ -229,6 +236,10 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), r
 
   if (phone && !phoneRegex.test(normalizedPhone)) {
     return res.status(400).json({ success: false, msg: "Please enter a valid 10 digit Indian mobile number" });
+  }
+
+  if (pincode && !pincodeRegex.test(String(pincode).trim())) {
+    return res.status(400).json({ success: false, msg: "Please enter a valid 6 digit pincode" });
   }
 
   if (!passwordRegex.test(password)) {
@@ -276,26 +287,27 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), r
     const [result] = await sequelize.query(
       `INSERT INTO users
         (name, email, phone, password, address, city, state, pincode,
-         id_proof_type, id_proof_number, identity_certificate, role, is_active, approval_status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'USER', 0, 'PENDING', NOW(), NOW())`,
+         id_proof_type, id_proof_number, identity_certificate, company, role, is_active, approval_status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'USER', 0, 'PENDING', NOW(), NOW())`,
       {
         replacements: [
-          name,
+          cleanText(name, 100),
           normalizedEmail,
           normalizedPhone || null,
           hashedPassword,
-          address || null,
-          city || null,
-          state || null,
-          pincode || null,
-          id_proof_type || null,
-          id_proof_number || null,
+          cleanText(address, 255),
+          cleanText(city, 100),
+          cleanText(state, 100),
+          cleanText(pincode, 6),
+          cleanText(id_proof_type, 100),
+          cleanText(id_proof_number, 100),
           certificatePath,
+          cleanText(company, 255),
         ],
       }
     );
 
-    const newUserId = result; // insertId from MySQL
+    const newUserId = result?.insertId || result;
 
     //  Create admin notification with full user details
     await sequelize.query(

@@ -423,7 +423,11 @@ function Register() {
             <div style={formGroup}>
               <label style={formLabel}>Captcha <span style={requiredStar}>*</span></label>
               <div style={captchaBox}>
-                <span style={captchaQuestion}>{captcha?.question || "Loading..."}</span>
+                {captcha?.image ? (
+                  <img src={captcha.image} alt="Captcha code" style={captchaImage} />
+                ) : (
+                  <span style={captchaQuestion}>{captcha?.question || "Loading..."}</span>
+                )}
                 <button type="button" onClick={loadCaptcha} style={captchaRefresh} disabled={loading}>
                   Refresh
                 </button>
@@ -435,7 +439,6 @@ function Register() {
                 value={captchaAnswer}
                 onChange={(e) => setCaptchaAnswer(e.target.value)}
                 autoComplete="off"
-                inputMode="numeric"
                 required
               />
             </div>
@@ -709,6 +712,14 @@ const captchaQuestion = {
   borderRadius: "6px",
   fontWeight: 700,
   color: "#0f172a"
+};
+
+const captchaImage = {
+  width: "160px",
+  height: "50px",
+  border: "1px solid #cbd5e1",
+  borderRadius: "6px",
+  backgroundColor: "#f8fafc"
 };
 
 const captchaRefresh = {
