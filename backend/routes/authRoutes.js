@@ -9,6 +9,8 @@ import sequelize from "../src/config/db.js";
 import authMiddleware from "../middleware/auth.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 import { createCaptchaChallenge, verifyCaptchaChallenge } from "../utils/captcha.js";
+import { createRegistrationOtp, verifyRegistrationOtp } from "../utils/registrationOtp.js";
+import { sendRegistrationOtp } from "../src/services/emailService.js";
 import { clearActiveSession, setActiveSession } from "../utils/sessionStore.js";
 
 const router = express.Router();
@@ -29,6 +31,21 @@ const uploadLimiter = rateLimit({
   max: 10,
   keyPrefix: "register-upload",
   message: "Too many registration attempts. Please try again after 15 minutes.",
+});
+
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  keyPrefix: "register-otp",
+  message: "Too many OTP requests. Please try again after 15 minutes.",
+});
+
+const captchaLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  keyPrefix: "captcha",
+  includeEmail: false,
+  message: "Too many captcha requests. Please slow down.",
 });
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -57,8 +74,50 @@ const requireCaptcha = (req, res, next) => {
   next();
 };
 
-router.get("/captcha", (req, res) => {
+router.get("/captcha", captchaLimiter, (req, res) => {
   return res.json({ success: true, captcha: createCaptchaChallenge() });
+});
+
+/* =====================================================
+   REGISTRATION — Send email OTP
+   Verifies the registrant controls the email address before
+   the identity certificate upload is accepted (GISPL recommendation).
+===================================================== */
+router.post("/register/send-otp", otpLimiter, requireCaptcha, async (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ success: false, msg: "Please enter a valid email address" });
+  }
+
+  try {
+    const [existing] = await sequelize.query(
+      "SELECT id FROM users WHERE email = ?",
+      { replacements: [email] }
+    );
+    if (existing.length > 0) {
+      return res.status(400).json({ success: false, msg: "This email is already registered" });
+    }
+
+    const { otp, token } = createRegistrationOtp(email);
+    const sent = await sendRegistrationOtp({ email, otp });
+
+    if (!sent) {
+      return res.status(503).json({
+        success: false,
+        msg: "Unable to send verification email right now. Please try again shortly.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      msg: "OTP sent to your email address. It is valid for 10 minutes.",
+      otpToken: token,
+    });
+  } catch (err) {
+    console.error("Send registration OTP error:", err);
+    res.status(500).json({ success: false, msg: "Server error while sending OTP" });
+  }
 });
 
 // ── Multer setup for identity certificate upload ──────
@@ -206,7 +265,7 @@ router.post("/admin-login", loginLimiter, requireCaptcha, async (req, res) => {
 ===================================================== */
 // upload.single("identity_certificate") handles the file field
 // All other text fields still come through req.body (multer parses multipart/form-data)
-router.post("/register", uploadLimiter, upload.single("identity_certificate"), requireCaptcha, async (req, res) => {
+router.post("/register", uploadLimiter, upload.single("identity_certificate"), async (req, res) => {
   const {
     name,
     email,
@@ -219,6 +278,8 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), r
     pincode,
     id_proof_type,
     id_proof_number,
+    otp,
+    otpToken,
   } = req.body;
   const normalizedEmail = String(email || "").trim().toLowerCase();
   const normalizedPhone = String(phone || "").replace(/\D/g, "");
@@ -232,6 +293,15 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), r
 
   if (!emailRegex.test(normalizedEmail)) {
     return res.status(400).json({ success: false, msg: "Please enter a valid email address" });
+  }
+
+  //  Email must be verified via OTP before the identity certificate
+  //  upload is accepted (prevents unverified uploads on this public page).
+  if (!verifyRegistrationOtp({ email: normalizedEmail, otp, token: otpToken })) {
+    return res.status(400).json({
+      success: false,
+      msg: "Email verification failed or expired. Please request a new OTP and try again.",
+    });
   }
 
   if (phone && !phoneRegex.test(normalizedPhone)) {

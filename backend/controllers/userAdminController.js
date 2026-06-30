@@ -47,9 +47,14 @@ export const updateUserStatus = async (req, res) => {
     //  Map status string → is_active boolean
     const isActive = status === "Active" ? 1 : 0;
 
+    //  Keep approval_status in sync with is_active so a user activated
+    //  here isn't still blocked at login by a stale PENDING/REJECTED status.
     await sequelize.query(
-      "UPDATE users SET is_active = ? WHERE id = ?",
-      { replacements: [isActive, id] }
+      `UPDATE users
+       SET is_active = ?,
+           approval_status = CASE WHEN ? = 1 THEN 'APPROVED' ELSE approval_status END
+       WHERE id = ?`,
+      { replacements: [isActive, isActive, id] }
     );
 
     res.json({ success: true, message: "User status updated successfully" });

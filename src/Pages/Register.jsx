@@ -37,6 +37,12 @@ function Register() {
   const [success, setSuccess] = useState(false);
   const [captcha, setCaptcha] = useState(null);
   const [captchaAnswer, setCaptchaAnswer] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpToken, setOtpToken] = useState("");
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [otpMessage, setOtpMessage] = useState("");
   const navigate = useNavigate();
 
   const loadCaptcha = async () => {
@@ -59,7 +65,51 @@ function Register() {
     } else {
       setFormData({ ...formData, [e.target.name]: e.target.value });
     }
+    if (e.target.name === "email" && e.target.value.trim().toLowerCase() !== otpEmail) {
+      // Email changed after an OTP was issued — the old OTP no longer applies.
+      setOtpSent(false);
+      setOtpToken("");
+      setOtpCode("");
+      setOtpMessage("");
+    }
     setError("");
+  };
+
+  const handleSendOtp = async () => {
+    setError("");
+    setOtpMessage("");
+
+    if (!formData.email) {
+      setError("Please enter your email address first");
+      return;
+    }
+    if (isPersonalEmail(formData.email)) {
+      setError("Personal email addresses (Gmail, Outlook, Hotmail, Yahoo, etc.) are not allowed. Please use your official organization email.");
+      return;
+    }
+    if (!captchaAnswer) {
+      setError("Please solve the captcha to request an OTP");
+      return;
+    }
+
+    setSendingOtp(true);
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/auth/register/send-otp`, {
+        email: formData.email,
+        captchaToken: captcha?.token,
+        captchaAnswer,
+      });
+
+      setOtpToken(res.data.otpToken);
+      setOtpEmail(formData.email.trim().toLowerCase());
+      setOtpSent(true);
+      setOtpMessage(res.data.msg || "OTP sent to your email address.");
+    } catch (err) {
+      setError(err.response?.data?.msg || "Failed to send OTP. Please try again.");
+    } finally {
+      loadCaptcha();
+      setSendingOtp(false);
+    }
   };
 
   const BLOCKED_DOMAINS = [
@@ -82,7 +132,7 @@ function Register() {
     setError("");
     setLoading(true);
 
-    if (!formData.name || !formData.email || !formData.phone || !formData.password || !captchaAnswer) {
+    if (!formData.name || !formData.email || !formData.phone || !formData.password) {
       setError("Please fill all required fields");
       setLoading(false);
       return;
@@ -90,6 +140,18 @@ function Register() {
 
     if (isPersonalEmail(formData.email)) {
       setError("Personal email addresses (Gmail, Outlook, Hotmail, Yahoo, etc.) are not allowed. Please use your official organization email.");
+      setLoading(false);
+      return;
+    }
+
+    if (!otpSent || formData.email.trim().toLowerCase() !== otpEmail) {
+      setError("Please verify your email with the OTP before submitting");
+      setLoading(false);
+      return;
+    }
+
+    if (!otpCode) {
+      setError("Please enter the OTP sent to your email");
       setLoading(false);
       return;
     }
@@ -112,18 +174,22 @@ function Register() {
       Object.keys(formData).forEach((key) => {
         data.append(key, formData[key]);
       });
-      data.append("captchaToken", captcha?.token || "");
-      data.append("captchaAnswer", captchaAnswer);
+      data.append("otp", otpCode);
+      data.append("otpToken", otpToken);
 
       await axios.post(`${import.meta.env.VITE_API_URL}/auth/register`, data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
       setSuccess(true);
-      setTimeout(() => navigate("/login"), 2000);
+      setTimeout(() => navigate("/login"), 4000);
     } catch (err) {
       setError(err.response?.data?.msg || "Registration failed");
-      loadCaptcha();
+      if (/otp/i.test(err.response?.data?.msg || "")) {
+        setOtpSent(false);
+        setOtpToken("");
+        setOtpCode("");
+      }
     } finally {
       setLoading(false);
     }
@@ -189,7 +255,11 @@ function Register() {
           {success && (
             <div style={successBox}>
               <CheckCircle size={18} />
-              <span>Registration successful! Redirecting to login...</span>
+              <span>
+                Registration submitted successfully. Your account is pending admin
+                approval — you will be able to login only after it is approved.
+                Redirecting to login page...
+              </span>
             </div>
           )}
 
@@ -240,6 +310,54 @@ function Register() {
                   required
                 />
               </div>
+            </div>
+
+            {/* Email Verification (OTP) */}
+            <div style={formGroup}>
+              <label style={formLabel}>
+                <Shield size={16} />
+                Email Verification <span style={requiredStar}>*</span>
+              </label>
+              <div style={captchaBox}>
+                {captcha?.image ? (
+                  <img src={captcha.image} alt="Captcha code" style={captchaImage} />
+                ) : (
+                  <span style={captchaQuestion}>{captcha?.question || "Loading..."}</span>
+                )}
+                <button type="button" onClick={loadCaptcha} style={captchaRefresh} disabled={loading || sendingOtp}>
+                  Refresh
+                </button>
+              </div>
+              <div style={otpRow}>
+                <input
+                  style={formInput}
+                  placeholder="Enter captcha answer"
+                  value={captchaAnswer}
+                  onChange={(e) => setCaptchaAnswer(e.target.value)}
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  onClick={handleSendOtp}
+                  style={otpSendButton}
+                  disabled={sendingOtp || loading}
+                >
+                  {sendingOtp ? "Sending..." : otpSent ? "Resend OTP" : "Send OTP"}
+                </button>
+              </div>
+              {otpMessage && <p style={otpHint}>{otpMessage}</p>}
+              {otpSent && (
+                <input
+                  style={{ ...formInput, marginTop: "10px" }}
+                  placeholder="Enter the 6-digit OTP sent to your email"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  inputMode="numeric"
+                  maxLength={6}
+                  autoComplete="off"
+                  required
+                />
+              )}
             </div>
 
             <div style={formRow}>
@@ -416,29 +534,6 @@ function Register() {
                 name="identity_certificate"  //  Fixed: certificate → identity_certificate
                 accept=".pdf,.jpg,.jpeg,.png"
                 onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div style={formGroup}>
-              <label style={formLabel}>Captcha <span style={requiredStar}>*</span></label>
-              <div style={captchaBox}>
-                {captcha?.image ? (
-                  <img src={captcha.image} alt="Captcha code" style={captchaImage} />
-                ) : (
-                  <span style={captchaQuestion}>{captcha?.question || "Loading..."}</span>
-                )}
-                <button type="button" onClick={loadCaptcha} style={captchaRefresh} disabled={loading}>
-                  Refresh
-                </button>
-              </div>
-              <input
-                style={formInput}
-                name="captcha"
-                placeholder="Enter captcha answer"
-                value={captchaAnswer}
-                onChange={(e) => setCaptchaAnswer(e.target.value)}
-                autoComplete="off"
                 required
               />
             </div>
@@ -650,6 +745,31 @@ const formLabel = {
 };
 
 const requiredStar = { color: "#dc2626" };
+
+const otpRow = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px"
+};
+
+const otpSendButton = {
+  whiteSpace: "nowrap",
+  border: "1px solid #0d47a1",
+  background: "#0d47a1",
+  color: "#fff",
+  borderRadius: "6px",
+  padding: "11px 16px",
+  fontWeight: 700,
+  fontSize: "13.5px",
+  cursor: "pointer"
+};
+
+const otpHint = {
+  margin: "8px 0 0",
+  fontSize: "13px",
+  color: "#166534",
+  fontWeight: 500
+};
 
 const formInput = {
   width: "100%",

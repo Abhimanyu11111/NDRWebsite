@@ -23,6 +23,10 @@ export const corsOptions = {
 
 export const securityHeaders = (req, res, next) => {
   res.removeHeader("X-Powered-By");
+  // Defense in depth: strip/blank any "Server" banner so the underlying
+  // runtime/version can't be fingerprinted from the HTTP response.
+  res.removeHeader("Server");
+  res.setHeader("Server", "");
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
