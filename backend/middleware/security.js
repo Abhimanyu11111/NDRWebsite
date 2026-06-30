@@ -37,7 +37,10 @@ export const securityHeaders = (req, res, next) => {
   res.setHeader("X-Download-Options", "noopen");
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'"
+    // img-src allows data: URIs — the captcha endpoint returns its image as a
+    // base64 data: URI (see utils/captcha.js), which a stricter default-src
+    // would otherwise block from rendering in the browser.
+    "default-src 'self'; img-src 'self' data:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'"
   );
 
   if (req.secure || req.headers["x-forwarded-proto"] === "https") {
