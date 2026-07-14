@@ -5,15 +5,32 @@ const jwtOptions = {
   issuer: process.env.JWT_ISSUER || "ndr-portal",
   audience: process.env.JWT_AUDIENCE || "ndr-users",
 };
+const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "ndr_auth";
+
+const getCookieToken = (req) => {
+  const cookieHeader = req.headers.cookie || "";
+  const cookies = Object.fromEntries(
+    cookieHeader
+      .split(";")
+      .map((cookie) => cookie.trim().split("="))
+      .filter(([key, value]) => key && value)
+      .map(([key, value]) => [key, decodeURIComponent(value)])
+  );
+  return cookies[AUTH_COOKIE_NAME];
+};
+
+const getRequestToken = (req) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith("Bearer ")) return authHeader.split(" ")[1];
+  return getCookieToken(req);
+};
 
 const authMiddleware = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+  const token = getRequestToken(req);
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (!token) {
     return res.status(401).json({ message: "Unauthorized: Token missing" });
   }
-
-  const token = authHeader.split(" ")[1];
 
   try {
     if (!process.env.JWT_SECRET) {

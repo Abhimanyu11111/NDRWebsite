@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./Styles/PaymentResult.module.css";
 
@@ -9,13 +9,6 @@ export default function PaymentFailure() {
   const orderId   = searchParams.get("order_id");
   const reason    = searchParams.get("reason");
   const canRetry  = searchParams.get("can_retry") !== "false"; // default true unless explicitly "false"
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
-    }
-  }, [navigate]);
 
   return (
     <div className={styles.container}>

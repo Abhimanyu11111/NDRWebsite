@@ -10,6 +10,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Emblem from "../assets/images/emblem1.png";
+import api from "../api/axiosClient";
 
 export default function AdminNavbar() {
   const [activeLink, setActiveLink] = useState(window.location.pathname);
@@ -22,13 +23,18 @@ export default function AdminNavbar() {
     { path: "/admin/managebookings", label: "Manage bookings", icon: Calendar },
   ];
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (confirm("Are you sure you want to logout?")) {
+      try {
+        await api.post("/auth/logout");
+      } catch {
+        // Continue client-side logout even if the session is already expired.
+      }
       localStorage.removeItem("token");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("admin");
       sessionStorage.clear();
-      window.location.href = "/admin/login";
+      window.location.replace("/admin/login");
     }
   };
 

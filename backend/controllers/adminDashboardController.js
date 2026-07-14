@@ -52,7 +52,7 @@ export const getDashboardCounts = async (req, res) => {
           { model: User, as: "user", attributes: ["name", "email"] },
           { model: Room, as: "room", attributes: ["title"] },
         ],
-      }),
+      }), 
 
       sequelize.query(
         `SELECT 

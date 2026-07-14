@@ -1,0 +1,314 @@
+.page {
+  min-height: 100vh;
+  background: #ffffff;
+  color: #172033;
+  font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+  padding: 30px 46px 24px;
+}
+
+.container {
+  width: min(100%, 1430px);
+  margin: 0 auto;
+}
+
+.pageHeader {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.brandIcon {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 16px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #1553ac;
+  background: #e7f0ff;
+}
+
+.pageHeader h1 {
+  margin: 0;
+  font-size: clamp(23px, 2vw, 30px);
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.pageHeader p {
+  margin: 12px 0 0;
+  color: #8591a5;
+  font-size: 13px;
+}
+
+.message {
+  max-width: 900px;
+  margin: 0 auto 20px;
+  padding: 12px 15px;
+  border: 1px solid;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.message svg { flex: 0 0 auto; margin-top: 1px; }
+.error { color: #a51d2d; background: #fff5f5; border-color: #ffd1d6; }
+.success { color: #17643b; background: #f1fff7; border-color: #bde9ce; }
+
+.section + .section { margin-top: 34px; }
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 23px;
+}
+
+.sectionIcon {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  color: #1455b2;
+  background: #e7f0ff;
+}
+
+.sectionTitle h2 {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #172033;
+}
+
+.sectionLine {
+  height: 1px;
+  flex: 1;
+  background: #e1e7f0;
+}
+
+.twoColumns,
+.threeColumns {
+  display: grid;
+  gap: 18px 27px;
+  margin-bottom: 18px;
+}
+
+.twoColumns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.threeColumns { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.field { min-width: 0; }
+
+.label {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: 600;
+  color: #3b465a;
+}
+
+.label span { margin-left: 3px; color: #ee3434; }
+
+.control {
+  position: relative;
+  height: 48px;
+}
+
+.controlIcon {
+  position: absolute;
+  z-index: 1;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8c96a5;
+  pointer-events: none;
+}
+
+.control input,
+.control select {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #d4deeb;
+  border-radius: 9px;
+  outline: none;
+  background: #ffffff;
+  color: #263247;
+  padding: 0 42px;
+  font: inherit;
+  font-size: 12.5px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.control input::placeholder { color: #a2a9b4; opacity: 1; }
+
+.control input:focus,
+.control select:focus {
+  border-color: #2366c2;
+  box-shadow: 0 0 0 3px rgba(35, 102, 194, 0.1);
+}
+
+.control select {
+  appearance: none;
+  cursor: pointer;
+  color: #929aa7;
+}
+
+.control select:valid { color: #263247; }
+
+.selectArrow,
+.passwordToggle {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8d96a4;
+}
+
+.selectArrow { pointer-events: none; }
+
+.passwordToggle {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.phonePrefix {
+  position: absolute;
+  z-index: 1;
+  left: 39px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding-right: 13px;
+  border-right: 1px solid #e1e6ed;
+  font-size: 12px;
+  color: #495467;
+}
+
+.control .phoneInput { padding-left: 91px; }
+
+.uploadField { margin-top: 2px; }
+
+.uploadBox {
+  width: 100%;
+  height: 49px;
+  padding: 0 14px;
+  border: 1px dashed #b9cce8;
+  border-radius: 8px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #687487;
+  cursor: pointer;
+  text-align: left;
+}
+
+.chooseFile {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid #cbd9ec;
+  border-radius: 6px;
+  color: #1658b4;
+  background: #f8fbff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.fileName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.fileHint {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  color: #9199a6;
+}
+
+.hiddenFile {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.submitButton {
+  width: min(100%, 460px);
+  height: 50px;
+  margin: 59px auto 0;
+  border: 0;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  background: #1555b1;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 5px 12px rgba(21, 85, 177, 0.16);
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+
+.submitButton:hover:not(:disabled) { background: #0f4695; transform: translateY(-1px); }
+.submitButton:disabled { opacity: 0.68; cursor: not-allowed; }
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+.loginText {
+  margin: 20px 0 0;
+  text-align: center;
+  color: #8290a6;
+  font-size: 12px;
+}
+
+.loginText a { color: #1455b2; text-decoration: none; font-weight: 500; }
+.loginText a:hover { text-decoration: underline; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 900px) {
+  .page { padding: 26px 24px; }
+  .threeColumns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .page { padding: 22px 16px 28px; }
+  .pageHeader { margin-bottom: 27px; }
+  .brandIcon { width: 48px; height: 48px; margin-bottom: 13px; }
+  .pageHeader h1 { font-size: 23px; }
+  .section + .section { margin-top: 30px; }
+  .sectionTitle { gap: 9px; margin-bottom: 20px; }
+  .sectionTitle h2 { font-size: 14px; }
+  .twoColumns, .threeColumns { grid-template-columns: 1fr; gap: 15px; margin-bottom: 15px; }
+  .control { height: 46px; }
+  .fileHint { display: none; }
+  .submitButton { margin-top: 36px; }
+}

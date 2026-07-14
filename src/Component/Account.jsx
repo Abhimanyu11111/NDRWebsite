@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../api/axiosClient";
+import useBfcacheReload from "../utils/useBfcacheReload";
 import styles from "./Styles/Account.module.css";
 
 export default function Account() {
+  useBfcacheReload();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("bookings");
   const [profile, setProfile] = useState(null);
@@ -20,13 +22,8 @@ export default function Account() {
   const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
-      return;
-    }
     fetchData();
-  }, [navigate]);
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -68,7 +65,7 @@ export default function Account() {
     }
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    navigate("/login");
+    navigate("/login", { replace: true });
   };
 
   const handlePasswordChange = async (e) => {

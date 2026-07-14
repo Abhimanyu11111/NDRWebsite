@@ -5,7 +5,10 @@ import Room from "../models/Room.js";
 ============================ */
 export const getRoomsAdmin = async (req, res) => {
   try {
-    const rooms = await Room.findAll({ order: [["id", "DESC"]] });
+    const rooms = await Room.findAll({
+      where: { is_active: true },
+      order: [["id", "DESC"]],
+    });
     res.json({ success: true, rooms });
   } catch (err) {
     console.error(err);
@@ -29,19 +32,24 @@ export const createRoom = async (req, res) => {
       license_type,
       room_type,
     } = req.body;
-    const roomTitle = String(title || name || "").trim();
+    const roomTitle = String(title || name || "").trim().slice(0, 150);
 
     if (!roomTitle) {
       return res.status(400).json({ success: false, message: "Room title required" });
     }
 
+    const toNonNegativeNumber = (value) => {
+      const num = Number(value);
+      return Number.isFinite(num) && num >= 0 ? num : 0;
+    };
+
     const room = await Room.create({
       title: roomTitle,
-      description: description || null,
-      capacity: capacity || null,
-      hourly_rate: hourly_rate || 0,
-      half_day_rate: half_day_rate || 0,
-      full_day_rate: full_day_rate || 0,
+      description: description ? String(description).trim().slice(0, 1000) : null,
+      capacity: capacity ? toNonNegativeNumber(capacity) : null,
+      hourly_rate: toNonNegativeNumber(hourly_rate),
+      half_day_rate: toNonNegativeNumber(half_day_rate),
+      full_day_rate: toNonNegativeNumber(full_day_rate),
       license_type: license_type || null,
       room_type: room_type || "GENERAL",
       is_active: true,

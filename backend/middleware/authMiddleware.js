@@ -6,6 +6,25 @@ const jwtOptions = {
   issuer: process.env.JWT_ISSUER || "ndr-portal",
   audience: process.env.JWT_AUDIENCE || "ndr-users",
 };
+const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "ndr_auth";
+
+const getCookieToken = (req) => {
+  const cookieHeader = req.headers.cookie || "";
+  const cookies = Object.fromEntries(
+    cookieHeader
+      .split(";")
+      .map((cookie) => cookie.trim().split("="))
+      .filter(([key, value]) => key && value)
+      .map(([key, value]) => [key, decodeURIComponent(value)])
+  );
+  return cookies[AUTH_COOKIE_NAME];
+};
+
+const getRequestToken = (req) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) return authHeader.split(' ')[1];
+  return getCookieToken(req);
+};
 
 /**
  * JWT Authentication Middleware
@@ -13,18 +32,7 @@ const jwtOptions = {
  */
 const authMiddleware = async (req, res, next) => {
   try {
-    // Get token from header
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        message: 'No token provided. Authorization denied.'
-      });
-    }
-
-    // Extract token
-    const token = authHeader.split(' ')[1];
+    const token = getRequestToken(req);
 
     if (!token) {
       return res.status(401).json({

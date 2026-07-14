@@ -96,21 +96,31 @@ export default function AdminDashboard() {
     }, AUTO_LOGOUT_TIME_MS - 60000);
   }, []);
 
-  const handleAutoLogout = useCallback(() => {
+  const handleAutoLogout = useCallback(async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // Continue client-side logout even if the session is already expired.
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("admin");
     sessionStorage.clear();
-    window.location.href = "/admin/login?reason=inactivity";
+    window.location.replace("/admin/login?reason=inactivity");
   }, []);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
     if (confirm("Are you sure you want to logout?")) {
+      try {
+        await api.post("/auth/logout");
+      } catch {
+        // Continue client-side logout even if the session is already expired.
+      }
       localStorage.removeItem("token");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("admin");
       sessionStorage.clear();
-      window.location.href = "/admin/login";
+      window.location.replace("/admin/login");
     }
   }, []);
 

@@ -3,6 +3,7 @@ import axios from "../api/axiosClient";
 import styles from "../Component/Styles/BookVDR.module.css";
 import AvailabilityCalendar from "./AvailabilityCalendar";
 import SearchableBlockDropdown from '../Component/SearchableBlockDropdown';
+import useBfcacheReload from "../utils/useBfcacheReload";
 
 /* ====================== CONSTANTS ====================== */
 const DURATION_MAP = {
@@ -168,6 +169,8 @@ const extractLicense = (room) => {
 
 /* ====================== MAIN COMPONENT ====================== */
 export default function BookVDR() {
+  useBfcacheReload();
+
   /* --- State --- */
   const [rooms, setRooms] = useState([]);
   const [roomId, setRoomId] = useState("");
@@ -216,12 +219,6 @@ export default function BookVDR() {
     setViewMonth(minDate.getMonth());
   }, [minDate]);
 
-  /* --- Auth check --- */
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) window.location.href = "/login";
-  }, []);
-
   /* --- Fetch profile --- */
   useEffect(() => {
     const fetchProfile = async () => {
@@ -237,12 +234,17 @@ export default function BookVDR() {
 
   /* --- Auto logout --- */
   useEffect(() => {
-    const handleLogout = () => {
+    const handleLogout = async () => {
+      try {
+        await axios.post("/auth/logout");
+      } catch {
+        // Continue client-side logout even if the session is already expired.
+      }
       localStorage.removeItem("token");
       localStorage.removeItem("refreshToken");
       sessionStorage.clear();
       alert("You have been logged out due to inactivity.");
-      window.location.href = "/login";
+      window.location.replace("/login");
     };
     const showWarning = () => {
       const ok = window.confirm(
@@ -491,9 +493,14 @@ export default function BookVDR() {
             </button>
             <button
               className={styles.btnLogout}
-              onClick={() => {
+              onClick={async () => {
+                try {
+                  await axios.post("/auth/logout");
+                } catch {
+                  // Continue client-side logout even if the session is already expired.
+                }
                 localStorage.removeItem("token");
-                window.location.href = "/login";
+                window.location.replace("/login");
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

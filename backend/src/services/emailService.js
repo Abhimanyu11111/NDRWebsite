@@ -156,40 +156,8 @@ const sendBookingCancellation = async (data) => {
   );
 };
 
-/**
- * Send registration OTP verification email
- * @param {Object} data - { email, otp }
- */
-const sendRegistrationOtp = async (data) => {
-  const { email, otp } = data;
-
-  const mailOptions = {
-    from: mailFrom,
-    to: email,
-    subject: "Verify your email - NDR Registration OTP",
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #0d47a1;">Email Verification</h2>
-        <p>Use the code below to verify your email and complete your registration.</p>
-        <div style="background-color: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
-          <span style="font-size: 28px; font-weight: 700; letter-spacing: 6px; color: #0d47a1;">${otp}</span>
-        </div>
-        <p>This code expires in 10 minutes. If you did not request this, please ignore this email.</p>
-        <p>Best regards,<br/>NDR Team</p>
-      </div>
-    `,
-  };
-
-  return sendMail(
-    mailOptions,
-    `Registration OTP sent to ${email}`,
-    "Error sending registration OTP email:"
-  );
-};
-
 export {
   sendBookingConfirmation,
   sendSlotAvailableNotification,
   sendBookingCancellation,
-  sendRegistrationOtp,
 };

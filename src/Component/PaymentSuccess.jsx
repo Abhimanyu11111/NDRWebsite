@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./Styles/PaymentResult.module.css";
 
@@ -7,13 +7,6 @@ export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const bookingId = searchParams.get("booking_id");
   const orderId = searchParams.get("order_id");
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
-    }
-  }, [navigate]);
 
   return (
     <div className={styles.container}>

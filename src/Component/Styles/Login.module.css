@@ -1,0 +1,226 @@
+.page {
+  min-height: 100vh;
+  padding: 32px;
+  display: grid;
+  place-items: center;
+  color: #172033;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(40, 105, 190, 0.11), transparent 27%),
+    radial-gradient(circle at 94% 90%, rgba(32, 77, 139, 0.09), transparent 30%),
+    #f2f5f9;
+  font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.shell {
+  width: min(100%, 550px);
+  min-height: 700px;
+  overflow: hidden;
+  border: 1px solid #dfe6ef;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 28px 70px rgba(20, 39, 68, 0.13);
+}
+
+.mobileLogo {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  color: #1454a0;
+  background: #eaf2fd;
+}
+
+.formPanel {
+  position: relative;
+  min-height: 700px;
+  padding: 46px 58px 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: #fff;
+}
+
+.formWrap { width: min(100%, 430px); margin: auto; }
+.formHeader { margin-bottom: 30px; }
+
+.kicker {
+  margin: 0 0 8px !important;
+  color: #1b5ca8 !important;
+  font-size: 12px !important;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.formHeader h2 {
+  margin: 0;
+  color: #142033;
+  font-size: 29px;
+  line-height: 1.3;
+  letter-spacing: -0.7px;
+}
+
+.formHeader > p:last-child { margin: 9px 0 0; color: #7a8798; font-size: 13px; }
+
+.error {
+  margin: 0 0 20px;
+  padding: 12px 13px;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  border: 1px solid #ffd1d6;
+  border-radius: 9px;
+  color: #a82334;
+  background: #fff6f6;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.error svg { flex: 0 0 auto; margin-top: 1px; }
+.form { display: grid; gap: 20px; }
+.field { display: grid; gap: 8px; }
+.field label { color: #2c394c; font-size: 12px; font-weight: 700; }
+.labelRow { display: flex; justify-content: space-between; align-items: center; }
+.labelRow a { color: #1b5ca8; font-size: 11px; font-weight: 600; text-decoration: none; }
+
+.inputWrap { position: relative; height: 50px; }
+
+.inputWrap > svg {
+  position: absolute;
+  z-index: 1;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8793a4;
+  pointer-events: none;
+}
+
+.inputWrap input {
+  width: 100%;
+  height: 100%;
+  padding: 0 45px;
+  border: 1px solid #d7e0ea;
+  border-radius: 10px;
+  outline: none;
+  color: #1c293c;
+  background: #fbfcfe;
+  font: inherit;
+  font-size: 13px;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.inputWrap input::placeholder { color: #9aa4b2; }
+.inputWrap input:focus { border-color: #2366b5; background: #fff; box-shadow: 0 0 0 3px rgba(35, 102, 181, 0.1); }
+.inputWrap input:disabled { cursor: not-allowed; opacity: 0.7; }
+
+.passwordToggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #778496;
+  cursor: pointer;
+}
+
+.captchaRow { display: flex; gap: 10px; }
+.captchaVisual { height: 50px; flex: 1; overflow: hidden; display: grid; place-items: center; border: 1px solid #d7e0ea; border-radius: 10px; color: #536074; background: #f7f9fc; font-size: 12px; font-weight: 600; }
+.captchaVisual img { width: 160px; height: 50px; display: block; object-fit: contain; }
+
+.refreshButton {
+  min-width: 104px;
+  height: 50px;
+  padding: 0 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #ccd9e8;
+  border-radius: 10px;
+  color: #1b5ca8;
+  background: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.refreshButton:hover:not(:disabled) { border-color: #9eb8d7; background: #f4f8fd; }
+.refreshButton:disabled { cursor: not-allowed; opacity: 0.65; }
+.rotating { animation: spin 700ms linear infinite; }
+
+.submitButton {
+  width: 100%;
+  height: 51px;
+  margin-top: 3px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  background: #1858a5;
+  box-shadow: 0 9px 20px rgba(24, 88, 165, 0.2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.submitButton:hover:not(:disabled) { background: #124987; transform: translateY(-1px); box-shadow: 0 11px 23px rgba(24, 88, 165, 0.25); }
+.submitButton:disabled { cursor: not-allowed; opacity: 0.68; }
+
+.spinner { width: 17px; height: 17px; border: 2px solid rgba(255, 255, 255, 0.38); border-top-color: #fff; border-radius: 50%; animation: spin 700ms linear infinite; }
+
+.registerPrompt {
+  margin-top: 27px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid #e1e7ef;
+  border-radius: 10px;
+  background: #f8fafc;
+  font-size: 11.5px;
+  color: #738094;
+}
+
+.registerPrompt a,
+.helpText a { color: #1759a5; font-weight: 700; text-decoration: none; }
+.registerPrompt a:hover, .helpText a:hover, .labelRow a:hover { text-decoration: underline; }
+.helpText { margin: 16px 0 0; text-align: center; color: #8792a1; font-size: 11px; }
+
+.copyright { margin-top: auto; padding-top: 28px; text-align: center; color: #99a3b1; font-size: 10px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 850px) {
+  .page { padding: 22px; }
+  .shell { width: min(100%, 550px); min-height: auto; }
+  .formPanel { min-height: 680px; padding: 45px 48px 28px; }
+}
+
+@media (max-width: 520px) {
+  .page { padding: 0; display: block; background: #fff; }
+  .shell { min-height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
+  .formPanel { min-height: 100vh; padding: 32px 22px 24px; }
+  .formHeader h2 { font-size: 25px; }
+  .captchaVisual img { max-width: 100%; }
+  .refreshButton { min-width: 48px; padding: 0 12px; }
+  .refreshButton span { display: none; }
+  .registerPrompt { flex-direction: column; }
+}

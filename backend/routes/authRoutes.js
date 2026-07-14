@@ -9,14 +9,32 @@ import sequelize from "../src/config/db.js";
 import authMiddleware from "../middleware/auth.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 import { createCaptchaChallenge, verifyCaptchaChallenge } from "../utils/captcha.js";
-import { createRegistrationOtp, verifyRegistrationOtp } from "../utils/registrationOtp.js";
-import { sendRegistrationOtp } from "../src/services/emailService.js";
 import { clearActiveSession, setActiveSession } from "../utils/sessionStore.js";
 
 const router = express.Router();
 const JWT_OPTIONS = {
   issuer: process.env.JWT_ISSUER || "ndr-portal",
   audience: process.env.JWT_AUDIENCE || "ndr-users",
+};
+const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "ndr_auth";
+
+const getAuthCookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.AUTH_COOKIE_SAMESITE || "lax",
+  maxAge: 30 * 60 * 1000,
+  path: "/",
+});
+
+const setAuthCookie = (res, token) => {
+  res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions());
+};
+
+const clearAuthCookie = (res) => {
+  res.clearCookie(AUTH_COOKIE_NAME, {
+    ...getAuthCookieOptions(),
+    maxAge: undefined,
+  });
 };
 
 const loginLimiter = rateLimit({
@@ -31,13 +49,6 @@ const uploadLimiter = rateLimit({
   max: 10,
   keyPrefix: "register-upload",
   message: "Too many registration attempts. Please try again after 15 minutes.",
-});
-
-const otpLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  keyPrefix: "register-otp",
-  message: "Too many OTP requests. Please try again after 15 minutes.",
 });
 
 const captchaLimiter = rateLimit({
@@ -76,48 +87,6 @@ const requireCaptcha = (req, res, next) => {
 
 router.get("/captcha", captchaLimiter, (req, res) => {
   return res.json({ success: true, captcha: createCaptchaChallenge() });
-});
-
-/* =====================================================
-   REGISTRATION — Send email OTP
-   Verifies the registrant controls the email address before
-   the identity certificate upload is accepted (GISPL recommendation).
-===================================================== */
-router.post("/register/send-otp", otpLimiter, requireCaptcha, async (req, res) => {
-  const email = String(req.body?.email || "").trim().toLowerCase();
-
-  if (!emailRegex.test(email)) {
-    return res.status(400).json({ success: false, msg: "Please enter a valid email address" });
-  }
-
-  try {
-    const [existing] = await sequelize.query(
-      "SELECT id FROM users WHERE email = ?",
-      { replacements: [email] }
-    );
-    if (existing.length > 0) {
-      return res.status(400).json({ success: false, msg: "This email is already registered" });
-    }
-
-    const { otp, token } = createRegistrationOtp(email);
-    const sent = await sendRegistrationOtp({ email, otp });
-
-    if (!sent) {
-      return res.status(503).json({
-        success: false,
-        msg: "Unable to send verification email right now. Please try again shortly.",
-      });
-    }
-
-    return res.json({
-      success: true,
-      msg: "OTP sent to your email address. It is valid for 10 minutes.",
-      otpToken: token,
-    });
-  } catch (err) {
-    console.error("Send registration OTP error:", err);
-    res.status(500).json({ success: false, msg: "Server error while sending OTP" });
-  }
 });
 
 // ── Multer setup for identity certificate upload ──────
@@ -235,16 +204,14 @@ router.post("/admin-login", loginLimiter, requireCaptcha, async (req, res) => {
       { ...JWT_OPTIONS, expiresIn: "30m" }
     );
     setActiveSession(user.id, user.role, token);
+    setAuthCookie(res, token);
 
     res.json({
       success: true,
-      token,
       admin: {
         id: user.id,
         name: user.name,
-        email: user.email,
         role: user.role,
-        company: user.company,
       },
     });
   } catch (err) {
@@ -278,8 +245,6 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), a
     pincode,
     id_proof_type,
     id_proof_number,
-    otp,
-    otpToken,
   } = req.body;
   const normalizedEmail = String(email || "").trim().toLowerCase();
   const normalizedPhone = String(phone || "").replace(/\D/g, "");
@@ -293,15 +258,6 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), a
 
   if (!emailRegex.test(normalizedEmail)) {
     return res.status(400).json({ success: false, msg: "Please enter a valid email address" });
-  }
-
-  //  Email must be verified via OTP before the identity certificate
-  //  upload is accepted (prevents unverified uploads on this public page).
-  if (!verifyRegistrationOtp({ email: normalizedEmail, otp, token: otpToken })) {
-    return res.status(400).json({
-      success: false,
-      msg: "Email verification failed or expired. Please request a new OTP and try again.",
-    });
   }
 
   if (phone && !phoneRegex.test(normalizedPhone)) {
@@ -479,14 +435,13 @@ router.post("/login", loginLimiter, requireCaptcha, async (req, res) => {
       { ...JWT_OPTIONS, expiresIn: "30m" }
     );
     setActiveSession(user.id, user.role || "USER", token);
+    setAuthCookie(res, token);
 
     res.json({
       success: true,
-      token,
       user: {
         id: user.id,
         name: user.name,
-        email: user.email,
         role: user.role,
       },
     });
@@ -543,6 +498,7 @@ router.post("/change-password", authMiddleware, async (req, res) => {
 
 router.post("/logout", authMiddleware, (req, res) => {
   clearActiveSession(req.user.id, req.user.role || "USER");
+  clearAuthCookie(res);
   return res.json({ success: true, msg: "Logged out successfully" });
 });
 
