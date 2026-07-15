@@ -26,7 +26,7 @@ const Booking = sequelize.define(
     },
 
     booking_type: {
-      type: DataTypes.ENUM("MULTI_DAY", "EIGHT_HOUR"),
+      type: DataTypes.ENUM("HOURLY", "HALF_DAY", "FULL_DAY", "MULTI_DAY", "EIGHT_HOUR"),
       allowNull: false,
       defaultValue: "MULTI_DAY",
     },

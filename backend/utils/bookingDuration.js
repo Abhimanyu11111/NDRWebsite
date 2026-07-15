@@ -63,6 +63,12 @@ export const calculateRoomPrice = ({ bookingType, durationMinutes, room }) => {
 
 export const getBookingDurationLabel = (bookingType, durationMinutes) => {
   if (bookingType === BOOKING_TYPES.EIGHT_HOUR) return "8 Hours";
+  if (bookingType === "HOURLY") {
+    const hours = Math.max(1, Math.ceil(Number(durationMinutes || 60) / 60));
+    return `${hours} ${hours === 1 ? "Hour" : "Hours"}`;
+  }
+  if (bookingType === "HALF_DAY") return "Half Day";
+  if (bookingType === "FULL_DAY") return "Full Day";
   const days = Math.max(1, Math.ceil(Number(durationMinutes || 0) / 1440));
   return `${days} ${days === 1 ? "Day" : "Days"}`;
 };

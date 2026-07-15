@@ -4,6 +4,7 @@ import {
   BOOKING_TYPES,
   calculateRoomPrice,
   resolveBookingWindow,
+  getBookingDurationLabel,
 } from "../utils/bookingDuration.js";
 import { countWorkingDays } from "../utils/durationMap.js";
 
@@ -50,4 +51,10 @@ test("does not count an exclusive midnight checkout as another working day", () 
     "2026-08-04T00:00:00+05:30"
   );
   assert.equal(workingDays, 1);
+});
+
+test("keeps human-readable labels for historical booking types", () => {
+  assert.equal(getBookingDurationLabel("HOURLY", 120), "2 Hours");
+  assert.equal(getBookingDurationLabel("HALF_DAY", 720), "Half Day");
+  assert.equal(getBookingDurationLabel("FULL_DAY", 1440), "Full Day");
 });
