@@ -21,6 +21,13 @@ export const corsOptions = {
   optionsSuccessStatus: 204,
 };
 
+// CCAvenue posts the encrypted payment result from its own origin. CORS is a
+// browser-origin policy, not callback authentication, so only this exact
+// server-to-server/form callback is exempt. The controller still validates the
+// encrypted response, stored order, booking and amount before confirming it.
+export const shouldBypassCors = (req) =>
+  req.method === "POST" && req.path === "/api/payment/callback";
+
 export const securityHeaders = (req, res, next) => {
   res.removeHeader("X-Powered-By");
   // Defense in depth: strip/blank any "Server" banner so the underlying

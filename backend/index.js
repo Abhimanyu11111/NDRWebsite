@@ -9,6 +9,7 @@ import {
   rejectRequestSmuggling,
   requireHttpsInProduction,
   securityHeaders,
+  shouldBypassCors,
   validateRequestPayload,
 } from "./middleware/security.js";
 import { rateLimit } from "./middleware/rateLimit.js";
@@ -59,7 +60,11 @@ app.use(requireHttpsInProduction);
 app.use(rejectRequestSmuggling);
 app.use(blockUnsafeMethods);
 app.use(securityHeaders);
-app.use(cors(corsOptions));
+const corsMiddleware = cors(corsOptions);
+app.use((req, res, next) => {
+  if (shouldBypassCors(req)) return next();
+  return corsMiddleware(req, res, next);
+});
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 app.use(validateRequestPayload);
