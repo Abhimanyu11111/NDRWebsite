@@ -13,7 +13,6 @@ import { clearActiveSession, setActiveSession } from "../utils/sessionStore.js";
 import { sendPasswordResetEmail } from "../src/services/emailService.js";
 import {
   generatePasswordResetToken,
-  getPasswordResetExpiry,
   hashPasswordResetToken,
   PASSWORD_RESET_TTL_MINUTES,
 } from "../utils/passwordReset.js";
@@ -486,14 +485,13 @@ router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
     const user = rows[0];
     const token = generatePasswordResetToken();
     const tokenHash = hashPasswordResetToken(token);
-    const expiresAt = getPasswordResetExpiry();
-
     await sequelize.query(
       `UPDATE users
-       SET password_reset_token_hash = ?, password_reset_expires_at = ?,
+       SET password_reset_token_hash = ?,
+           password_reset_expires_at = DATE_ADD(NOW(), INTERVAL ${PASSWORD_RESET_TTL_MINUTES} MINUTE),
            password_reset_requested_at = NOW(), updated_at = NOW()
        WHERE id = ?`,
-      { replacements: [tokenHash, expiresAt, user.id] }
+      { replacements: [tokenHash, user.id] }
     );
 
     const frontendUrl = String(process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, "");
