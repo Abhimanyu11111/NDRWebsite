@@ -625,9 +625,9 @@ export default function AdminDashboard() {
                       <p style={styles.approvalId}>{b.booking_id}</p>
                       <p style={styles.approvalMeta}>{b.userName} · {b.userEmail} · {b.roomTitle} · ₹{Number(b.total_price).toLocaleString("en-IN")}</p>
                       <p style={styles.approvalDate}>
-                        {new Date(b.start_datetime).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
+                          {new Date(b.start_datetime).toLocaleString("en-IN", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                         {" – "}
-                        {new Date(b.end_datetime).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
+                          {new Date(b.end_datetime).toLocaleString("en-IN", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </div>
                     <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 600, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6, padding: "4px 10px" }}>Paid ✓</span>
@@ -802,8 +802,8 @@ export default function AdminDashboard() {
                           </td>
                           <td style={styles.td}>{b.roomTitle}</td>
                           <td style={styles.td}><span style={styles.typeBadge(b.booking_type)}>{b.booking_type}</span></td>
-                          <td style={styles.td}>{new Date(b.start_datetime).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</td>
-                          <td style={styles.td}>{new Date(b.end_datetime).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</td>
+                            <td style={styles.td}>{new Date(b.start_datetime).toLocaleString("en-IN", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
+                            <td style={styles.td}>{new Date(b.end_datetime).toLocaleString("en-IN", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
                           <td style={styles.td}>
                             <span style={{ fontWeight: 600 }}>₹{Number(b.total_price).toLocaleString("en-IN")}</span>
                             {b.working_day_surcharge > 0 && <p style={{ margin: 0, fontSize: 11, color: "#f97316" }}>+₹{Number(b.working_day_surcharge).toLocaleString("en-IN")} surcharge</p>}

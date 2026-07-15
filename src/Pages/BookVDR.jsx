@@ -6,9 +6,10 @@ import SearchableBlockDropdown from '../Component/SearchableBlockDropdown';
 import useBfcacheReload from "../utils/useBfcacheReload";
 
 /* ====================== CONSTANTS ====================== */
-const DURATION_MAP = {
-  MULTI_DAY: "range",
-};
+const BOOKING_DURATIONS = [
+  { value: "MULTI_DAY", label: "24 Hours / Multi-day", hint: "Choose a start and end date" },
+  { value: "EIGHT_HOUR", label: "8 Hours", hint: "Choose one date and start time" },
+];
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -53,6 +54,35 @@ const formatFull = (d) => {
   return d.toLocaleDateString("en-US", {
     month: "short", day: "numeric", year: "numeric",
   });
+};
+
+const toDateKey = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+const buildIndiaDateTime = (date, time) =>
+  new Date(`${toDateKey(date)}T${time}:00+05:30`);
+
+const addHours = (date, hours) =>
+  new Date(date.getTime() + hours * 60 * 60 * 1000);
+
+const formatIndiaTime = (date) =>
+  date?.toLocaleTimeString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+// Uses the browser/device clock and displays that instant in the booking timezone.
+const getCurrentIndiaTimeValue = (now = new Date()) => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const hour = parts.find((part) => part.type === "hour")?.value || "00";
+  const minute = parts.find((part) => part.type === "minute")?.value || "00";
+  return `${hour}:${minute}`;
 };
 
 /* ====================== MINI CALENDAR ====================== */
@@ -175,6 +205,8 @@ export default function BookVDR() {
   const [rooms, setRooms] = useState([]);
   const [roomId, setRoomId] = useState("");
   const [durationType, setDurationType] = useState("MULTI_DAY");
+  const [eightHourStartTime, setEightHourStartTime] = useState(() => getCurrentIndiaTimeValue());
+  const [useDeviceTime, setUseDeviceTime] = useState(true);
 
   //  License & Room Type
   const [licenseType, setLicenseType] = useState("");
@@ -322,11 +354,58 @@ export default function BookVDR() {
   /* --- Duration change: reset dates --- */
   const handleDurationChange = (val) => {
     setDurationType(val);
+    if (val === "EIGHT_HOUR") {
+      setEightHourStartTime(getCurrentIndiaTimeValue());
+      setUseDeviceTime(true);
+    }
     setCheckIn(null);
     setCheckOut(null);
     setCalOpen(false);
     setError("");
   };
+
+  const setEightHourWindow = (date, time = eightHourStartTime) => {
+    const start = buildIndiaDateTime(date, time);
+    setCheckIn(start);
+    setCheckOut(addHours(start, 8));
+    setSelectingFor("checkin");
+    setCalOpen(false);
+  };
+
+  const handleEightHourTimeChange = (event) => {
+    const time = event.target.value;
+    setUseDeviceTime(false);
+    setEightHourStartTime(time);
+    if (checkIn) setEightHourWindow(checkIn, time);
+  };
+
+  const syncWithDeviceTime = () => {
+    const currentTime = getCurrentIndiaTimeValue();
+    setUseDeviceTime(true);
+    setEightHourStartTime(currentTime);
+    if (checkIn) setEightHourWindow(checkIn, currentTime);
+  };
+
+  // Keep the automatic value current while the user has not selected a custom time.
+  useEffect(() => {
+    if (durationType !== "EIGHT_HOUR" || !useDeviceTime) return undefined;
+
+    const sync = () => {
+      const currentTime = getCurrentIndiaTimeValue();
+      setEightHourStartTime(currentTime);
+      if (checkIn) {
+        const start = buildIndiaDateTime(checkIn, currentTime);
+        if (start.getTime() !== checkIn.getTime()) {
+          setCheckIn(start);
+          setCheckOut(addHours(start, 8));
+        }
+      }
+    };
+
+    sync();
+    const timer = window.setInterval(sync, 30 * 1000);
+    return () => window.clearInterval(timer);
+  }, [durationType, useDeviceTime, checkIn]);
 
   /* --- Open calendar for checkin or checkout --- */
   const openCal = (for_, e) => {
@@ -350,6 +429,10 @@ export default function BookVDR() {
 
   /* --- Day click logic --- */
   const handleDayClick = (date) => {
+    if (durationType === "EIGHT_HOUR") {
+      setEightHourWindow(date);
+      return;
+    }
     if (selectingFor === "checkin" || !checkIn || date <= checkIn) {
       setCheckIn(date);
       setCheckOut(null);
@@ -384,20 +467,27 @@ export default function BookVDR() {
 
   /* --- Booking summary values --- */
   const diffDays =
-    checkIn && checkOut
-      ? Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)) + 1
+    durationType === "MULTI_DAY" && checkIn && checkOut
+      ? Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24))
       : null;
 
   /* --- Pricing --- */
   const selectedRoom = rooms.find((r) => String(r.id) === String(roomId));
   const pricePerDay = selectedRoom ? (parseFloat(selectedRoom.full_day_rate) || 5000) : 5000;
-  const totalPrice = diffDays ? diffDays * pricePerDay : null;
+  const hourlyRate = selectedRoom ? parseFloat(selectedRoom.hourly_rate) || 0 : 0;
+  const eightHourPrice = hourlyRate > 0 ? hourlyRate * 8 : pricePerDay / 3;
+  const totalPrice = durationType === "EIGHT_HOUR"
+    ? (checkIn && checkOut ? eightHourPrice : null)
+    : (diffDays ? diffDays * pricePerDay : null);
 
   const formatINR = (amount) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
 
   const formatSummaryDates = (start, end) => {
     if (!start || !end) return "";
+    if (durationType === "EIGHT_HOUR") {
+      return `${formatFull(start)}, ${formatIndiaTime(start)} - ${formatIndiaTime(end)}`;
+    }
     const s = start.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     const e = end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     return `${s} - ${e}`;
@@ -409,9 +499,13 @@ export default function BookVDR() {
   const handleDateSelectFromCalendar = (selection) => {
     setRoomId(selection.room.id);
     const selectedDate = new Date(selection.date);
-    setCheckIn(selectedDate);
-    setCheckOut(null);
-    setSelectingFor("checkout");
+    if (durationType === "EIGHT_HOUR") {
+      setEightHourWindow(selectedDate);
+    } else {
+      setCheckIn(selectedDate);
+      setCheckOut(null);
+      setSelectingFor("checkout");
+    }
     if (bookingFormRef.current) {
       bookingFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -531,9 +625,28 @@ export default function BookVDR() {
             </p>
 
             <div className={styles.formGroup}>
-              <label className={styles.sectionLabel}>DATE RANGE</label>
+              <label className={styles.sectionLabel}>BOOKING DURATION</label>
+              <div className={styles.durationTabs}>
+                {BOOKING_DURATIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`${styles.durationTab} ${durationType === option.value ? styles.durationTabActive : ""}`}
+                    onClick={() => handleDurationChange(option.value)}
+                  >
+                    <span>{option.label}</span>
+                    <small>{option.hint}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.sectionLabel}>
+                {durationType === "EIGHT_HOUR" ? "BOOKING DATE & TIME" : "DATE RANGE"}
+              </label>
               <div className={styles.dateRangeRow} ref={calRef}>
-                <span className={styles.fromToText}>From</span>
+                <span className={styles.fromToText}>{durationType === "EIGHT_HOUR" ? "Date" : "From"}</span>
                 <div
                   className={`${styles.dateRangeInput} ${calOpen && selectingFor === "checkin" ? styles.dateRangeInputActive : ""}`}
                   onClick={(e) => openCal("checkin", e)}
@@ -548,13 +661,17 @@ export default function BookVDR() {
                     <line x1="3" y1="10" x2="21" y2="10"/>
                   </svg>
                 </div>
-                <span className={styles.fromToText}>To</span>
+                <span className={styles.fromToText}>{durationType === "EIGHT_HOUR" ? "Ends" : "To"}</span>
                 <div
-                  className={`${styles.dateRangeInput} ${durationType === "MULTI_DAY" && calOpen && selectingFor === "checkout" ? styles.dateRangeInputActive : ""}`}
+                  className={`${styles.dateRangeInput} ${durationType === "MULTI_DAY" && calOpen && selectingFor === "checkout" ? styles.dateRangeInputActive : ""} ${durationType === "EIGHT_HOUR" ? styles.dateRangeInputReadonly : ""}`}
                   onClick={(e) => { if (durationType === "MULTI_DAY" && checkIn) openCal("checkout", e); }}
                 >
                   <span className={checkOut ? styles.dateRangeValue : styles.dateRangePlaceholder}>
-                    {checkOut ? formatDisplay(checkOut) : "Select Date"}
+                    {checkOut
+                      ? durationType === "EIGHT_HOUR"
+                        ? `${formatDisplay(checkOut)} ${formatIndiaTime(checkOut)}`
+                        : formatDisplay(checkOut)
+                      : durationType === "EIGHT_HOUR" ? "Auto-calculated" : "Select Date"}
                   </span>
                   <svg className={styles.calIconSvg} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -586,10 +703,40 @@ export default function BookVDR() {
                   </div>
                 )}
               </div>
+
+              {durationType === "EIGHT_HOUR" && (
+                <div className={styles.timeSelection}>
+                  <label htmlFor="eight-hour-start">Start time (IST)</label>
+                  <input
+                    id="eight-hour-start"
+                    type="time"
+                    value={eightHourStartTime}
+                    onChange={handleEightHourTimeChange}
+                    step="60"
+                  />
+                  <button
+                    type="button"
+                    className={`${styles.deviceTimeButton} ${useDeviceTime ? styles.deviceTimeButtonActive : ""}`}
+                    onClick={syncWithDeviceTime}
+                  >
+                    {useDeviceTime ? "Using device time" : "Use device time"}
+                  </button>
+                  <span>Access ends automatically after exactly 8 hours.</span>
+                </div>
+              )}
             </div>
 
             {/* Duration info */}
-            {checkIn && checkOut && (
+            {durationType === "EIGHT_HOUR" && checkIn && checkOut && (
+              <div className={styles.durationInfo}>
+                <strong>8 Hours</strong> &nbsp;·&nbsp;
+                {formatFull(checkIn)}, {formatIndiaTime(checkIn)} → {formatIndiaTime(checkOut)} IST
+                {isDateRangeBlocked() && (
+                  <span className={styles.blockedWarning}> &nbsp; This time overlaps with an existing booking</span>
+                )}
+              </div>
+            )}
+            {durationType === "MULTI_DAY" && checkIn && checkOut && (
               <div className={styles.durationInfo}>
                 <strong>{diffDays} {diffDays === 1 ? "Day" : "Days"}</strong> &nbsp;·&nbsp;
                 {formatFull(checkIn)} → {formatFull(checkOut)}
@@ -701,7 +848,9 @@ export default function BookVDR() {
                   <div className={styles.summaryDurationBlock}>
                     <div className={styles.summaryLabel}>Duration</div>
                     <div className={styles.summaryValue}>
-                      {diffDays} {diffDays === 1 ? "Day" : "Days"}
+                      {durationType === "EIGHT_HOUR"
+                        ? "8 Hours"
+                        : `${diffDays} ${diffDays === 1 ? "Day" : "Days"}`}
                     </div>
                   </div>
                 </div>
@@ -713,7 +862,7 @@ export default function BookVDR() {
                   <span className={styles.summaryTotalLabel}>Total Est.</span>
                   <span className={styles.summaryTotalAmount}>{formatINR(totalPrice)}</span>
                 </div>
-                <p style={{ fontSize: "11px", color: "#94a3b8", margin: "4px 0 0", lineHeight: 1.4 }}>
+                <p style={{ fontSize: "11px", color: "#94a3b8", margin: "4px 0 0", lineHeight: 1.4, display: durationType === "EIGHT_HOUR" ? "none" : "block" }}>
                   + ₹50/working day beyond 3 working days (calculated at checkout)
                 </p>
 

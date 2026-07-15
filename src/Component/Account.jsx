@@ -135,7 +135,8 @@ export default function Account() {
 
   const bookingTypeLabel = (type) => {
     const map = {
-      MULTI_DAY: "Multiple Days",
+      MULTI_DAY: "24 Hours / Multi-day",
+      EIGHT_HOUR: "8 Hours",
     };
     return map[type] || type;
   };

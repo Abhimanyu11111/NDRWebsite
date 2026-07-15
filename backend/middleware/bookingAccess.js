@@ -10,6 +10,11 @@ const cacheGet = (key) => {
   const entry = _cache.get(key);
   if (!entry) return null;
   if (Date.now() > entry.expiresAt) { _cache.delete(key); return null; }
+  const accessEnd = entry.value?.end_datetime || entry.value?.expires_at;
+  if (accessEnd && new Date(accessEnd).getTime() <= Date.now()) {
+    _cache.delete(key);
+    return null;
+  }
   return entry.value;
 };
 const cacheSet = (key, value) => {

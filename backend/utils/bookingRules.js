@@ -37,7 +37,8 @@ export const isWeekend = (date) => {
 
 export const hasWeekendInRange = (start, end) => {
   const d = toIndiaDateOnly(start);
-  const endDay = toIndiaDateOnly(end);
+  // Booking windows are [start, end), so an end at midnight is not occupied.
+  const endDay = toIndiaDateOnly(new Date(new Date(end).getTime() - 1));
 
   while (d <= endDay) {
     const day = d.getUTCDay();

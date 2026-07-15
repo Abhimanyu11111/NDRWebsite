@@ -1,11 +1,13 @@
 // ─── Duration map ─────────────────────────────────────────────────────────────
 export const DURATION_MAP = {
   MULTI_DAY: null,  // end_datetime - start_datetime (user picks range)
+  EIGHT_HOUR: 8 * 60,
 };
 
 // Human-readable labels
 export const DURATION_LABELS = {
-  MULTI_DAY: "Multiple Days",
+  MULTI_DAY: "24 Hours / Multi-day",
+  EIGHT_HOUR: "8 Hours",
 };
 
 const INDIA_TIMEZONE = "Asia/Kolkata";
@@ -40,7 +42,8 @@ const formatIndiaDateKey = (value) => {
 export const countWorkingDays = (start, end, holidaySet = new Set()) => {
   let count = 0;
   const cur = toIndiaDateOnly(start);
-  const endDay = toIndiaDateOnly(end);
+  // end_datetime is exclusive; midnight checkout must not count as another day.
+  const endDay = toIndiaDateOnly(new Date(new Date(end).getTime() - 1));
 
   while (cur <= endDay) {
     const day = cur.getUTCDay();

@@ -15,7 +15,6 @@ const Loader = () => (
 /* =========================
    LAZY LOADED PAGES
 ========================= */
-const Home = lazy(() => import("./Pages/Home"));
 const About = lazy(() => import("./Pages/About"));
 const Objective = lazy(() => import("./Pages/Objective"));
 const Contact = lazy(() => import("./Pages/Contact"));
@@ -39,6 +38,8 @@ const ManageUsers = lazy(() => import("./Pages/admin/ManageUsers"));
 const BookVDR = lazy(() => import("./Pages/BookVDR"));
 const Login = lazy(() => import("./Pages/Login"));
 const Register = lazy(() => import("./Pages/Register"));
+const ForgotPassword = lazy(() => import("./Pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./Pages/ResetPassword"));
 const CopyrightPolicy = lazy(() => import("./Pages/CopyrightPolicy"));
 const Disclaimer = lazy(() => import("./Pages/Disclaimer"));
 const ComapPolicy = lazy(() => import("./Pages/ComapPolicy"));
@@ -87,7 +88,7 @@ export default function App() {
       <Suspense fallback={<Loader />}>
         <Routes>
           {/* PUBLIC ROUTES */}
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/about" element={<About />} />
           <Route path="/objective" element={<Objective />} />
           <Route path="/contact" element={<Contact />} />
@@ -123,6 +124,8 @@ export default function App() {
           {/* USER ROUTES */}
           <Route path="/book-vdr" element={<BookVDR />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/Register" element={<Register />} />
 
           {/* ✅ NEW USER ACCOUNT & PAYMENT ROUTES */}

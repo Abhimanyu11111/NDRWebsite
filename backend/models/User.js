@@ -50,6 +50,18 @@ const User = sequelize.define('User', {
     allowNull: false,
     defaultValue: 'APPROVED',
   },
+  password_reset_token_hash: {
+    type: DataTypes.STRING(64),
+    allowNull: true,
+  },
+  password_reset_expires_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  password_reset_requested_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
   created_at: {
     type: DataTypes.DATE,
     allowNull: false,

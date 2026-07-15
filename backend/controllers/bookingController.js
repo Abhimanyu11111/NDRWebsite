@@ -14,6 +14,11 @@ import {
   countWorkingDays,
   calcWorkingDaySurcharge,
 } from "../utils/durationMap.js";
+import {
+  calculateRoomPrice,
+  getBookingDurationLabel,
+  resolveBookingWindow,
+} from "../utils/bookingDuration.js";
 
 import {
   violatesAdvanceRule,
@@ -22,23 +27,6 @@ import {
   validateBookingRequest,
   getHolidaySet,
 } from "../utils/bookingRules.js";
-
-/* =====================================================
-   PRICE CALCULATOR
-===================================================== */
-const calculateRoomPrice = (durationMinutes, room) => {
-  return Math.ceil(durationMinutes / 1440) * room.full_day_rate;
-};
-
-/* =====================================================
-   DURATION HELPER
-===================================================== */
-const resolveDuration = (start_datetime, end_datetime) => {
-  const start         = new Date(start_datetime);
-  const end           = new Date(end_datetime);
-  const durationMinutes = Math.floor((end - start) / 60000);
-  return { start, end, durationMinutes };
-};
 
 /* =====================================================
    DATASET LOCK HELPER
@@ -77,7 +65,7 @@ const lockDatasetsForBooking = async (booking, transaction) => {
 ===================================================== */
 export const checkAvailability = async (req, res) => {
   try {
-    const { room_id, start_datetime, end_datetime } = req.body;
+    const { room_id, start_datetime, end_datetime, bookingType } = req.body;
 
     if (!room_id || !start_datetime || !end_datetime) {
       return res.status(400).json({
@@ -86,8 +74,11 @@ export const checkAvailability = async (req, res) => {
       });
     }
 
-    const start = new Date(start_datetime);
-    const end   = new Date(end_datetime);
+    const { start, end } = resolveBookingWindow({
+      bookingType,
+      startDatetime: start_datetime,
+      endDatetime: end_datetime,
+    });
 
     if (violatesAdvanceRule(start)) {
       return res.status(400).json({
@@ -108,6 +99,9 @@ export const checkAvailability = async (req, res) => {
     res.json({ success: true, available: !conflict });
   } catch (err) {
     console.error("Availability error:", err);
+    if (err.code === "INVALID_BOOKING_WINDOW") {
+      return res.status(400).json({ success: false, message: err.message });
+    }
     res.status(500).json({ success: false, message: "Failed to check availability" });
   }
 };
@@ -117,7 +111,7 @@ export const checkAvailability = async (req, res) => {
 ===================================================== */
 export const getBookingPreview = async (req, res) => {
   try {
-    const { room_id, start_datetime, end_datetime } = req.body;
+    const { room_id, start_datetime, end_datetime, bookingType } = req.body;
 
     if (!room_id || !start_datetime || !end_datetime) {
       return res.status(400).json({ success: false, message: "room_id, start_datetime, and end_datetime are required" });
@@ -126,12 +120,17 @@ export const getBookingPreview = async (req, res) => {
     const room = await Room.findByPk(room_id);
     if (!room) return res.status(404).json({ success: false, message: "Room not found" });
 
-    const { start, end, durationMinutes } = resolveDuration(start_datetime, end_datetime);
+    const window = resolveBookingWindow({
+      bookingType,
+      startDatetime: start_datetime,
+      endDatetime: end_datetime,
+    });
+    const { start, end, durationMinutes } = window;
 
     const holidaySet          = await getHolidaySet();
     const workingDays         = countWorkingDays(start, end, holidaySet);
     const workingDaySurcharge = calcWorkingDaySurcharge(workingDays);
-    const roomPrice           = calculateRoomPrice(durationMinutes, room);
+    const roomPrice           = calculateRoomPrice({ ...window, room });
     const estimatedTotal      = roomPrice + workingDaySurcharge;
 
     const { valid, errors } = await validateBookingRequest({ startDatetime: start });
@@ -143,7 +142,8 @@ export const getBookingPreview = async (req, res) => {
         start,
         end,
         durationMinutes,
-        bookingType: "MULTI_DAY",
+        bookingType: window.bookingType,
+        durationLabel: getBookingDurationLabel(window.bookingType, durationMinutes),
         hasWeekend:         hasWeekendInRange(start, end),
         violatesAdvance:    violatesAdvanceRule(start),
         violatesMaxAdvance: violatesMaxAdvanceRule(start),
@@ -158,6 +158,9 @@ export const getBookingPreview = async (req, res) => {
     });
   } catch (err) {
     console.error("Preview error:", err);
+    if (err.code === "INVALID_BOOKING_WINDOW") {
+      return res.status(400).json({ success: false, message: err.message });
+    }
     res.status(500).json({ success: false, message: "Failed to generate booking preview" });
   }
 };
@@ -172,6 +175,7 @@ export const createBooking = async (req, res) => {
     const userId = req.user.id;
     const {
       room_id,
+      bookingType,
       start_datetime,
       end_datetime,
       dataCatalogue,
@@ -209,7 +213,18 @@ export const createBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: "User or Room not found" });
     }
 
-    const { start, end, durationMinutes } = resolveDuration(start_datetime, end_datetime);
+    let window;
+    try {
+      window = resolveBookingWindow({
+        bookingType,
+        startDatetime: start_datetime,
+        endDatetime: end_datetime,
+      });
+    } catch (validationError) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: validationError.message });
+    }
+    const { start, end, durationMinutes } = window;
 
     const hasWeekend = hasWeekendInRange(start, end);
     if (hasWeekend && !weekendNotice) {
@@ -241,7 +256,7 @@ export const createBooking = async (req, res) => {
     const holidaySet          = await getHolidaySet();
     const workingDays         = countWorkingDays(start, end, holidaySet);
     const workingDaySurcharge = calcWorkingDaySurcharge(workingDays);
-    const roomPrice           = calculateRoomPrice(durationMinutes, room);
+    const roomPrice           = calculateRoomPrice({ ...window, room });
     const totalPrice          = roomPrice + workingDaySurcharge;
     const finalStatus         = "PENDING";
 
@@ -250,7 +265,7 @@ export const createBooking = async (req, res) => {
         booking_id:            generateBookingId(),
         user_id:               userId,
         room_id,
-        booking_type:          "MULTI_DAY",
+        booking_type:          window.bookingType,
         start_datetime:        start,
         end_datetime:          end,
         duration_minutes:      durationMinutes,
@@ -280,6 +295,7 @@ export const createBooking = async (req, res) => {
       room:      room.title,
       startDate: start.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
       endDate:   end.toLocaleString("en-IN",   { timeZone: "Asia/Kolkata" }),
+      durationLabel: getBookingDurationLabel(window.bookingType, durationMinutes),
       totalPrice,
     }).catch((e) => console.error("Email error:", e));
 

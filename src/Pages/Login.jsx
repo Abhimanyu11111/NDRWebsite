@@ -107,7 +107,7 @@ function Login() {
               <div className={styles.field}>
                 <div className={styles.labelRow}>
                   <label htmlFor="login-password">Password</label>
-                  <Link to="/help">Forgot password?</Link>
+                  <Link to="/forgot-password">Forgot password?</Link>
                 </div>
                 <div className={styles.inputWrap}>
                   <LockKeyhole size={18} aria-hidden="true" />

@@ -4,7 +4,12 @@ import "../config/env.js";
 const smtpPort = Number(process.env.SMTP_PORT || 587);
 const smtpSecure = String(process.env.SMTP_SECURE || "").toLowerCase() === "true" || smtpPort === 465;
 const smtpRequireTls = String(process.env.SMTP_REQUIRE_TLS || "").toLowerCase() === "true";
-const mailFrom = process.env.SMTP_FROM || `"VDR Booking System" <${process.env.SMTP_USER}>`;
+const mailFromAddress = process.env.SMTP_FROM || process.env.SMTP_USER;
+const mailFromName = String(process.env.SMTP_FROM_NAME || "National Data Repository").replace(/["\r\n]/g, "");
+const mailFrom = String(mailFromAddress || "").includes("<")
+  ? mailFromAddress
+  : `"${mailFromName}" <${mailFromAddress}>`;
+const mailReplyTo = process.env.SMTP_REPLY_TO || mailFromAddress;
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -26,7 +31,7 @@ const sendMail = async (mailOptions, successMessage, errorMessage) => {
   }
 
   try {
-    await transporter.sendMail(mailOptions);
+    await transporter.sendMail({ replyTo: mailReplyTo, ...mailOptions });
     console.log(successMessage);
     return true;
   } catch (error) {
@@ -35,22 +40,60 @@ const sendMail = async (mailOptions, successMessage, errorMessage) => {
   }
 };
 
+const escapeHtml = (value) => String(value || "")
+  .replaceAll("&", "&amp;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("'", "&#039;");
+
+const sendPasswordResetEmail = async ({ email, name, resetUrl, expiresMinutes }) => {
+  const safeName = escapeHtml(name || "User");
+  const safeResetUrl = escapeHtml(resetUrl);
+  const textName = String(name || "User").replace(/[\r\n]/g, " ");
+
+  return sendMail(
+    {
+      from: mailFrom,
+      to: email,
+      subject: "Reset your NDR account password",
+      text: `Dear ${textName},\n\nWe received a request to reset your National Data Repository account password.\n\nReset your password: ${resetUrl}\n\nThis link expires in ${Number(expiresMinutes)} minutes and can be used only once. If you did not request this change, ignore this email.\n\nRegards,\nNDR Support Team`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#172033;line-height:1.6">
+          <h2 style="color:#1858a5">Password reset request</h2>
+          <p>Dear ${safeName},</p>
+          <p>We received a request to reset your National Data Repository account password.</p>
+          <p style="margin:28px 0">
+            <a href="${safeResetUrl}" style="display:inline-block;padding:13px 22px;border-radius:8px;background:#1858a5;color:#fff;text-decoration:none;font-weight:700">Reset password</a>
+          </p>
+          <p>This secure link expires in ${Number(expiresMinutes)} minutes and can be used only once.</p>
+          <p>If you did not request this change, you can safely ignore this email. Your existing password will continue to work.</p>
+          <p style="color:#6f7d90;font-size:13px">For security, do not forward this email or share the reset link.</p>
+          <p>Regards,<br/>NDR Support Team</p>
+        </div>
+      `,
+    },
+    `Password reset email sent to ${email}`,
+    "Error sending password reset email:"
+  );
+};
+
 /**
  * Send booking confirmation email
- * @param {Object} data - { email, name, bookingId, room, startDate, endDate, totalPrice }
+ * @param {Object} data - { email, name, bookingId, room, startDate, endDate, durationLabel, totalPrice }
  */
 const sendBookingConfirmation = async (data) => {
-  const { email, name, bookingId, room, startDate, endDate, totalPrice } = data;
+  const { email, name, bookingId, room, startDate, endDate, durationLabel, totalPrice } = data;
 
   const mailOptions = {
     from: mailFrom,
     to: email,
-    subject: `Booking Confirmed - ${bookingId}`,
+    subject: `Booking Created - Payment Required - ${bookingId}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #4299e1;">Booking Confirmation</h2>
+        <h2 style="color: #4299e1;">Booking Created</h2>
         <p>Dear ${name},</p>
-        <p>Your VDR booking has been confirmed successfully.</p>
+        <p>Your VDR booking has been created. Please complete payment within 15 minutes to confirm it.</p>
 
         <div style="background-color: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin-top: 0;">Booking Details</h3>
@@ -58,6 +101,7 @@ const sendBookingConfirmation = async (data) => {
           <p><strong>Room:</strong> ${room}</p>
           <p><strong>Start Date:</strong> ${startDate}</p>
           <p><strong>End Date:</strong> ${endDate}</p>
+          <p><strong>Duration:</strong> ${durationLabel || "As selected"}</p>
           <p><strong>Total Amount:</strong> Rs. ${Number(totalPrice || 0).toLocaleString("en-IN")}</p>
         </div>
 
@@ -71,6 +115,36 @@ const sendBookingConfirmation = async (data) => {
     mailOptions,
     `Booking confirmation email sent to ${email}`,
     "Error sending booking confirmation email:"
+  );
+};
+
+const sendBookingPaymentConfirmation = async (data) => {
+  const { email, name, bookingId, room, startDate, endDate, durationLabel, totalPrice } = data;
+  return sendMail(
+    {
+      from: mailFrom,
+      to: email,
+      subject: `Payment Successful - Booking Confirmed - ${bookingId}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #15803d;">Booking Confirmed</h2>
+          <p>Dear ${name},</p>
+          <p>Your payment was successful and your VDR booking is now confirmed.</p>
+          <div style="background:#f0fdf4;padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid #22c55e;">
+            <p><strong>Booking ID:</strong> ${bookingId}</p>
+            <p><strong>Room:</strong> ${room}</p>
+            <p><strong>Start:</strong> ${startDate}</p>
+            <p><strong>End:</strong> ${endDate}</p>
+            <p><strong>Duration:</strong> ${durationLabel || "As selected"}</p>
+            <p><strong>Amount Paid:</strong> Rs. ${Number(totalPrice || 0).toLocaleString("en-IN")}</p>
+          </div>
+          <p>Access will automatically close at the booking end time shown above.</p>
+          <p>Best regards,<br/>VDR Team</p>
+        </div>
+      `,
+    },
+    `Payment confirmation email sent to ${email}`,
+    "Error sending payment confirmation email:"
   );
 };
 
@@ -157,7 +231,9 @@ const sendBookingCancellation = async (data) => {
 };
 
 export {
+  sendPasswordResetEmail,
   sendBookingConfirmation,
+  sendBookingPaymentConfirmation,
   sendSlotAvailableNotification,
   sendBookingCancellation,
 };

@@ -233,6 +233,11 @@
   color: #991b1b;
 }
 
+.partial {
+  background: repeating-linear-gradient(135deg, #fef3c7 0, #fef3c7 6px, #dcfce7 6px, #dcfce7 12px);
+  color: #854d0e;
+}
+
 .holiday {
   background: #fef3c7;
   color: #92400e;

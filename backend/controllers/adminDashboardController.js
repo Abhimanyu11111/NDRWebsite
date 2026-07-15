@@ -445,11 +445,11 @@ export const updateBookingStatus = async (req, res) => {
     booking.status = status;
     await booking.save();
 
-    const startDate = new Date(booking.start_datetime).toLocaleDateString("en-IN", {
-      day: "numeric", month: "short", year: "numeric",
+    const startDate = new Date(booking.start_datetime).toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
     });
-    const endDate = new Date(booking.end_datetime).toLocaleDateString("en-IN", {
-      day: "numeric", month: "short", year: "numeric",
+    const endDate = new Date(booking.end_datetime).toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
     });
 
     const statusMessages = {

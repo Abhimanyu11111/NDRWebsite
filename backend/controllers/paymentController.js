@@ -8,6 +8,8 @@ import { encrypt, decrypt } from "../utils/ccavenue.js";
 import qs from "querystring";
 import { generateInvoicePDF } from "../utils/invoiceGenerator.js";
 import { confirmBookingAfterPayment } from "./bookingController.js";
+import { sendBookingPaymentConfirmation } from "../src/services/emailService.js";
+import { getBookingDurationLabel } from "../utils/bookingDuration.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const MAX_PAYMENT_RETRIES = 3;
@@ -204,12 +206,27 @@ export const paymentResponse = async (req, res) => {
         },
       }).catch((e) => console.error("Invoice generation failed:", e));
 
+      const durationLabel = getBookingDurationLabel(
+        fullBooking.booking_type,
+        fullBooking.duration_minutes
+      );
+      sendBookingPaymentConfirmation({
+        email: fullBooking.user.email,
+        name: fullBooking.user.name,
+        bookingId,
+        room: fullBooking.room.title,
+        startDate: new Date(fullBooking.start_datetime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+        endDate: new Date(fullBooking.end_datetime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+        durationLabel,
+        totalPrice: fullBooking.total_price,
+      }).catch((e) => console.error("Payment confirmation email failed:", e));
+
       // Notify admin of completed booking for review
       User.findOne({ where: { role: "ADMIN" } })
         .then((adminUser) => {
           if (!adminUser) return;
-          const startDate = new Date(fullBooking.start_datetime).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-          const endDate   = new Date(fullBooking.end_datetime).toLocaleDateString("en-IN",   { day: "numeric", month: "short", year: "numeric" });
+          const startDate = new Date(fullBooking.start_datetime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+          const endDate   = new Date(fullBooking.end_datetime).toLocaleString("en-IN",   { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
           return Notification.create({
             user_id:   adminUser.id,
             room_id:   fullBooking.room_id,

@@ -247,7 +247,10 @@ export default function BookingDetails() {
                     <DetailRow label="Booking Type" value={booking.booking_type} />
                     <DetailRow label="Start Date & Time" value={formatDateTime(booking.start_datetime)} />
                     <DetailRow label="End Date & Time" value={formatDateTime(booking.end_datetime)} />
-                    <DetailRow label="Duration (Minutes)" value={booking.duration_minutes} />
+                    <DetailRow
+                      label="Duration"
+                      value={booking.booking_type === "EIGHT_HOUR" ? "8 Hours" : `${Math.ceil(Number(booking.duration_minutes || 0) / 1440)} Day(s)`}
+                    />
                     <DetailRow label="Working Days" value={booking.working_days} />
                     <DetailRow label="First Accessed At" value={formatDateTime(booking.first_accessed_at)} />
                     <DetailRow label="Access Suspended" value={booking.access_suspended ? "Yes" : "No"} />

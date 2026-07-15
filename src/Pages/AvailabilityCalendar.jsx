@@ -131,24 +131,28 @@ export default function AvailabilityCalendar() {
   }, [rooms, currentMonth, currentYear]);
 
   /* --- Check if a date is booked for a room --- */
-  const isDateBooked = (roomId, date) => {
+  const getDateBookingStatus = (roomId, date) => {
     const roomBookings = bookings[roomId] || [];
+    let hasPartialBooking = false;
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
 
-    return roomBookings.some((booking) => {
+    for (const booking of roomBookings) {
       if (booking.status !== "CONFIRMED" && booking.status !== "PENDING") {
-        return false;
+        continue;
       }
 
       const start = new Date(booking.start_datetime);
       const end = new Date(booking.end_datetime);
+      if (start < dayEnd && end > dayStart) {
+        if (booking.booking_type === "EIGHT_HOUR") hasPartialBooking = true;
+        else return "booked";
+      }
+    }
 
-      const checkDate = new Date(date);
-      checkDate.setHours(0, 0, 0, 0);
-      start.setHours(0, 0, 0, 0);
-      end.setHours(0, 0, 0, 0);
-
-      return checkDate >= start && checkDate < end;
-    });
+    return hasPartialBooking ? "partial" : null;
   };
 
   /* --- Get cell status --- */
@@ -156,9 +160,9 @@ export default function AvailabilityCalendar() {
     const dateKey = formatDateKey(date);
     const govtHoliday = isGovtHoliday(dateKey);
     const weekend = isWeekend(date);
-    const booked = isDateBooked(roomId, date);
+    const bookingStatus = getDateBookingStatus(roomId, date);
 
-    if (booked) return "booked";
+    if (bookingStatus) return bookingStatus;
     if (govtHoliday) return "holiday";
     if (weekend) return "weekend";
     return "available";
@@ -166,7 +170,6 @@ export default function AvailabilityCalendar() {
 
   /* --- Generate calendar days --- */
   const generateCalendarDays = () => {
-    const firstDay = new Date(currentYear, currentMonth, 1);
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     
     const days = [];
@@ -252,6 +255,10 @@ export default function AvailabilityCalendar() {
           <span>Booked</span>
         </div>
         <div className={styles.legendItem}>
+          <div className={`${styles.legendBox} ${styles.partial}`}></div>
+          <span>Partially Booked (8h)</span>
+        </div>
+        <div className={styles.legendItem}>
           <div className={`${styles.legendBox} ${styles.holiday}`}></div>
           <span>Govt Holiday</span>
         </div>
@@ -328,6 +335,8 @@ export default function AvailabilityCalendar() {
                       tooltipText = `Govt Holiday: ${govtHoliday.name}`;
                     } else if (status === "booked") {
                       tooltipText = "Already booked";
+                    } else if (status === "partial") {
+                      tooltipText = "Partially booked - another 8-hour window may be available";
                     } else if (status === "weekend") {
                       tooltipText = "Weekend";
                     } else if (todayDate) {

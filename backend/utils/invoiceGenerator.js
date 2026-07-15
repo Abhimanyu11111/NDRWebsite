@@ -1,6 +1,7 @@
 import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
+import { getBookingDurationLabel } from "./bookingDuration.js";
 
 export const generateInvoicePDF = async ({
   booking,
@@ -33,6 +34,7 @@ export const generateInvoicePDF = async ({
   doc.text(`Room: ${room.title}`);
   doc.text(`Start: ${booking.start_datetime}`);
   doc.text(`End: ${booking.end_datetime}`);
+  doc.text(`Duration: ${getBookingDurationLabel(booking.booking_type, booking.duration_minutes)}`);
   doc.moveDown();
 
   /* PRICE */

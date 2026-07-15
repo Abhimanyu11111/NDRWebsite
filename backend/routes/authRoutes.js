@@ -10,6 +10,13 @@ import authMiddleware from "../middleware/auth.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 import { createCaptchaChallenge, verifyCaptchaChallenge } from "../utils/captcha.js";
 import { clearActiveSession, setActiveSession } from "../utils/sessionStore.js";
+import { sendPasswordResetEmail } from "../src/services/emailService.js";
+import {
+  generatePasswordResetToken,
+  getPasswordResetExpiry,
+  hashPasswordResetToken,
+  PASSWORD_RESET_TTL_MINUTES,
+} from "../utils/passwordReset.js";
 
 const router = express.Router();
 const JWT_OPTIONS = {
@@ -57,6 +64,13 @@ const captchaLimiter = rateLimit({
   keyPrefix: "captcha",
   includeEmail: false,
   message: "Too many captcha requests. Please slow down.",
+});
+
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  keyPrefix: "password-reset",
+  message: "Too many password reset attempts. Please try again after 15 minutes.",
 });
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -448,6 +462,127 @@ router.post("/login", loginLimiter, requireCaptcha, async (req, res) => {
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ success: false, msg: "Server error during login" });
+  }
+});
+
+router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
+  const normalizedEmail = String(req.body?.email || "").trim().toLowerCase();
+  const genericMessage = "If an active account exists for this email, a password reset link has been sent.";
+
+  if (!emailRegex.test(normalizedEmail)) {
+    return res.status(400).json({ success: false, msg: "Please enter a valid email address." });
+  }
+
+  try {
+    const [rows] = await sequelize.query(
+      "SELECT id, name, email FROM users WHERE email = ? AND is_active = 1 LIMIT 1",
+      { replacements: [normalizedEmail] }
+    );
+
+    if (rows.length === 0) {
+      return res.json({ success: true, msg: genericMessage });
+    }
+
+    const user = rows[0];
+    const token = generatePasswordResetToken();
+    const tokenHash = hashPasswordResetToken(token);
+    const expiresAt = getPasswordResetExpiry();
+
+    await sequelize.query(
+      `UPDATE users
+       SET password_reset_token_hash = ?, password_reset_expires_at = ?,
+           password_reset_requested_at = NOW(), updated_at = NOW()
+       WHERE id = ?`,
+      { replacements: [tokenHash, expiresAt, user.id] }
+    );
+
+    const frontendUrl = String(process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, "");
+    await sendPasswordResetEmail({
+      email: user.email,
+      name: user.name,
+      resetUrl: `${frontendUrl}/reset-password?token=${encodeURIComponent(token)}`,
+      expiresMinutes: PASSWORD_RESET_TTL_MINUTES,
+    });
+
+    return res.json({ success: true, msg: genericMessage });
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    return res.status(500).json({ success: false, msg: "Unable to process the request right now. Please try again." });
+  }
+});
+
+router.get("/reset-password/validate", passwordResetLimiter, async (req, res) => {
+  const token = String(req.query?.token || "");
+  if (!/^[a-f0-9]{64}$/i.test(token)) {
+    return res.status(400).json({ success: false, msg: "This password reset link is invalid or has expired." });
+  }
+
+  try {
+    const [rows] = await sequelize.query(
+      `SELECT id FROM users
+       WHERE password_reset_token_hash = ? AND password_reset_expires_at > NOW()
+         AND is_active = 1 LIMIT 1`,
+      { replacements: [hashPasswordResetToken(token)] }
+    );
+    if (rows.length === 0) {
+      return res.status(400).json({ success: false, msg: "This password reset link is invalid or has expired." });
+    }
+    return res.json({ success: true, msg: "Password reset link is valid." });
+  } catch (err) {
+    console.error("Reset token validation error:", err);
+    return res.status(500).json({ success: false, msg: "Unable to validate the reset link right now." });
+  }
+});
+
+router.post("/reset-password", passwordResetLimiter, async (req, res) => {
+  const token = String(req.body?.token || "");
+  const newPassword = String(req.body?.newPassword || "");
+
+  if (!/^[a-f0-9]{64}$/i.test(token)) {
+    return res.status(400).json({ success: false, msg: "This password reset link is invalid or has expired." });
+  }
+  if (!passwordRegex.test(newPassword)) {
+    return res.status(400).json({
+      success: false,
+      msg: "Password must be at least 12 characters and include uppercase, lowercase, number, and special character.",
+    });
+  }
+
+  const transaction = await sequelize.transaction();
+  try {
+    const [rows] = await sequelize.query(
+      `SELECT id, password, role FROM users
+       WHERE password_reset_token_hash = ? AND password_reset_expires_at > NOW()
+         AND is_active = 1 LIMIT 1 FOR UPDATE`,
+      { replacements: [hashPasswordResetToken(token)], transaction }
+    );
+    if (rows.length === 0) {
+      await transaction.rollback();
+      return res.status(400).json({ success: false, msg: "This password reset link is invalid or has expired." });
+    }
+
+    const user = rows[0];
+    if (await bcrypt.compare(newPassword, user.password)) {
+      await transaction.rollback();
+      return res.status(400).json({ success: false, msg: "Please choose a password different from your current password." });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await sequelize.query(
+      `UPDATE users SET password = ?, password_reset_token_hash = NULL,
+       password_reset_expires_at = NULL, password_reset_requested_at = NULL, updated_at = NOW()
+       WHERE id = ?`,
+      { replacements: [hashedPassword, user.id], transaction }
+    );
+    await transaction.commit();
+
+    clearActiveSession(user.id, user.role || "USER");
+    clearAuthCookie(res);
+    return res.json({ success: true, msg: "Password reset successfully. Please sign in with your new password." });
+  } catch (err) {
+    if (!transaction.finished) await transaction.rollback();
+    console.error("Reset password error:", err);
+    return res.status(500).json({ success: false, msg: "Unable to reset the password right now. Please try again." });
   }
 });
 
