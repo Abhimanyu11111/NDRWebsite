@@ -3,6 +3,9 @@ import { Hotel, Plus, Trash2, Home, Database, Search } from "lucide-react";
 import api from "../../api/axiosClient";
 import AdminNavbar from "/src/Component/AdminNavbar";
 
+// Temporary UI switch. Set to true when room creation should be available again.
+const SHOW_ADD_ROOM = false;
+
 export default function ManageData() {
   const [rooms, setRooms] = useState([]);
   const [newRoom, setNewRoom] = useState("");
@@ -105,7 +108,7 @@ export default function ManageData() {
             </div>
             <div>
               <h1 style={styles.heroTitle}>Manage Data Rooms</h1>
-              <p style={styles.heroSubtitle}>Add, edit and manage your data rooms</p>
+              <p style={styles.heroSubtitle}>View and manage your data rooms</p>
             </div>
           </div>
           <div style={styles.statBadge}>
@@ -125,7 +128,7 @@ export default function ManageData() {
           )}
 
           {/* Add Room Card */}
-          <div style={styles.card}>
+          {SHOW_ADD_ROOM && <div style={styles.card}>
             <div style={styles.cardHeader}>
               <div style={styles.cardHeaderIcon}>
                 <Plus size={18} color="#2563eb" />
@@ -162,7 +165,7 @@ export default function ManageData() {
                 {addingRoom ? "Adding..." : "Add Room"}
               </button>
             </div>
-          </div>
+          </div>}
 
           {/* Room Inventory */}
           <div style={styles.card}>
