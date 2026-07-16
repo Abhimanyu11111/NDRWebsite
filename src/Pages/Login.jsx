@@ -146,7 +146,7 @@ function Login() {
               </div>
 
               <div className={styles.field}>
-                <label htmlFor="captcha-answer">Security verification</label>
+                <label htmlFor="captcha-answer">Security verification (case-sensitive)</label>
                 <div className={styles.captchaRow}>
                   <div className={styles.captchaVisual} aria-live="polite">
                     {captcha?.image ? (
@@ -175,6 +175,9 @@ function Login() {
                     value={captchaAnswer}
                     onChange={(event) => setCaptchaAnswer(event.target.value)}
                     autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    maxLength={6}
                     disabled={loading}
                     required
                   />

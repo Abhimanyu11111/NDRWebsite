@@ -134,7 +134,7 @@ export default function LoginAdmin() {
             </div>
 
             <div className={styles.field}>
-              <label htmlFor="admin-captcha">Security verification</label>
+              <label htmlFor="admin-captcha">Security verification (case-sensitive)</label>
               <div className={styles.captchaRow}>
                 <div className={styles.captchaVisual} aria-live="polite">
                   {captcha?.image ? (
@@ -164,6 +164,9 @@ export default function LoginAdmin() {
                   value={captchaAnswer}
                   onChange={(event) => setCaptchaAnswer(event.target.value)}
                   autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  maxLength={6}
                   disabled={loading}
                   required
                 />
