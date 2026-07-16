@@ -78,6 +78,34 @@ const sendPasswordResetEmail = async ({ email, name, resetUrl, expiresMinutes })
   );
 };
 
+const sendRegistrationOtpEmail = async ({ email, otp, expiresMinutes }) => {
+  const safeOtp = escapeHtml(otp);
+
+  return sendMail(
+    {
+      from: mailFrom,
+      to: email,
+      subject: "Verify your email for NDR registration",
+      text: `Your NDR registration verification code is ${otp}. This code expires in ${Number(expiresMinutes)} minutes and can be used only once. Do not share this code with anyone.`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#172033;line-height:1.6">
+          <h2 style="color:#1858a5">Verify your email address</h2>
+          <p>Use the following one-time verification code to continue your National Data Repository registration:</p>
+          <div style="margin:24px 0;padding:18px;text-align:center;border:1px solid #cbd9ec;border-radius:10px;background:#f5f9ff">
+            <span style="font-size:30px;font-weight:700;letter-spacing:8px;color:#173f77">${safeOtp}</span>
+          </div>
+          <p>This code expires in <strong>${Number(expiresMinutes)} minutes</strong> and can be used only once.</p>
+          <p>If you did not request this code, ignore this email.</p>
+          <p style="color:#6f7d90;font-size:13px">For security, never share this code with anyone, including NDR support staff.</p>
+          <p>Regards,<br/>NDR Support Team</p>
+        </div>
+      `,
+    },
+    `Registration OTP email sent to ${email}`,
+    "Error sending registration OTP email:"
+  );
+};
+
 /**
  * Send booking confirmation email
  * @param {Object} data - { email, name, bookingId, room, startDate, endDate, durationLabel, totalPrice }
@@ -231,6 +259,7 @@ const sendBookingCancellation = async (data) => {
 };
 
 export {
+  sendRegistrationOtpEmail,
   sendPasswordResetEmail,
   sendBookingConfirmation,
   sendBookingPaymentConfirmation,

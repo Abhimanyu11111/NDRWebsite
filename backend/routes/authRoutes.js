@@ -6,11 +6,24 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import sequelize from "../src/config/db.js";
+import RegistrationOtp from "../models/RegistrationOtp.js";
 import authMiddleware from "../middleware/auth.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 import { createCaptchaChallenge, verifyCaptchaChallenge } from "../utils/captcha.js";
 import { clearActiveSession, setActiveSession } from "../utils/sessionStore.js";
-import { sendPasswordResetEmail } from "../src/services/emailService.js";
+import { sendPasswordResetEmail, sendRegistrationOtpEmail } from "../src/services/emailService.js";
+import {
+  generateRegistrationOtp,
+  generateRegistrationVerificationToken,
+  hashRegistrationOtp,
+  hashRegistrationVerificationToken,
+  isRegistrationVerificationValid,
+  REGISTRATION_OTP_MAX_ATTEMPTS,
+  REGISTRATION_OTP_RESEND_SECONDS,
+  REGISTRATION_OTP_TTL_MINUTES,
+  REGISTRATION_OTP_TTL_MS,
+  safeHashEquals,
+} from "../utils/registrationOtp.js";
 import {
   generatePasswordResetToken,
   hashPasswordResetToken,
@@ -72,10 +85,38 @@ const passwordResetLimiter = rateLimit({
   message: "Too many password reset attempts. Please try again after 15 minutes.",
 });
 
+const registrationOtpSendLimiter = rateLimit({
+  windowMs: 30 * 60 * 1000,
+  max: 5,
+  keyPrefix: "registration-otp-send",
+  message: "Too many OTP requests. Please try again after 30 minutes.",
+});
+
+const registrationOtpVerifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  keyPrefix: "registration-otp-verify",
+  message: "Too many OTP verification attempts. Please try again after 15 minutes.",
+});
+
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const phoneRegex = /^[6-9]\d{9}$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{12,}$/;
 const pincodeRegex = /^\d{6}$/;
+
+const BLOCKED_DOMAINS = [
+  "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "live.com",
+  "rediffmail.com", "ymail.com", "aol.com", "icloud.com", "protonmail.com",
+  "proton.me", "msn.com", "yahoo.in", "yahoo.co.in", "hotmail.co.in",
+  "zohomail.com", "mail.com", "gmx.com", "inbox.com", "yandex.com",
+];
+
+const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
+const isOfficialEmail = (email) => {
+  const normalizedEmail = normalizeEmail(email);
+  const domain = normalizedEmail.split("@")[1];
+  return emailRegex.test(normalizedEmail) && domain && !BLOCKED_DOMAINS.includes(domain);
+};
 
 const cleanText = (value, maxLength = 255) => {
   const text = String(value || "").trim();
@@ -100,6 +141,139 @@ const requireCaptcha = (req, res, next) => {
 
 router.get("/captcha", captchaLimiter, (req, res) => {
   return res.json({ success: true, captcha: createCaptchaChallenge() });
+});
+
+router.post("/registration-otp/send", registrationOtpSendLimiter, async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+
+  if (!isOfficialEmail(email)) {
+    return res.status(400).json({
+      success: false,
+      msg: "Please use a valid official organization email address.",
+    });
+  }
+
+  try {
+    const [existingUser] = await sequelize.query(
+      "SELECT id FROM users WHERE email = ? LIMIT 1",
+      { replacements: [email] }
+    );
+    if (existingUser.length > 0) {
+      return res.status(400).json({ success: false, msg: "This email is already registered" });
+    }
+
+    const existingOtp = await RegistrationOtp.findOne({ where: { email } });
+    const now = Date.now();
+    const resendAt = existingOtp?.resend_available_at
+      ? new Date(existingOtp.resend_available_at).getTime()
+      : 0;
+
+    if (resendAt > now) {
+      const retryAfterSeconds = Math.ceil((resendAt - now) / 1000);
+      res.set("Retry-After", String(retryAfterSeconds));
+      return res.status(429).json({
+        success: false,
+        msg: `Please wait ${retryAfterSeconds} seconds before requesting another OTP.`,
+        retryAfterSeconds,
+      });
+    }
+
+    const otp = generateRegistrationOtp(email, existingOtp?.otp_hash);
+    const otpHash = hashRegistrationOtp(email, otp);
+
+    await RegistrationOtp.upsert({
+      email,
+      otp_hash: otpHash,
+      expires_at: new Date(now + REGISTRATION_OTP_TTL_MS),
+      resend_available_at: new Date(now + REGISTRATION_OTP_RESEND_SECONDS * 1000),
+      failed_attempts: 0,
+      verified_at: null,
+      verification_token_hash: null,
+      verification_expires_at: null,
+      consumed_at: null,
+    });
+
+    const emailSent = await sendRegistrationOtpEmail({
+      email,
+      otp,
+      expiresMinutes: REGISTRATION_OTP_TTL_MINUTES,
+    });
+
+    if (!emailSent) {
+      await RegistrationOtp.update(
+        { expires_at: new Date(), resend_available_at: new Date() },
+        { where: { email } }
+      );
+      return res.status(503).json({
+        success: false,
+        msg: "Unable to send verification email right now. Please try again shortly.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      msg: "Verification OTP sent to your email address.",
+      expiresInMinutes: REGISTRATION_OTP_TTL_MINUTES,
+      resendAfterSeconds: REGISTRATION_OTP_RESEND_SECONDS,
+    });
+  } catch (err) {
+    console.error("Registration OTP send error:", err);
+    return res.status(500).json({ success: false, msg: "Unable to send verification OTP" });
+  }
+});
+
+router.post("/registration-otp/verify", registrationOtpVerifyLimiter, async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  const otp = String(req.body?.otp || "").trim();
+
+  if (!isOfficialEmail(email) || !/^\d{6}$/.test(otp)) {
+    return res.status(400).json({ success: false, msg: "Enter a valid 6 digit OTP" });
+  }
+
+  try {
+    const record = await RegistrationOtp.findOne({ where: { email } });
+    const now = Date.now();
+    const isExpired = !record?.otp_hash || new Date(record?.expires_at).getTime() <= now;
+
+    if (!record || isExpired || record.failed_attempts >= REGISTRATION_OTP_MAX_ATTEMPTS) {
+      return res.status(400).json({ success: false, msg: "OTP is invalid or expired. Request a new OTP." });
+    }
+
+    const submittedHash = hashRegistrationOtp(email, otp);
+    if (!safeHashEquals(record.otp_hash, submittedHash)) {
+      record.failed_attempts += 1;
+      if (record.failed_attempts >= REGISTRATION_OTP_MAX_ATTEMPTS) {
+        record.expires_at = new Date();
+      }
+      await record.save();
+      const attemptsRemaining = Math.max(0, REGISTRATION_OTP_MAX_ATTEMPTS - record.failed_attempts);
+      return res.status(400).json({
+        success: false,
+        msg: attemptsRemaining
+          ? `Incorrect OTP. ${attemptsRemaining} attempt${attemptsRemaining === 1 ? "" : "s"} remaining.`
+          : "Too many incorrect attempts. Request a new OTP.",
+      });
+    }
+
+    const verificationToken = generateRegistrationVerificationToken();
+    record.expires_at = new Date();
+    record.verified_at = new Date(now);
+    record.verification_token_hash = hashRegistrationVerificationToken(verificationToken);
+    record.verification_expires_at = new Date(now + REGISTRATION_OTP_TTL_MS);
+    record.consumed_at = null;
+    record.failed_attempts = 0;
+    await record.save();
+
+    return res.json({
+      success: true,
+      msg: "Email address verified successfully.",
+      verificationToken,
+      expiresInMinutes: REGISTRATION_OTP_TTL_MINUTES,
+    });
+  } catch (err) {
+    console.error("Registration OTP verify error:", err);
+    return res.status(500).json({ success: false, msg: "Unable to verify OTP" });
+  }
 });
 
 // ── Multer setup for identity certificate upload ──────
@@ -258,8 +432,9 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), a
     pincode,
     id_proof_type,
     id_proof_number,
+    email_verification_token,
   } = req.body;
-  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const normalizedEmail = normalizeEmail(email);
   const normalizedPhone = String(phone || "").replace(/\D/g, "");
 
   if (!name || !email || !password) {
@@ -269,8 +444,8 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), a
     });
   }
 
-  if (!emailRegex.test(normalizedEmail)) {
-    return res.status(400).json({ success: false, msg: "Please enter a valid email address" });
+  if (!isOfficialEmail(normalizedEmail)) {
+    return res.status(400).json({ success: false, msg: "Please use a valid official organization email address" });
   }
 
   if (phone && !phoneRegex.test(normalizedPhone)) {
@@ -288,24 +463,38 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), a
     });
   }
 
-  const BLOCKED_DOMAINS = [
-    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "live.com",
-    "rediffmail.com", "ymail.com", "aol.com", "icloud.com", "protonmail.com",
-    "proton.me", "msn.com", "yahoo.in", "yahoo.co.in", "hotmail.co.in",
-    "zohomail.com", "mail.com", "gmx.com", "inbox.com", "yandex.com"
-  ];
-  const emailDomain = normalizedEmail.split("@")[1]?.toLowerCase();
-  if (!emailDomain || BLOCKED_DOMAINS.includes(emailDomain)) {
-    return res.status(400).json({
-      success: false,
-      msg: "Personal email addresses (Gmail, Outlook, Hotmail, Yahoo, etc.) are not allowed. Please use your official organization email.",
-    });
+  if (!/^[a-f0-9]{64}$/i.test(String(email_verification_token || ""))) {
+    return res.status(400).json({ success: false, msg: "Please verify your email address before registering" });
   }
 
+  let certificatePath = null;
+  let transaction = null;
+
+  const removeSavedCertificate = () => {
+    if (!certificatePath) return;
+    try {
+      const resolvedPath = path.resolve(certificatePath);
+      const certificateRoot = path.resolve(uploadDir);
+      if (resolvedPath.startsWith(`${certificateRoot}${path.sep}`) && fs.existsSync(resolvedPath)) {
+        fs.unlinkSync(resolvedPath);
+      }
+    } catch (cleanupError) {
+      console.error("Registration certificate cleanup error:", cleanupError);
+    }
+  };
+
   try {
-    // Check duplicate email
+    const verificationTokenHash = hashRegistrationVerificationToken(email_verification_token);
+    const verification = await RegistrationOtp.findOne({ where: { email: normalizedEmail } });
+    if (!isRegistrationVerificationValid(verification, verificationTokenHash)) {
+      return res.status(400).json({
+        success: false,
+        msg: "Email verification is invalid or expired. Please verify your email again.",
+      });
+    }
+
     const [existing] = await sequelize.query(
-      "SELECT id FROM users WHERE email = ?",
+      "SELECT id FROM users WHERE email = ? LIMIT 1",
       { replacements: [normalizedEmail] }
     );
 
@@ -317,9 +506,36 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), a
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    certificatePath = saveCertificate(req.file);
+    transaction = await sequelize.transaction();
 
-    //  File path if uploaded
-    const certificatePath = saveCertificate(req.file);
+    // Lock the verification row so the token cannot be consumed by two
+    // simultaneous registration requests.
+    const lockedVerification = await RegistrationOtp.findOne({
+      where: { email: normalizedEmail },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!isRegistrationVerificationValid(lockedVerification, verificationTokenHash)) {
+      await transaction.rollback();
+      transaction = null;
+      removeSavedCertificate();
+      return res.status(400).json({
+        success: false,
+        msg: "Email verification has already been used or has expired.",
+      });
+    }
+
+    const [duplicateInsideTransaction] = await sequelize.query(
+      "SELECT id FROM users WHERE email = ? LIMIT 1 FOR UPDATE",
+      { replacements: [normalizedEmail], transaction }
+    );
+    if (duplicateInsideTransaction.length > 0) {
+      await transaction.rollback();
+      transaction = null;
+      removeSavedCertificate();
+      return res.status(400).json({ success: false, msg: "This email is already registered" });
+    }
 
     //  Insert user with approval_status = PENDING, is_active = 0
     // User cannot login until admin approves
@@ -343,6 +559,7 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), a
           certificatePath,
           cleanText(company, 255),
         ],
+        transaction,
       }
     );
 
@@ -358,14 +575,24 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), a
           newUserId,
           `New registration request: ${name} (${normalizedEmail})${normalizedPhone ? ` | Phone: ${normalizedPhone}` : ""}${id_proof_type ? ` | ID: ${id_proof_type} - ${id_proof_number}` : ""}. Pending admin approval.`,
         ],
+        transaction,
       }
     );
+
+    lockedVerification.consumed_at = new Date();
+    lockedVerification.verification_token_hash = null;
+    lockedVerification.verification_expires_at = new Date();
+    await lockedVerification.save({ transaction });
+    await transaction.commit();
+    transaction = null;
 
     return res.status(201).json({
       success: true,
       msg: "Registration submitted successfully. Your account is pending admin approval. You will be able to login once approved.",
     });
   } catch (err) {
+    if (transaction && !transaction.finished) await transaction.rollback();
+    removeSavedCertificate();
     console.error("Register error:", err);
     if (
       err.message?.includes("Invalid file") ||

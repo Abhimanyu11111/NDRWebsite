@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -16,6 +16,8 @@ import {
   Map,
   MapPin,
   Phone,
+  RefreshCw,
+  Send,
   Upload,
   User,
   UsersRound,
@@ -74,8 +76,28 @@ function Register() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
+  const [verifiedEmail, setVerifiedEmail] = useState("");
+  const [emailVerificationToken, setEmailVerificationToken] = useState("");
+  const [notice, setNotice] = useState("");
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
+
+  const normalizedEmail = formData.email.trim().toLowerCase();
+  const emailVerified = Boolean(
+    emailVerificationToken && verifiedEmail === normalizedEmail
+  );
+
+  useEffect(() => {
+    if (resendCountdown <= 0) return undefined;
+    const timer = window.setInterval(() => {
+      setResendCountdown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resendCountdown]);
 
   const handleChange = (event) => {
     const { name, value, files } = event.target;
@@ -91,6 +113,14 @@ function Register() {
       setFormData((current) => ({ ...current, identity_certificate: file }));
     } else {
       setFormData((current) => ({ ...current, [name]: value }));
+      if (name === "email") {
+        setOtp("");
+        setOtpSent(false);
+        setResendCountdown(0);
+        setVerifiedEmail("");
+        setEmailVerificationToken("");
+        setNotice("");
+      }
     }
     setError("");
   };
@@ -103,9 +133,71 @@ function Register() {
   const isStrongPassword = (value) =>
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{12,}$/.test(value);
 
+  const sendOtp = async () => {
+    setError("");
+    setNotice("");
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalizedEmail) || isPersonalEmail(normalizedEmail)) {
+      setError("Please enter a valid official organization email before requesting an OTP.");
+      return;
+    }
+
+    setOtpLoading(true);
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/auth/registration-otp/send`,
+        { email: normalizedEmail },
+      );
+      setOtp("");
+      setOtpSent(true);
+      setVerifiedEmail("");
+      setEmailVerificationToken("");
+      setResendCountdown(response.data?.resendAfterSeconds || 60);
+      setNotice(`OTP sent to ${normalizedEmail}. It is valid for 30 minutes.`);
+    } catch (requestError) {
+      const retryAfter = Number(requestError.response?.data?.retryAfterSeconds || 0);
+      if (retryAfter > 0) setResendCountdown(retryAfter);
+      setError(requestError.response?.data?.msg || "Unable to send OTP. Please try again.");
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    setError("");
+    setNotice("");
+
+    if (!/^\d{6}$/.test(otp)) {
+      setError("Please enter the 6 digit OTP sent to your email.");
+      return;
+    }
+
+    setOtpLoading(true);
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/auth/registration-otp/verify`,
+        { email: normalizedEmail, otp },
+      );
+      setVerifiedEmail(normalizedEmail);
+      setEmailVerificationToken(response.data.verificationToken);
+      setNotice("Email verified successfully. You can now submit your registration.");
+    } catch (requestError) {
+      setEmailVerificationToken("");
+      setVerifiedEmail("");
+      setError(requestError.response?.data?.msg || "OTP verification failed. Please try again.");
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
+
+    if (!emailVerified) {
+      setError("Please verify your official email address before registering.");
+      return;
+    }
 
     if (isPersonalEmail(formData.email)) {
       setError("Please use your official organization email. Personal email addresses are not allowed.");
@@ -128,6 +220,7 @@ function Register() {
       Object.entries(formData).forEach(([key, value]) => {
         if (value !== null) data.append(key, value);
       });
+      data.append("email_verification_token", emailVerificationToken);
 
       await axios.post(`${import.meta.env.VITE_API_URL}/auth/register`, data, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -165,6 +258,13 @@ function Register() {
           </div>
         )}
 
+        {notice && !success && (
+          <div className={`${styles.message} ${styles.success}`} role="status">
+            <CheckCircle2 size={18} />
+            <span>{notice}</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} autoComplete="off">
           <section className={styles.section}>
             <SectionTitle icon={User}>Personal Information</SectionTitle>
@@ -186,6 +286,50 @@ function Register() {
                   {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
               </Field>
+            </div>
+
+            <div className={`${styles.otpPanel} ${emailVerified ? styles.otpVerified : ""}`}>
+              <div className={styles.otpPanelText}>
+                <strong>{emailVerified ? "Official email verified" : "Verify your official email"}</strong>
+                <span>
+                  {emailVerified
+                    ? normalizedEmail
+                    : "We will send a single-use 6 digit OTP valid for 30 minutes."}
+                </span>
+              </div>
+
+              {!otpSent && !emailVerified && (
+                <button className={styles.otpAction} type="button" onClick={sendOtp} disabled={otpLoading || !normalizedEmail}>
+                  {otpLoading ? <span className={styles.smallSpinner} /> : <Send size={16} />}
+                  {otpLoading ? "Sending..." : "Send OTP"}
+                </button>
+              )}
+
+              {otpSent && !emailVerified && (
+                <div className={styles.otpControls}>
+                  <input
+                    className={styles.otpInput}
+                    type="text"
+                    value={otp}
+                    onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="Enter 6 digit OTP"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    aria-label="Email verification OTP"
+                  />
+                  <button className={styles.otpAction} type="button" onClick={verifyOtp} disabled={otpLoading || otp.length !== 6}>
+                    {otpLoading ? <span className={styles.smallSpinner} /> : <Check size={16} />}
+                    Verify OTP
+                  </button>
+                  <button className={styles.resendButton} type="button" onClick={sendOtp} disabled={otpLoading || resendCountdown > 0}>
+                    <RefreshCw size={14} />
+                    {resendCountdown > 0 ? `Resend in ${resendCountdown}s` : "Resend OTP"}
+                  </button>
+                </div>
+              )}
+
+              {emailVerified && <CheckCircle2 className={styles.verifiedIcon} size={24} aria-hidden="true" />}
             </div>
           </section>
 
@@ -242,9 +386,9 @@ function Register() {
             </div>
           </section>
 
-          <button className={styles.submitButton} type="submit" disabled={loading || success}>
+          <button className={styles.submitButton} type="submit" disabled={loading || success || !emailVerified}>
             {loading ? <span className={styles.spinner} /> : <Check size={17} />}
-            {loading ? "Registering..." : "Register"}
+            {loading ? "Registering..." : emailVerified ? "Register" : "Verify Email to Continue"}
           </button>
         </form>
 
