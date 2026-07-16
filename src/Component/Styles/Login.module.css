@@ -204,6 +204,20 @@
 .registerPrompt a:hover, .helpText a:hover, .labelRow a:hover { text-decoration: underline; }
 .helpText { margin: 16px 0 0; text-align: center; color: #8792a1; font-size: 11px; }
 
+.helpLink {
+  padding: 0;
+  border: 0;
+  color: #1759a5;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.helpLink:hover,
+.helpLink:focus-visible { text-decoration: underline; }
+.helpLink:focus-visible { outline: 2px solid #1759a5; outline-offset: 3px; border-radius: 2px; }
+
 .copyright { margin-top: auto; padding-top: 28px; text-align: center; color: #99a3b1; font-size: 10px; }
 
 @keyframes spin { to { transform: rotate(360deg); } }

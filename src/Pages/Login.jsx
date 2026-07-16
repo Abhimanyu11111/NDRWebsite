@@ -25,6 +25,19 @@ function Login() {
   const [captchaAnswer, setCaptchaAnswer] = useState("");
   const navigate = useNavigate();
 
+  const openHelpGuide = () => {
+    const width = Math.min(1100, window.screen.availWidth - 40);
+    const height = Math.min(820, window.screen.availHeight - 60);
+    const left = Math.max(0, Math.round((window.screen.availWidth - width) / 2));
+    const top = Math.max(0, Math.round((window.screen.availHeight - height) / 2));
+
+    window.open(
+      "/documents/NDR-Help-User-Guide.pdf",
+      "ndr-help-user-guide",
+      `popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`,
+    );
+  };
+
   const loadCaptcha = useCallback(async () => {
     setCaptchaLoading(true);
     try {
@@ -180,7 +193,12 @@ function Login() {
               <Link to="/Register">Create an organization account</Link>
             </div>
 
-            <p className={styles.helpText}>Need assistance? <Link to="/help">Visit the help centre</Link></p>
+            <p className={styles.helpText}>
+              Need assistance?{" "}
+              <button type="button" className={styles.helpLink} onClick={openHelpGuide}>
+                Visit the help centre
+              </button>
+            </p>
           </div>
 
           <footer className={styles.copyright}>

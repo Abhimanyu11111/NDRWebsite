@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "generate:help-pdf": "node scripts/generate-help-guide.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
