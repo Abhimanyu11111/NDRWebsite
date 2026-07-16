@@ -68,28 +68,7 @@
   </style>
 
 
-  <script>
-    function googleTranslateElementInit() {
-      new google.translate.TranslateElement(
-        {
-          pageLanguage: 'en',
-          includedLanguages: 'en,hi',
-          autoDisplay: false
-        },
-        'google_translate_element'
-      );
-    }
-
-
-    window.setLanguage = function (lang) {
-      document.cookie = "googtrans=/en/" + lang + ";path=/";
-      document.cookie =
-        "googtrans=/en/" + lang + ";path=/;domain=" + location.hostname;
-      location.reload();
-    };
-  </script>
-
-
+  <script type="module" src="/src/googleTranslate.js"></script>
   <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" defer></script>
 </head>
 

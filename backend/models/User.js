@@ -35,6 +35,13 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(255),
     allowNull: true
   },
+  address: { type: DataTypes.STRING(255), allowNull: true },
+  city: { type: DataTypes.STRING(100), allowNull: true },
+  state: { type: DataTypes.STRING(100), allowNull: true },
+  pincode: { type: DataTypes.STRING(6), allowNull: true },
+  id_proof_type: { type: DataTypes.STRING(100), allowNull: true },
+  id_proof_number: { type: DataTypes.STRING(100), allowNull: true },
+  identity_certificate: { type: DataTypes.STRING(500), allowNull: true },
   role: {
     type: DataTypes.ENUM('USER', 'ADMIN'),
     allowNull: false,

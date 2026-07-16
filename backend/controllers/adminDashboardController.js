@@ -6,6 +6,8 @@ import Notification from "../models/Notification.js";
 import DatasetLock from "../models/DatasetLock.js";
 import { Op } from "sequelize";
 import sequelize from "../src/config/db.js";
+import fs from "fs";
+import path from "path";
 
 /* ==================================================
    GET /admin/dashboard/counts
@@ -254,19 +256,53 @@ export const getPendingRegistrations = async (req, res) => {
       offset,
       order:  [["created_at", "DESC"]],
       attributes: [
-        "id", "name", "email", "phone", "company",
+        "id", "name", "email", "phone", "company", "address",
+        "city", "state", "pincode", "id_proof_type", "id_proof_number",
+        "identity_certificate",
         "is_active", "approval_status", "created_at",
       ],
     });
 
     res.json({
       success: true,
-      registrations: rows,
+      registrations: rows.map((row) => {
+        const registration = row.toJSON();
+        const certificateAvailable = Boolean(registration.identity_certificate);
+        delete registration.identity_certificate;
+        return { ...registration, certificate_available: certificateAvailable };
+      }),
       pagination: { total: count, page: parseInt(page), limit: parseInt(limit) },
     });
   } catch (err) {
     console.error("Pending registrations error:", err);
     res.status(500).json({ success: false, message: "Failed to fetch registrations" });
+  }
+};
+
+/* =====================================================
+   GET /admin/registrations/:userId/certificate
+===================================================== */
+export const viewRegistrationCertificate = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.userId, {
+      attributes: ["id", "identity_certificate"],
+    });
+
+    if (!user?.identity_certificate) {
+      return res.status(404).json({ success: false, message: "Identity certificate not found" });
+    }
+
+    const certificateRoot = path.resolve("uploads", "identity_certificates");
+    const certificatePath = path.resolve(user.identity_certificate);
+    if (!certificatePath.startsWith(`${certificateRoot}${path.sep}`) || !fs.existsSync(certificatePath)) {
+      return res.status(404).json({ success: false, message: "Identity certificate not found" });
+    }
+
+    res.setHeader("Content-Disposition", `inline; filename=\"identity-certificate-${user.id}${path.extname(certificatePath)}\"`);
+    return res.sendFile(certificatePath);
+  } catch (err) {
+    console.error("View registration certificate error:", err);
+    return res.status(500).json({ success: false, message: "Failed to open identity certificate" });
   }
 };
 

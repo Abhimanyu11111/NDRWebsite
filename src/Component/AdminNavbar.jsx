@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { useState } from "react";
 import {
   LayoutDashboard,
@@ -13,7 +13,6 @@ import Emblem from "../assets/images/emblem1.png";
 import api from "../api/axiosClient";
 
 export default function AdminNavbar() {
-  const [activeLink, setActiveLink] = useState(window.location.pathname);
   const [collapsed, setCollapsed] = useState(false);
 
   const navLinks = [
@@ -116,15 +115,12 @@ export default function AdminNavbar() {
       <nav style={{ flex: 1, padding: "14px 10px", display: "flex", flexDirection: "column", gap: 2 }}>
         {navLinks.map((link) => {
           const Icon = link.icon;
-          const isActive =
-            window.location.pathname === link.path || activeLink === link.path;
           return (
-            <Link
+            <NavLink
               key={link.path}
               to={link.path}
               title={collapsed ? link.label : ""}
-              onClick={() => setActiveLink(link.path)}
-              style={{
+              style={({ isActive }) => ({
                 display: "flex",
                 alignItems: "center",
                 gap: collapsed ? 0 : 12,
@@ -138,23 +134,11 @@ export default function AdminNavbar() {
                 fontSize: 14,
                 transition: "all 0.2s ease",
                 whiteSpace: "nowrap",
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.background = "rgba(255,255,255,0.1)";
-                  e.currentTarget.style.color = "white";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.color = "rgba(255,255,255,0.65)";
-                }
-              }}
+              })}
             >
               <Icon size={20} strokeWidth={2} style={{ flexShrink: 0 }} />
               {!collapsed && <span>{link.label}</span>}
-            </Link>
+            </NavLink>
           );
         })}
       </nav>

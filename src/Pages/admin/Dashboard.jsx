@@ -7,7 +7,7 @@ import {
   BarChart3, Activity, Zap, AlertTriangle, X, Check, LogOut,
   ChevronLeft, ChevronRight, Search, Download, MoreHorizontal,
   Settings, User, CheckCircle, RotateCcw, UserPlus, ClipboardCheck,
-  Phone, Mail, Building, FileText, MapPin
+  Phone, Mail, Building, FileText
 } from "lucide-react";
 import AdminNavbar from "/src/Component/AdminNavbar";
 import api from "../../api/axiosClient";
@@ -242,6 +242,26 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleViewCertificate = async (userId) => {
+    const certificateWindow = window.open("", "_blank");
+    if (!certificateWindow) {
+      setError("Please allow pop-ups to view the identity certificate");
+      return;
+    }
+    certificateWindow.opener = null;
+    try {
+      const response = await api.get(`/admin/dashboard/registrations/${userId}/certificate`, {
+        responseType: "blob",
+      });
+      const fileUrl = URL.createObjectURL(response.data);
+      certificateWindow.location.href = fileUrl;
+      setTimeout(() => URL.revokeObjectURL(fileUrl), 60_000);
+    } catch {
+      certificateWindow.close();
+      setError("Failed to open identity certificate");
+    }
+  };
+
   const markRead = async (notifId) => {
     try {
       await api.patch(`/admin/dashboard/notifications/${notifId}/read`);
@@ -256,7 +276,7 @@ export default function AdminDashboard() {
       await api.patch("/admin/dashboard/notifications/read-all");
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       setSuccessMsg("All notifications marked as read");
-    } catch (err) {
+    } catch {
       setError("Failed to mark all notifications as read");
     }
   };
@@ -563,50 +583,69 @@ export default function AdminDashboard() {
                 Pending Registration Requests
                 <span style={styles.countBadge}>{pendingRegistrations.length}</span>
               </h2>
-              <div style={styles.regGrid}>
-                {pendingRegistrations.map((u) => (
-                  <div key={u.id} style={styles.regCard}>
-                    <div style={styles.regCardHeader}>
-                      <div style={styles.regAvatar}>{u.name.charAt(0).toUpperCase()}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={styles.regName}>{u.name}</p>
-                        <p style={styles.regEmail}>{u.email}</p>
-                      </div>
-                      <span style={styles.pendingBadge}>Pending</span>
-                    </div>
-                    <div style={styles.regDetails}>
-                      {u.phone && (
-                        <div style={styles.regDetailRow}><Phone size={12} color="#64748b" /><span>{u.phone}</span></div>
-                      )}
-                      {u.company && (
-                        <div style={styles.regDetailRow}><Building size={12} color="#64748b" /><span>{u.company}</span></div>
-                      )}
-                      {(u.city || u.state) && (
-                        <div style={styles.regDetailRow}><MapPin size={12} color="#64748b" /><span>{[u.city, u.state].filter(Boolean).join(", ")}</span></div>
-                      )}
-                      <div style={styles.regDetailRow}>
-                        <Clock size={12} color="#64748b" />
-                        <span>Registered on {new Date(u.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
-                      </div>
-                    </div>
-                    <div style={styles.regActions}>
-                      <button
-                        style={styles.approveRegBtn}
-                        onClick={() => handleApproveRegistration(u.id, u.name)}
-                        disabled={approvingRegId === u.id || rejectingRegId === u.id}
-                      >
-                        {approvingRegId === u.id ? <><div style={styles.miniSpinner} /> Approving…</> : <><Check size={14} /> Approve</>}
-                      </button>
-                      <button
-                        style={styles.rejectRegBtn}
-                        onClick={() => setShowRejectModal(u)}
-                        disabled={approvingRegId === u.id || rejectingRegId === u.id}
-                      >
-                        <X size={14} /> Reject
-                      </button>
-                    </div>
-                  </div>
-                ))}
+              <div style={styles.registrationTableWrap}>
+                <table style={styles.registrationTable}>
+                  <thead style={styles.tableHead}>
+                    <tr>
+                      <th style={styles.regTh}>Applicant</th>
+                      <th style={styles.regTh}>Contact</th>
+                      <th style={styles.regTh}>Organization</th>
+                      <th style={styles.regTh}>Address</th>
+                      <th style={styles.regTh}>Verification</th>
+                      <th style={styles.regTh}>Submitted</th>
+                      <th style={styles.regTh}>Status</th>
+                      <th style={{ ...styles.regTh, textAlign: "right" }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingRegistrations.map((u) => (
+                      <tr key={u.id} style={styles.regTableRow}>
+                        <td style={styles.regTd}>
+                          <div style={styles.regApplicant}>
+                            <div style={styles.regAvatar}>{(u.name || "U").charAt(0).toUpperCase()}</div>
+                            <div><p style={styles.regName}>{u.name || "—"}</p><span style={styles.regUserId}>User ID: {u.id}</span></div>
+                          </div>
+                        </td>
+                        <td style={styles.regTd}>
+                          <div style={styles.regCellStack}>
+                            <span style={styles.regIconText}><Mail size={13} />{u.email || "—"}</span>
+                            <span style={styles.regIconText}><Phone size={13} />{u.phone || "—"}</span>
+                          </div>
+                        </td>
+                        <td style={styles.regTd}>
+                          <div style={styles.regCellStack}>
+                            <span style={styles.regPrimaryText}>{u.company || "—"}</span>
+                            <span style={styles.regSecondaryText}>{u.id_proof_type || "Organization type not provided"}</span>
+                          </div>
+                        </td>
+                        <td style={styles.regTd}>
+                          <div style={styles.regCellStack}>
+                            <span style={styles.regPrimaryText}>{u.address || "—"}</span>
+                            <span style={styles.regSecondaryText}>{[u.city, u.state, u.pincode].filter(Boolean).join(", ") || "Location not provided"}</span>
+                          </div>
+                        </td>
+                        <td style={styles.regTd}>
+                          <div style={styles.regCellStack}>
+                            <span style={styles.regPrimaryText}>ID: {u.id_proof_number || "—"}</span>
+                            {u.certificate_available ? (
+                              <button style={styles.certificateBtn} onClick={() => handleViewCertificate(u.id)}><Eye size={13} /> View certificate</button>
+                            ) : <span style={styles.regSecondaryText}>No certificate</span>}
+                          </div>
+                        </td>
+                        <td style={styles.regTd}><span style={styles.regDate}>{new Date(u.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></td>
+                        <td style={styles.regTd}><span style={styles.regPendingPill}><Clock size={12} />Pending</span></td>
+                        <td style={{ ...styles.regTd, textAlign: "right" }}>
+                          <div style={styles.regTableActions}>
+                            <button style={styles.approveRegBtn} onClick={() => handleApproveRegistration(u.id, u.name)} disabled={approvingRegId === u.id || rejectingRegId === u.id}>
+                              {approvingRegId === u.id ? <><div style={styles.miniSpinner} /> Approving…</> : <><Check size={14} /> Accept</>}
+                            </button>
+                            <button style={styles.rejectRegBtn} onClick={() => setShowRejectModal(u)} disabled={approvingRegId === u.id || rejectingRegId === u.id}><X size={14} /> Reject</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -1202,18 +1241,26 @@ const styles = {
   sectionRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 12 },
   countBadge: { marginLeft: 10, background: "#3b82f6", color: "white", fontSize: 12, fontWeight: 700, padding: "2px 10px", borderRadius: 12 },
 
-  regGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 },
-  regCard: { background: "white", borderRadius: 14, border: "1px solid #e8edf3", padding: "18px", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" },
-  regCardHeader: { display: "flex", alignItems: "center", gap: 12, marginBottom: 14 },
-  regAvatar: { width: 42, height: 42, borderRadius: "50%", background: "linear-gradient(135deg, #7c3aed, #6366f1)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, flexShrink: 0 },
+  registrationTableWrap: { background: "white", borderRadius: 14, border: "1px solid #e2e8f0", overflowX: "auto", boxShadow: "0 2px 8px rgba(15, 23, 42, 0.05)" },
+  registrationTable: { width: "100%", minWidth: 1380, borderCollapse: "collapse" },
+  regTh: { padding: "13px 14px", textAlign: "left", fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.65, whiteSpace: "nowrap" },
+  regTableRow: { borderBottom: "1px solid #eef2f7" },
+  regTd: { padding: "15px 14px", fontSize: 13, color: "#334155", verticalAlign: "middle", maxWidth: 230 },
+  regApplicant: { display: "flex", alignItems: "center", gap: 10, minWidth: 150 },
+  regUserId: { fontSize: 10, color: "#94a3b8", fontWeight: 600 },
+  regCellStack: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6 },
+  regIconText: { display: "flex", alignItems: "center", gap: 6, color: "#475569", wordBreak: "break-word" },
+  regPrimaryText: { color: "#334155", fontWeight: 600, lineHeight: 1.35, wordBreak: "break-word" },
+  regSecondaryText: { color: "#64748b", fontSize: 11, lineHeight: 1.35 },
+  regDate: { color: "#475569", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" },
+  regPendingPill: { display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 9px", borderRadius: 20, background: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa", fontSize: 11, fontWeight: 700 },
+  certificateBtn: { display: "inline-flex", alignItems: "center", gap: 5, padding: 0, background: "none", color: "#2563eb", border: "none", fontSize: 11, fontWeight: 700, cursor: "pointer" },
+  regTableActions: { display: "flex", justifyContent: "flex-end", gap: 7, minWidth: 170 },
+
+  regAvatar: { width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg, #7c3aed, #6366f1)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, flexShrink: 0 },
   regName: { fontSize: 14, fontWeight: 700, color: "#0f172a", margin: "0 0 2px" },
-  regEmail: { fontSize: 12, color: "#64748b", margin: 0 },
-  pendingBadge: { fontSize: 11, fontWeight: 700, color: "#d97706", flexShrink: 0 },
-  regDetails: { background: "#f8fafc", borderRadius: 8, padding: "10px 12px", marginBottom: 14, display: "flex", flexDirection: "column", gap: 7 },
-  regDetailRow: { display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#475569" },
-  regActions: { display: "flex", gap: 10 },
-  approveRegBtn: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", background: "#16a34a", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" },
-  rejectRegBtn: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", background: "white", color: "#ef4444", border: "1.5px solid #ef4444", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" },
+  approveRegBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 5, minWidth: 78, padding: "8px 11px", background: "#16a34a", color: "white", border: "none", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer" },
+  rejectRegBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 5, minWidth: 76, padding: "8px 11px", background: "white", color: "#dc2626", border: "1px solid #f87171", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer" },
 
   filterRow: { display: "flex", gap: 8, flexWrap: "wrap" },
   advLabel: { display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, color: "#64748b", marginBottom: 6 },

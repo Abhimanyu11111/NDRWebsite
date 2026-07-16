@@ -12,6 +12,7 @@ import {
   retryPayment,
   getDatasetLocks,
   getPendingRegistrations,
+  viewRegistrationCertificate,
   approveRegistration,
   rejectRegistration,
 } from "../controllers/adminDashboardController.js";
@@ -45,6 +46,7 @@ router.get("/dataset-locks", getDatasetLocks);
 
 // Registration Approvals
 router.get("/registrations", getPendingRegistrations);
+router.get("/registrations/:userId/certificate", viewRegistrationCertificate);
 router.patch("/registrations/:userId/approve", approveRegistration);
 router.patch("/registrations/:userId/reject", rejectRegistration);
 

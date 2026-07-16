@@ -117,6 +117,42 @@ Confirm these headers are present on HTTPS responses:
 - `Permissions-Policy`
 - `Cache-Control: no-store` on admin/API/authenticated pages
 
+## Content Security Policy (CSP)
+
+The frontend is served directly by Nginx, so the Express CSP middleware does not
+cover routes such as `/book-vdr`. Copy the repository file
+`deploy/nginx/security-headers.conf` to the production server and include it in
+the HTTPS `server {}` block (or in each frontend `location` that declares its
+own `add_header` directives):
+
+```nginx
+server {
+  listen 443 ssl;
+  server_name ndr.dghindia.gov.in;
+
+  include /etc/nginx/snippets/ndr-security-headers.conf;
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+}
+```
+
+Nginx does not inherit parent `add_header` values inside a location that has any
+of its own `add_header` directives. In that case, put the `include` inside that
+location as well. The supplied directives use `always`, so CSP is present on
+`304 Not Modified` responses like the one shown in Burp.
+
+Deploy and validate:
+
+```bash
+sudo cp deploy/nginx/security-headers.conf /etc/nginx/snippets/ndr-security-headers.conf
+sudo nginx -t
+sudo systemctl reload nginx
+curl -sI https://ndr.dghindia.gov.in/book-vdr | grep -i content-security-policy
+curl -sI -H 'If-None-Match: "test"' https://ndr.dghindia.gov.in/book-vdr | grep -i content-security-policy
+```
+
 ## Firewall
 
 - Allow public access only to ports required by the deployment, normally 80 and 443.
