@@ -55,8 +55,12 @@ function ResetPassword() {
 
     setLoading(true);
     try {
-      const encryptedPassword = await encryptPassword(password);
-      await axios.post(`${import.meta.env.VITE_API_URL}/auth/reset-password`, { token, newPassword: encryptedPassword }, { withCredentials: true });
+      const { ciphertext, nonceToken } = await encryptPassword(password);
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/auth/reset-password`,
+        { token, newPassword: ciphertext, newPasswordNonceToken: nonceToken },
+        { withCredentials: true }
+      );
       setStatus("complete");
       window.setTimeout(() => navigate("/login", { replace: true }), 1800);
     } catch (requestError) {

@@ -53,10 +53,11 @@ export default function LoginAdmin() {
 
     setLoading(true);
     try {
-      const encryptedPassword = await encryptPassword(password);
+      const { ciphertext, nonceToken } = await encryptPassword(password);
       await api.post("/auth/admin-login", {
         email,
-        password: encryptedPassword,
+        password: ciphertext,
+        passwordNonceToken: nonceToken,
         captchaToken: captcha?.token,
         captchaAnswer,
       });

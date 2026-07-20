@@ -217,13 +217,14 @@ function Register() {
 
     setLoading(true);
     try {
-      const encryptedPassword = await encryptPassword(formData.password);
+      const { ciphertext, nonceToken } = await encryptPassword(formData.password);
 
       const data = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
         if (value === null) return;
-        data.append(key, key === "password" ? encryptedPassword : value);
+        data.append(key, key === "password" ? ciphertext : value);
       });
+      data.append("passwordNonceToken", nonceToken);
       data.append("email_verification_token", emailVerificationToken);
 
       await axios.post(`${import.meta.env.VITE_API_URL}/auth/register`, data, {

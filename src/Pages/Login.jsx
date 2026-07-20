@@ -67,10 +67,10 @@ function Login() {
 
     setLoading(true);
     try {
-      const encryptedPassword = await encryptPassword(password);
+      const { ciphertext, nonceToken } = await encryptPassword(password);
       await axios.post(
         `${import.meta.env.VITE_API_URL}/auth/login`,
-        { email, password: encryptedPassword, captchaToken: captcha?.token, captchaAnswer },
+        { email, password: ciphertext, passwordNonceToken: nonceToken, captchaToken: captcha?.token, captchaAnswer },
         { withCredentials: true }
       );
       navigate("/book-vdr");

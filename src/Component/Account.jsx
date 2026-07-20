@@ -86,13 +86,15 @@ export default function Account() {
 
     setPasswordLoading(true);
     try {
-      const [encryptedCurrentPassword, encryptedNewPassword] = await Promise.all([
+      const [currentEncrypted, newEncrypted] = await Promise.all([
         encryptPassword(passwordForm.currentPassword),
         encryptPassword(passwordForm.newPassword),
       ]);
       const res = await axios.post("/auth/change-password", {
-        currentPassword: encryptedCurrentPassword,
-        newPassword: encryptedNewPassword,
+        currentPassword: currentEncrypted.ciphertext,
+        currentPasswordNonceToken: currentEncrypted.nonceToken,
+        newPassword: newEncrypted.ciphertext,
+        newPasswordNonceToken: newEncrypted.nonceToken,
       });
       setPasswordMessage(res.data.msg || "Password changed successfully. Please login again.");
       setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });

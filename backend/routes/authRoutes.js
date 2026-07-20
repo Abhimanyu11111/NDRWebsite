@@ -29,7 +29,7 @@ import {
   hashPasswordResetToken,
   PASSWORD_RESET_TTL_MINUTES,
 } from "../utils/passwordReset.js";
-import { getPublicKeyPem, decryptPasswordField } from "../utils/passwordCrypto.js";
+import { getPublicKeyPem, decryptPasswordField, issueEncryptionNonce } from "../utils/passwordCrypto.js";
 import { validateRequestPayload } from "../middleware/security.js";
 
 const router = express.Router();
@@ -150,6 +150,13 @@ router.get("/captcha", captchaLimiter, (req, res) => {
 // TLS). Safe to expose — that's the point of public-key cryptography.
 router.get("/public-key", (req, res) => {
   return res.json({ success: true, publicKey: getPublicKeyPem() });
+});
+
+// One-time nonce the frontend embeds inside each encrypted password payload
+// so a captured request can never be replayed (see utils/passwordCrypto.js).
+// Must be fetched fresh immediately before every encrypt+submit — never cache.
+router.get("/encryption-nonce", (req, res) => {
+  return res.json({ success: true, ...issueEncryptionNonce() });
 });
 
 router.post("/registration-otp/send", registrationOtpSendLimiter, async (req, res) => {
@@ -359,7 +366,7 @@ const upload = multer({
 ===================================================== */
 router.post("/admin-login", loginLimiter, requireCaptcha, async (req, res) => {
   const { email } = req.body;
-  const password = decryptPasswordField(req.body.password);
+  const password = decryptPasswordField(req.body.password, req.body.passwordNonceToken);
 
   try {
     if (password === null) {
@@ -453,7 +460,7 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), v
     id_proof_number,
     email_verification_token,
   } = req.body;
-  const password = decryptPasswordField(req.body.password);
+  const password = decryptPasswordField(req.body.password, req.body.passwordNonceToken);
   const normalizedEmail = normalizeEmail(email);
   const normalizedPhone = String(phone || "").replace(/\D/g, "");
 
@@ -634,7 +641,7 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), v
 ===================================================== */
 router.post("/login", loginLimiter, requireCaptcha, async (req, res) => {
   const { email } = req.body;
-  const password = decryptPasswordField(req.body.password);
+  const password = decryptPasswordField(req.body.password, req.body.passwordNonceToken);
   const normalizedEmail = String(email || "").trim().toLowerCase();
 
   if (password === null) {
@@ -788,7 +795,7 @@ router.get("/reset-password/validate", passwordResetLimiter, async (req, res) =>
 
 router.post("/reset-password", passwordResetLimiter, async (req, res) => {
   const token = String(req.body?.token || "");
-  const decryptedNewPassword = decryptPasswordField(req.body?.newPassword);
+  const decryptedNewPassword = decryptPasswordField(req.body?.newPassword, req.body?.newPasswordNonceToken);
   if (decryptedNewPassword === null) {
     return res.status(400).json({ success: false, msg: "Invalid request" });
   }
@@ -844,8 +851,8 @@ router.post("/reset-password", passwordResetLimiter, async (req, res) => {
 
 // ── Multer error handler ──────────────────────────────
 router.post("/change-password", authMiddleware, async (req, res) => {
-  const currentPassword = decryptPasswordField(req.body.currentPassword);
-  const newPassword = decryptPasswordField(req.body.newPassword);
+  const currentPassword = decryptPasswordField(req.body.currentPassword, req.body.currentPasswordNonceToken);
+  const newPassword = decryptPasswordField(req.body.newPassword, req.body.newPasswordNonceToken);
 
   if (currentPassword === null || newPassword === null) {
     return res.status(400).json({ success: false, msg: "Invalid request" });

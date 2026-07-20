@@ -6,6 +6,12 @@
 // application-layer encryption step so the password value itself is never
 // visible as plaintext in the request body — only this server's private
 // key (see backend/utils/passwordCrypto.js) can decrypt it back.
+//
+// Encryption alone doesn't stop replay: capturing one encrypted request and
+// resending the exact same ciphertext would otherwise still authenticate.
+// Every call fetches a fresh, single-use nonce from the backend and embeds
+// it inside the encrypted payload, so the backend can detect and reject a
+// replayed request even though the ciphertext decrypts successfully.
 
 let cachedKeyPromise = null;
 
@@ -49,24 +55,36 @@ const getPublicKey = () => {
   return cachedKeyPromise;
 };
 
+const getFreshNonce = async () => {
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/encryption-nonce`);
+  const data = await res.json();
+  if (!data?.nonce || !data?.token) throw new Error("Unable to prepare a secure request.");
+  return data;
+};
+
 /**
- * Encrypts a plaintext password for transmission. Returns a base64 string
- * suitable for sending as the request field value in place of the raw
- * password.
+ * Encrypts a plaintext password for transmission. Returns
+ * `{ ciphertext, nonceToken }` — send both fields to the backend (see the
+ * `*NonceToken` fields expected by backend/routes/authRoutes.js). Never
+ * send just the ciphertext alone; the token is required to verify it and
+ * to detect replay.
  *
- * The backend only ever accepts an RSA-OAEP-encrypted value for password
- * fields (see backend/utils/passwordCrypto.js) and rejects anything else
- * with a 400, so there is no safe silent fallback to plaintext here — if
- * encryption fails (unsupported browser, public key unreachable, ...) this
- * throws, and callers must catch it and show the user an error instead of
- * submitting the form.
+ * The backend only ever accepts an RSA-OAEP-encrypted value with a valid,
+ * unused nonce token for password fields (see
+ * backend/utils/passwordCrypto.js) and rejects anything else with a 400,
+ * so there is no safe silent fallback to plaintext here — if encryption
+ * fails (unsupported browser, network error fetching the key/nonce, ...)
+ * this throws, and callers must catch it and show the user an error
+ * instead of submitting the form.
  */
 export const encryptPassword = async (plaintext) => {
   if (!window.isSecureContext || !window.crypto?.subtle) {
     throw new Error("This browser cannot securely submit the form. Please update your browser.");
   }
-  const key = await getPublicKey();
-  const encoded = new TextEncoder().encode(plaintext);
+  // The nonce must be fetched fresh for every single encryption — caching
+  // it would defeat the whole point of replay protection.
+  const [key, { nonce, token }] = await Promise.all([getPublicKey(), getFreshNonce()]);
+  const encoded = new TextEncoder().encode(JSON.stringify({ password: plaintext, nonce }));
   const ciphertext = await window.crypto.subtle.encrypt({ name: "RSA-OAEP" }, key, encoded);
-  return arrayBufferToBase64(ciphertext);
+  return { ciphertext: arrayBufferToBase64(ciphertext), nonceToken: token };
 };
