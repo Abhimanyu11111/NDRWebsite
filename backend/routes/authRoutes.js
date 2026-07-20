@@ -30,6 +30,7 @@ import {
   PASSWORD_RESET_TTL_MINUTES,
 } from "../utils/passwordReset.js";
 import { getPublicKeyPem, decryptPasswordField } from "../utils/passwordCrypto.js";
+import { validateRequestPayload } from "../middleware/security.js";
 
 const router = express.Router();
 const JWT_OPTIONS = {
@@ -431,7 +432,14 @@ router.post("/admin-login", loginLimiter, requireCaptcha, async (req, res) => {
 ===================================================== */
 // upload.single("identity_certificate") handles the file field
 // All other text fields still come through req.body (multer parses multipart/form-data)
-router.post("/register", uploadLimiter, upload.single("identity_certificate"), async (req, res) => {
+//
+// The app-wide validateRequestPayload sanitizer (index.js) runs before
+// express.json()/urlencoded() have anything to check for a multipart/
+// form-data request — multer is what actually parses this body, and it
+// only runs here, per-route. So the same check is re-applied immediately
+// after multer populates req.body, otherwise `<`, `>`, `{`, `}`, `"` etc.
+// in registration fields would silently bypass the global sanitizer.
+router.post("/register", uploadLimiter, upload.single("identity_certificate"), validateRequestPayload, async (req, res) => {
   const {
     name,
     email,
