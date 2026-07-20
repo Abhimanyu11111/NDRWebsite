@@ -13,6 +13,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import styles from "../Component/Styles/Login.module.css";
+import { encryptPassword } from "../utils/passwordCrypto.js";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -66,9 +67,10 @@ function Login() {
 
     setLoading(true);
     try {
+      const encryptedPassword = await encryptPassword(password);
       await axios.post(
         `${import.meta.env.VITE_API_URL}/auth/login`,
-        { email, password, captchaToken: captcha?.token, captchaAnswer },
+        { email, password: encryptedPassword, captchaToken: captcha?.token, captchaAnswer },
         { withCredentials: true }
       );
       navigate("/book-vdr");

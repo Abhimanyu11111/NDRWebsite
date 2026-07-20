@@ -23,6 +23,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import styles from "../Component/Styles/Register.module.css";
+import { encryptPassword } from "../utils/passwordCrypto.js";
 
 const initialFormData = {
   name: "",
@@ -216,9 +217,12 @@ function Register() {
 
     setLoading(true);
     try {
+      const encryptedPassword = await encryptPassword(formData.password);
+
       const data = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
-        if (value !== null) data.append(key, value);
+        if (value === null) return;
+        data.append(key, key === "password" ? encryptedPassword : value);
       });
       data.append("email_verification_token", emailVerificationToken);
 

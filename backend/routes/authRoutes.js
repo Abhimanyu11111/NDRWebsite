@@ -29,6 +29,7 @@ import {
   hashPasswordResetToken,
   PASSWORD_RESET_TTL_MINUTES,
 } from "../utils/passwordReset.js";
+import { getPublicKeyPem, decryptPasswordField } from "../utils/passwordCrypto.js";
 
 const router = express.Router();
 const JWT_OPTIONS = {
@@ -141,6 +142,13 @@ const requireCaptcha = (req, res, next) => {
 
 router.get("/captcha", captchaLimiter, (req, res) => {
   return res.json({ success: true, captcha: createCaptchaChallenge() });
+});
+
+// Public RSA key used by the frontend to encrypt password fields before
+// transmission (see utils/passwordCrypto.js for why this exists on top of
+// TLS). Safe to expose — that's the point of public-key cryptography.
+router.get("/public-key", (req, res) => {
+  return res.json({ success: true, publicKey: getPublicKeyPem() });
 });
 
 router.post("/registration-otp/send", registrationOtpSendLimiter, async (req, res) => {
@@ -349,9 +357,13 @@ const upload = multer({
    ADMIN LOGIN
 ===================================================== */
 router.post("/admin-login", loginLimiter, requireCaptcha, async (req, res) => {
-  const { email, password } = req.body;
+  const { email } = req.body;
+  const password = decryptPasswordField(req.body.password);
 
   try {
+    if (password === null) {
+      return res.status(400).json({ success: false, msg: "Invalid credentials" });
+    }
     if (!emailRegex.test(String(email || "")) || !password) {
       return res.status(400).json({ success: false, msg: "Invalid credentials" });
     }
@@ -424,7 +436,6 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), a
     name,
     email,
     phone,
-    password,
     company,
     address,
     city,
@@ -434,9 +445,13 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), a
     id_proof_number,
     email_verification_token,
   } = req.body;
+  const password = decryptPasswordField(req.body.password);
   const normalizedEmail = normalizeEmail(email);
   const normalizedPhone = String(phone || "").replace(/\D/g, "");
 
+  if (password === null) {
+    return res.status(400).json({ success: false, msg: "Invalid request" });
+  }
   if (!name || !email || !password) {
     return res.status(400).json({
       success: false,
@@ -610,9 +625,13 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), a
    USER LOGIN — Blocks PENDING / REJECTED users
 ===================================================== */
 router.post("/login", loginLimiter, requireCaptcha, async (req, res) => {
-  const { email, password } = req.body;
+  const { email } = req.body;
+  const password = decryptPasswordField(req.body.password);
   const normalizedEmail = String(email || "").trim().toLowerCase();
 
+  if (password === null) {
+    return res.status(400).json({ success: false, msg: "Invalid email or password" });
+  }
   if (!email || !password) {
     return res.status(400).json({ success: false, msg: "Email and password are required" });
   }
@@ -761,7 +780,11 @@ router.get("/reset-password/validate", passwordResetLimiter, async (req, res) =>
 
 router.post("/reset-password", passwordResetLimiter, async (req, res) => {
   const token = String(req.body?.token || "");
-  const newPassword = String(req.body?.newPassword || "");
+  const decryptedNewPassword = decryptPasswordField(req.body?.newPassword);
+  if (decryptedNewPassword === null) {
+    return res.status(400).json({ success: false, msg: "Invalid request" });
+  }
+  const newPassword = String(decryptedNewPassword || "");
 
   if (!/^[a-f0-9]{64}$/i.test(token)) {
     return res.status(400).json({ success: false, msg: "This password reset link is invalid or has expired." });
@@ -813,8 +836,12 @@ router.post("/reset-password", passwordResetLimiter, async (req, res) => {
 
 // ── Multer error handler ──────────────────────────────
 router.post("/change-password", authMiddleware, async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
+  const currentPassword = decryptPasswordField(req.body.currentPassword);
+  const newPassword = decryptPasswordField(req.body.newPassword);
 
+  if (currentPassword === null || newPassword === null) {
+    return res.status(400).json({ success: false, msg: "Invalid request" });
+  }
   if (!currentPassword || !newPassword) {
     return res.status(400).json({ success: false, msg: "Current and new password are required" });
   }

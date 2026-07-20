@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import api from "../../api/axiosClient";
 import styles from "../../Component/Styles/AdminLogin.module.css";
+import { encryptPassword } from "../../utils/passwordCrypto.js";
 
 export default function LoginAdmin() {
   const [email, setEmail] = useState("");
@@ -52,9 +53,10 @@ export default function LoginAdmin() {
 
     setLoading(true);
     try {
+      const encryptedPassword = await encryptPassword(password);
       await api.post("/auth/admin-login", {
         email,
-        password,
+        password: encryptedPassword,
         captchaToken: captcha?.token,
         captchaAnswer,
       });

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../api/axiosClient";
 import useBfcacheReload from "../utils/useBfcacheReload";
+import { encryptPassword } from "../utils/passwordCrypto.js";
 import styles from "./Styles/Account.module.css";
 
 export default function Account() {
@@ -85,9 +86,13 @@ export default function Account() {
 
     setPasswordLoading(true);
     try {
+      const [encryptedCurrentPassword, encryptedNewPassword] = await Promise.all([
+        encryptPassword(passwordForm.currentPassword),
+        encryptPassword(passwordForm.newPassword),
+      ]);
       const res = await axios.post("/auth/change-password", {
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword,
+        currentPassword: encryptedCurrentPassword,
+        newPassword: encryptedNewPassword,
       });
       setPasswordMessage(res.data.msg || "Password changed successfully. Please login again.");
       setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });

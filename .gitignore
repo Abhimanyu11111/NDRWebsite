@@ -17,6 +17,9 @@ dist-ssr
 .env.local
 .env.production
 
+# Generated RSA keypair for password transport encryption - server-local only
+backend/keys/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

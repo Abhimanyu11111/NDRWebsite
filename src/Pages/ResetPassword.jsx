@@ -3,6 +3,7 @@ import axios from "axios";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AlertCircle, ArrowLeft, CheckCircle2, Eye, EyeOff, KeyRound, LockKeyhole } from "lucide-react";
 import styles from "../Component/Styles/AuthRecovery.module.css";
+import { encryptPassword } from "../utils/passwordCrypto.js";
 
 const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{12,}$/;
 
@@ -54,7 +55,8 @@ function ResetPassword() {
 
     setLoading(true);
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/auth/reset-password`, { token, newPassword: password }, { withCredentials: true });
+      const encryptedPassword = await encryptPassword(password);
+      await axios.post(`${import.meta.env.VITE_API_URL}/auth/reset-password`, { token, newPassword: encryptedPassword }, { withCredentials: true });
       setStatus("complete");
       window.setTimeout(() => navigate("/login", { replace: true }), 1800);
     } catch (requestError) {
