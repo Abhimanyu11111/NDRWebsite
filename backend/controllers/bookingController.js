@@ -27,6 +27,11 @@ import {
   validateBookingRequest,
   getHolidaySet,
 } from "../utils/bookingRules.js";
+import {
+  isPositiveInt,
+  isOptionalBoundedString,
+  validationError,
+} from "../utils/validators.js";
 
 /* =====================================================
    DATASET LOCK HELPER
@@ -41,6 +46,9 @@ const lockDatasetsForBooking = async (booking, transaction) => {
     }
   }  
   if (!Array.isArray(datasetIds)) datasetIds = [];
+  // Defense in depth: only ever lock well-formed, positive integer dataset
+  // ids, even though createBooking already validates dataCatalogue up front.
+  datasetIds = datasetIds.filter((id) => isPositiveInt(id));
   if (!datasetIds || datasetIds.length === 0) return;
 
   await DatasetLock.destroy({
@@ -72,6 +80,9 @@ export const checkAvailability = async (req, res) => {
         success: false,
         message: "room_id, start_datetime and end_datetime are required",
       });
+    }
+    if (!isPositiveInt(room_id)) {
+      return res.status(400).json(validationError("room_id must be a positive integer"));
     }
 
     const { start, end } = resolveBookingWindow({
@@ -115,6 +126,9 @@ export const getBookingPreview = async (req, res) => {
 
     if (!room_id || !start_datetime || !end_datetime) {
       return res.status(400).json({ success: false, message: "room_id, start_datetime, and end_datetime are required" });
+    }
+    if (!isPositiveInt(room_id)) {
+      return res.status(400).json(validationError("room_id must be a positive integer"));
     }
 
     const room = await Room.findByPk(room_id);
@@ -191,6 +205,25 @@ export const createBooking = async (req, res) => {
     if (!room_id || !start_datetime || !end_datetime) {
       await t.rollback();
       return res.status(400).json({ success: false, message: "room_id, start_datetime, and end_datetime are required" });
+    }
+    if (!isPositiveInt(room_id)) {
+      await t.rollback();
+      return res.status(400).json(validationError("room_id must be a positive integer"));
+    }
+    if (dataCatalogue !== undefined && dataCatalogue !== null &&
+        !(Array.isArray(dataCatalogue) && dataCatalogue.every((id) => isPositiveInt(id)))) {
+      await t.rollback();
+      return res.status(400).json(validationError("dataCatalogue must be an array of positive integer dataset ids"));
+    }
+    for (const [field, maxLen] of [
+      ["weekendNotice", 2000], ["license_type", 100], ["room_type", 50],
+      ["block_name", 255], ["data_category", 100], ["data_subcategory", 100],
+      ["data_requirements", 2000],
+    ]) {
+      if (!isOptionalBoundedString(req.body[field], maxLen)) {
+        await t.rollback();
+        return res.status(400).json(validationError(`${field} must be at most ${maxLen} characters`));
+      }
     }
 
     // Validate
@@ -452,6 +485,9 @@ export const getBookingCalendar = async (req, res) => {
     if (!room_id) {
       return res.status(400).json({ success: false, message: "room_id is required" });
     }
+    if (!isPositiveInt(room_id)) {
+      return res.status(400).json(validationError("room_id must be a positive integer"));
+    }
 
     const bookings = await Booking.findAll({
       where: {
@@ -476,9 +512,12 @@ export const cancelBooking = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { booking_id } = req.params;
+    const userId = req.user.id;
 
+    // Defense in depth: scope to the owning user even though the route
+    // already enforces this via requireBookingOwnership middleware.
     const booking = await Booking.findOne({
-      where:   { booking_id },
+      where:   { booking_id, user_id: userId },
       include: [{ model: Room, as: "room" }],
       lock:    t.LOCK.UPDATE,
       transaction: t,
@@ -487,6 +526,11 @@ export const cancelBooking = async (req, res) => {
     if (!booking) {
       await t.rollback();
       return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+
+    if (!["PENDING", "CONFIRMED"].includes(booking.status)) {
+      await t.rollback();
+      return res.status(409).json({ success: false, message: `Booking is already ${booking.status.toLowerCase()} and cannot be cancelled.` });
     }
 
     await DatasetLock.update(

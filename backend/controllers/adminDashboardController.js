@@ -8,6 +8,18 @@ import { Op } from "sequelize";
 import sequelize from "../src/config/db.js";
 import fs from "fs";
 import path from "path";
+import { toBoundedInt, isInEnum, isPositiveInt, isOptionalBoundedString, isNonEmptyString, validationError } from "../utils/validators.js";
+
+const BOOKING_STATUSES = ["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED", "EXPIRED"];
+const BOOKING_PAYMENT_STATUSES = ["PENDING", "SUCCESS", "FAILED", "REFUNDED"];
+const PAYMENT_STATUSES = ["INITIATED", "SUCCESS", "FAILED"];
+const DATASET_LOCK_STATUSES = ["ACTIVE", "RELEASED", "EXPIRED"];
+
+/** page/limit query params, clamped to safe bounds shared by every admin list endpoint. */
+const readPagination = (query) => ({
+  page:  toBoundedInt(query.page, { def: 1, min: 1, max: 100000 }),
+  limit: toBoundedInt(query.limit, { def: 20, min: 1, max: 100 }),
+});
 
 /* ==================================================
    GET /admin/dashboard/counts
@@ -138,8 +150,7 @@ export const getDashboardCounts = async (req, res) => {
 ===================================================== */
 export const getAdminNotifications = async (req, res) => {
   try {
-    const limit  = parseInt(req.query.limit) || 20;
-    const page   = parseInt(req.query.page)  || 1;
+    const { page, limit } = readPagination(req.query);
     const offset = (page - 1) * limit;
 
     const notifications = await Notification.findAll({
@@ -180,6 +191,9 @@ export const getAdminNotifications = async (req, res) => {
 ===================================================== */
 export const markNotificationRead = async (req, res) => {
   try {
+    if (!isPositiveInt(req.params.id)) {
+      return res.status(400).json(validationError("id must be a positive integer"));
+    }
     const notif = await Notification.findByPk(req.params.id);
     if (!notif) return res.status(404).json({ success: false, message: "Notification not found" });
 
@@ -198,6 +212,9 @@ export const markNotificationRead = async (req, res) => {
 ===================================================== */
 export const deleteNotification = async (req, res) => {
   try {
+    if (!isPositiveInt(req.params.id)) {
+      return res.status(400).json(validationError("id must be a positive integer"));
+    }
     const notif = await Notification.findByPk(req.params.id);
     if (!notif) return res.status(404).json({ success: false, message: "Notification not found" });
 
@@ -215,6 +232,9 @@ export const deleteNotification = async (req, res) => {
 ===================================================== */
 export const markNotificationUnread = async (req, res) => {
   try {
+    if (!isPositiveInt(req.params.id)) {
+      return res.status(400).json(validationError("id must be a positive integer"));
+    }
     const notif = await Notification.findByPk(req.params.id);
     if (!notif) return res.status(404).json({ success: false, message: "Notification not found" });
 
@@ -245,14 +265,14 @@ export const markAllNotificationsRead = async (req, res) => {
 ===================================================== */
 export const getPendingRegistrations = async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const { page, limit } = readPagination(req.query);
+    const offset = (page - 1) * limit;
 
     const where = { approval_status: 'PENDING', is_active: false };
 
     const { count, rows } = await User.findAndCountAll({
       where,
-      limit:  parseInt(limit),
+      limit,
       offset,
       order:  [["created_at", "DESC"]],
       attributes: [
@@ -271,7 +291,7 @@ export const getPendingRegistrations = async (req, res) => {
         delete registration.identity_certificate;
         return { ...registration, certificate_available: certificateAvailable };
       }),
-      pagination: { total: count, page: parseInt(page), limit: parseInt(limit) },
+      pagination: { total: count, page, limit },
     });
   } catch (err) {
     console.error("Pending registrations error:", err);
@@ -284,6 +304,9 @@ export const getPendingRegistrations = async (req, res) => {
 ===================================================== */
 export const viewRegistrationCertificate = async (req, res) => {
   try {
+    if (!isPositiveInt(req.params.userId)) {
+      return res.status(400).json(validationError("userId must be a positive integer"));
+    }
     const user = await User.findByPk(req.params.userId, {
       attributes: ["id", "identity_certificate"],
     });
@@ -312,6 +335,9 @@ export const viewRegistrationCertificate = async (req, res) => {
 export const approveRegistration = async (req, res) => {
   try {
     const { userId } = req.params;
+    if (!isPositiveInt(userId)) {
+      return res.status(400).json(validationError("userId must be a positive integer"));
+    }
 
     const user = await User.findByPk(userId);
     if (!user) {
@@ -359,6 +385,12 @@ export const rejectRegistration = async (req, res) => {
   try {
     const { userId } = req.params;
     const { reason } = req.body;
+    if (!isPositiveInt(userId)) {
+      return res.status(400).json(validationError("userId must be a positive integer"));
+    }
+    if (!isOptionalBoundedString(reason, 500)) {
+      return res.status(400).json(validationError("reason must be at most 500 characters"));
+    }
 
     const user = await User.findByPk(userId);
     if (!user) {
@@ -404,18 +436,28 @@ export const rejectRegistration = async (req, res) => {
 ===================================================== */
 export const getAdminBookings = async (req, res) => {
   try {
-    const { status, payment_status, page = 1, limit = 20, room_id } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const { status, payment_status, room_id } = req.query;
+    const { page, limit } = readPagination(req.query);
+    const offset = (page - 1) * limit;
+
+    if (status && !isInEnum(status, BOOKING_STATUSES)) {
+      return res.status(400).json(validationError(`status must be one of: ${BOOKING_STATUSES.join(', ')}`));
+    }
+    if (payment_status && !isInEnum(payment_status, BOOKING_PAYMENT_STATUSES)) {
+      return res.status(400).json(validationError(`payment_status must be one of: ${BOOKING_PAYMENT_STATUSES.join(', ')}`));
+    }
+    if (room_id && !isPositiveInt(room_id)) {
+      return res.status(400).json(validationError("room_id must be a positive integer"));
+    }
 
     const where = {};
     if (status)         where.status         = status;
     if (payment_status) where.payment_status = payment_status;
     if (room_id)        where.room_id        = room_id;
 
-
     const { count, rows } = await Booking.findAndCountAll({
       where,
-      limit:  parseInt(limit),
+      limit,
       offset,
       order:  [["created_at", "DESC"]],
       include: [
@@ -445,7 +487,7 @@ export const getAdminBookings = async (req, res) => {
         license_type:          b.license_type,
         created_at:            b.created_at,
       })),
-      pagination: { total: count, page: parseInt(page), limit: parseInt(limit) },
+      pagination: { total: count, page, limit },
     });
   } catch (err) {
     console.error("Admin bookings error:", err);
@@ -460,6 +502,10 @@ export const updateBookingStatus = async (req, res) => {
   try {
     const { id }     = req.params;
     const { status } = req.body;
+
+    if (!isNonEmptyString(id, 50)) {
+      return res.status(400).json(validationError("id must be a valid booking id"));
+    }
 
     const allowed = ["CONFIRMED", "CANCELLED", "PENDING", "COMPLETED"];
     if (!allowed.includes(status)) {
@@ -516,15 +562,20 @@ export const updateBookingStatus = async (req, res) => {
 ===================================================== */
 export const getAdminPayments = async (req, res) => {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const { status } = req.query;
+    const { page, limit } = readPagination(req.query);
+    const offset = (page - 1) * limit;
+
+    if (status && !isInEnum(status, PAYMENT_STATUSES)) {
+      return res.status(400).json(validationError(`status must be one of: ${PAYMENT_STATUSES.join(', ')}`));
+    }
 
     const where = {};
     if (status) where.status = status;
 
     const { count, rows } = await Payment.findAndCountAll({
       where,
-      limit:   parseInt(limit),
+      limit,
       offset,
       order:   [["created_at", "DESC"]],
       include: [{ model: User, as: "user", attributes: ["name", "email"] }],
@@ -552,7 +603,7 @@ export const getAdminPayments = async (req, res) => {
     res.json({
       success: true,
       payments,
-      pagination: { total: count, page: parseInt(page), limit: parseInt(limit) },
+      pagination: { total: count, page, limit },
     });
   } catch (err) {
     console.error("Admin payments error:", err);
@@ -568,6 +619,9 @@ export const getAdminPayments = async (req, res) => {
 export const retryPayment = async (req, res) => {
   try {
     const { order_id } = req.params;
+    if (!isNonEmptyString(order_id, 100)) {
+      return res.status(400).json(validationError("order_id must be a valid order id"));
+    }
     const payment = await Payment.findOne({ where: { order_id } });
 
     if (!payment) {
@@ -596,15 +650,19 @@ export const retryPayment = async (req, res) => {
 ===================================================== */
 export const getDatasetLocks = async (req, res) => {
   try {
-    const { status = "ACTIVE", page = 1, limit = 20 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const status = req.query.status || "ACTIVE";
+    const { page, limit } = readPagination(req.query);
+    const offset = (page - 1) * limit;
 
-    const where = {};
-    if (status) where.status = status;
+    if (!isInEnum(status, DATASET_LOCK_STATUSES)) {
+      return res.status(400).json(validationError(`status must be one of: ${DATASET_LOCK_STATUSES.join(', ')}`));
+    }
+
+    const where = { status };
 
     const { count, rows } = await DatasetLock.findAndCountAll({
       where,
-      limit:  parseInt(limit),
+      limit,
       offset,
       order:  [["locked_at", "DESC"]],
       include: [
@@ -629,7 +687,7 @@ export const getDatasetLocks = async (req, res) => {
         expires_at: l.expires_at,
         status:     l.status,
       })),
-      pagination: { total: count, page: parseInt(page), limit: parseInt(limit) },
+      pagination: { total: count, page, limit },
     });
   } catch (err) {
     console.error("Dataset locks error:", err);

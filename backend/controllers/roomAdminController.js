@@ -1,4 +1,7 @@
 import Room from "../models/Room.js";
+import { isPositiveInt, isInEnum, validationError } from "../utils/validators.js";
+
+const ROOM_TYPES = ["OALP", "DSF", "CBM", "GENERAL"];
 
 /* ============================
    GET ALL ROOMS (ADMIN)
@@ -37,6 +40,9 @@ export const createRoom = async (req, res) => {
     if (!roomTitle) {
       return res.status(400).json({ success: false, message: "Room title required" });
     }
+    if (room_type && !isInEnum(room_type, ROOM_TYPES)) {
+      return res.status(400).json(validationError(`room_type must be one of: ${ROOM_TYPES.join(", ")}`));
+    }
 
     const toNonNegativeNumber = (value) => {
       const num = Number(value);
@@ -50,7 +56,7 @@ export const createRoom = async (req, res) => {
       hourly_rate: toNonNegativeNumber(hourly_rate),
       half_day_rate: toNonNegativeNumber(half_day_rate),
       full_day_rate: toNonNegativeNumber(full_day_rate),
-      license_type: license_type || null,
+      license_type: license_type ? String(license_type).trim().slice(0, 100) : null,
       room_type: room_type || "GENERAL",
       is_active: true,
     });
@@ -72,6 +78,9 @@ export const createRoom = async (req, res) => {
 export const deleteRoom = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!isPositiveInt(id)) {
+      return res.status(400).json(validationError("id must be a positive integer"));
+    }
     const room = await Room.findByPk(id);
 
     if (!room) {

@@ -92,21 +92,39 @@ export const blockUnsafeMethods = (req, res, next) => {
   next();
 };
 
-const hasUnsafeInput = (value, depth = 0) => {
+// Characters commonly used to build HTML/script/template-injection payloads
+// (<script>, "><img onerror=...>, {{7*7}}, etc). None of the app's free-text
+// fields (name, company, address, block/data descriptions, notification
+// reasons, ...) have a legitimate need for these, so they are rejected
+// outright rather than sanitized/escaped.
+const DANGEROUS_CHARS_RE = /[<>{}"]/;
+
+// Fields exempt from the character-level check above, because the character
+// is part of their legitimate value and the value is never rendered as HTML:
+//  - password / currentPassword / newPassword / confirmPassword: users may
+//    legitimately choose any of these characters as part of a strong
+//    password; the value is only ever hashed or bcrypt-compared server-side.
+//  - captchaAnswer: the CAPTCHA alphabet includes "?" (see utils/captcha.js).
+//  - captchaToken / any *Token / hash / signature: opaque, app-issued
+//    strings (HMAC hex digests, JWTs, ...), never user-authored free text.
+const CHAR_CHECK_EXEMPT_KEY_RE = /password|captchaanswer|token|hash|signature/i;
+
+const hasUnsafeInput = (value, depth = 0, skipCharCheck = false) => {
   if (depth > 8) return true;
   if (typeof value === "string") {
     if (value.length > 5000) return true;
     if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(value)) return true;
     if (/<\s*script\b|javascript\s*:|data\s*:\s*text\/html/i.test(value)) return true;
+    if (!skipCharCheck && DANGEROUS_CHARS_RE.test(value)) return true;
     return false;
   }
-  if (Array.isArray(value)) return value.some((item) => hasUnsafeInput(item, depth + 1));
+  if (Array.isArray(value)) return value.some((item) => hasUnsafeInput(item, depth + 1, skipCharCheck));
   if (value && typeof value === "object") {
     return Object.entries(value).some(([key, item]) => {
       if (key.length > 100 || key.includes("\0") || key.startsWith("__proto__") || key === "constructor") {
         return true;
       }
-      return hasUnsafeInput(item, depth + 1);
+      return hasUnsafeInput(item, depth + 1, CHAR_CHECK_EXEMPT_KEY_RE.test(key));
     });
   }
   return false;

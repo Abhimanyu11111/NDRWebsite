@@ -1,13 +1,29 @@
 import express from 'express';
 import sequelize from '../src/config/db.js';
+import { isOptionalBoundedString, isInEnum, validationError } from '../utils/validators.js';
 
 const router = express.Router();
+
+const BLOCK_AREAS = ['ONLAND', 'OFFSHORE'];
 
 // Search blocks with filters
 router.get('/search', async (req, res) => {
   try {
     const { q, regime, basin, block_area } = req.query;
-    
+
+    if (!isOptionalBoundedString(q, 100)) {
+      return res.status(400).json(validationError('q must be at most 100 characters'));
+    }
+    if (!isOptionalBoundedString(regime, 100)) {
+      return res.status(400).json(validationError('regime must be at most 100 characters'));
+    }
+    if (!isOptionalBoundedString(basin, 100)) {
+      return res.status(400).json(validationError('basin must be at most 100 characters'));
+    }
+    if (block_area && !isInEnum(block_area, BLOCK_AREAS)) {
+      return res.status(400).json(validationError(`block_area must be one of: ${BLOCK_AREAS.join(', ')}`));
+    }
+
     let query = `
       SELECT id, block_name, regime, basin_name, block_area, operator 
       FROM blocks 

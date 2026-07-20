@@ -3,6 +3,7 @@ import Room from "../models/Room.js";
 import User from "../models/User.js";
 import Booking from "../models/Booking.js";
 import { Op } from "sequelize";
+import { isPositiveInt, isValidDateString, validationError } from "../utils/validators.js";
 
 /**
  * Subscribe to slot availability notification
@@ -17,6 +18,15 @@ export const subscribeToSlot = async (req, res) => {
         success: false,
         message: "Room ID, start date, and end date are required",
       });
+    }
+    if (!isPositiveInt(room_id)) {
+      return res.status(400).json(validationError("room_id must be a positive integer"));
+    }
+    if (!isValidDateString(startDate) || !isValidDateString(endDate)) {
+      return res.status(400).json(validationError("startDate and endDate must be valid dates"));
+    }
+    if (new Date(startDate) > new Date(endDate)) {
+      return res.status(400).json(validationError("startDate must not be after endDate"));
     }
 
     const user = await User.findByPk(userId);
@@ -127,6 +137,10 @@ export const unsubscribe = async (req, res) => {
   try {
     const userId = req.user.id;
     const { subscription_id } = req.params;
+
+    if (!isPositiveInt(subscription_id)) {
+      return res.status(400).json(validationError("subscription_id must be a positive integer"));
+    }
 
     const notification = await Notification.findOne({
       where: { id: subscription_id, user_id: userId },

@@ -1,6 +1,7 @@
 import express from "express";
 import authMiddleware from "../middleware/auth.js";
 import { verifyAdmin } from "../middleware/adminAuth.js";
+import { requireBookingOwnership } from "../middleware/bookingAccess.js";
 import * as bookingController from "../controllers/bookingController.js";
 
 const router = express.Router();
@@ -51,10 +52,11 @@ router.get(
   bookingController.getBookingCalendar
 );
 
-// Cancel booking
+// Cancel booking (must be the owning user, or an admin)
 router.put(
   "/cancel/:booking_id",
   authMiddleware,
+  requireBookingOwnership,
   bookingController.cancelBooking
 );
 
