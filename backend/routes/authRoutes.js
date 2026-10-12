@@ -31,6 +31,8 @@ import {
 } from "../utils/passwordReset.js";
 import { getPublicKeyPem, decryptPasswordField, issueEncryptionNonce } from "../utils/passwordCrypto.js";
 import { validateRequestPayload } from "../middleware/security.js";
+import { resolveCountry, normalizePhone, normalizePostalCode } from "../utils/contactValidation.js";
+import { userLocationSchema } from "../src/config/userLocationSchema.js";
 
 const router = express.Router();
 const JWT_OPTIONS = {
@@ -102,9 +104,7 @@ const registrationOtpVerifyLimiter = rateLimit({
 });
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const phoneRegex = /^[6-9]\d{9}$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{12,}$/;
-const pincodeRegex = /^\d{6}$/;
 
 const BLOCKED_DOMAINS = [
   "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "live.com",
@@ -361,6 +361,25 @@ const upload = multer({
   },
 });
 
+// Run multer ourselves so upload errors (wrong type, too large) come back as a
+// readable 400 instead of falling through to the generic 500 handler.
+const UPLOAD_ERROR_MESSAGES = {
+  LIMIT_FILE_SIZE: "Identity certificate must be 5 MB or smaller.",
+  LIMIT_UNEXPECTED_FILE: "Please upload a single identity certificate file.",
+  LIMIT_FILE_COUNT: "Please upload a single identity certificate file.",
+};
+const SAFE_UPLOAD_ERRORS = new Set(["Invalid file name", "Only JPG, PNG, and PDF files are allowed"]);
+
+const uploadIdentityCertificate = (req, res, next) =>
+  upload.single("identity_certificate")(req, res, (err) => {
+    if (!err) return next();
+    console.error("Registration upload error:", err.code || err.message);
+    const msg =
+      UPLOAD_ERROR_MESSAGES[err.code] ||
+      (SAFE_UPLOAD_ERRORS.has(err.message) ? `${err.message}.` : "The identity certificate could not be uploaded. Please try a different file.");
+    return res.status(400).json({ success: false, msg });
+  });
+
 /* =====================================================
    ADMIN LOGIN
 ===================================================== */
@@ -446,7 +465,7 @@ router.post("/admin-login", loginLimiter, requireCaptcha, async (req, res) => {
 // only runs here, per-route. So the same check is re-applied immediately
 // after multer populates req.body, otherwise `<`, `>`, `{`, `}`, `"` etc.
 // in registration fields would silently bypass the global sanitizer.
-router.post("/register", uploadLimiter, upload.single("identity_certificate"), validateRequestPayload, async (req, res) => {
+router.post("/register", uploadLimiter, uploadIdentityCertificate, validateRequestPayload, async (req, res) => {
   const {
     name,
     email,
@@ -462,7 +481,6 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), v
   } = req.body;
   const password = decryptPasswordField(req.body.password, req.body.passwordNonceToken);
   const normalizedEmail = normalizeEmail(email);
-  const normalizedPhone = String(phone || "").replace(/\D/g, "");
 
   if (password === null) {
     return res.status(400).json({ success: false, msg: "Invalid request" });
@@ -478,12 +496,30 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), v
     return res.status(400).json({ success: false, msg: "Please use a valid official organization email address" });
   }
 
-  if (phone && !phoneRegex.test(normalizedPhone)) {
-    return res.status(400).json({ success: false, msg: "Please enter a valid 10 digit Indian mobile number" });
+  // Registration is open to every country; admins approve each applicant.
+  const country = resolveCountry(req.body.country);
+  if (!country) {
+    return res.status(400).json({ success: false, msg: "Please select a valid country" });
   }
 
-  if (pincode && !pincodeRegex.test(String(pincode).trim())) {
-    return res.status(400).json({ success: false, msg: "Please enter a valid 6 digit pincode" });
+  let normalizedPhone = null;
+  if (phone) {
+    const phoneResult = normalizePhone(country, phone);
+    if (!phoneResult.ok) {
+      return res.status(400).json({ success: false, msg: phoneResult.msg });
+    }
+    normalizedPhone = phoneResult.value;
+  }
+
+  const postalResult = normalizePostalCode(country, pincode);
+  if (!postalResult.ok) {
+    return res.status(400).json({ success: false, msg: postalResult.msg });
+  }
+  let postalCode = postalResult.value;
+  if (postalCode && postalCode.length > userLocationSchema.postalCodeMaxLength) {
+    // Only if the column could not be widened at start-up; keep the registration.
+    console.warn(`Postal code "${postalCode}" too long for users.pincode – not stored`);
+    postalCode = null;
   }
 
   if (!passwordRegex.test(password)) {
@@ -569,21 +605,23 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), v
 
     //  Insert user with approval_status = PENDING, is_active = 0
     // User cannot login until admin approves
+    const withCountry = userLocationSchema.countrySupported;
     const [result] = await sequelize.query(
       `INSERT INTO users
-        (name, email, phone, password, address, city, state, pincode,
+        (name, email, phone, password, address, city, state, pincode,${withCountry ? " country," : ""}
          id_proof_type, id_proof_number, identity_certificate, company, role, is_active, approval_status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'USER', 0, 'PENDING', NOW(), NOW())`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?,${withCountry ? " ?," : ""} ?, ?, ?, ?, 'USER', 0, 'PENDING', NOW(), NOW())`,
       {
         replacements: [
           cleanText(name, 100),
           normalizedEmail,
-          normalizedPhone || null,
+          normalizedPhone,
           hashedPassword,
           cleanText(address, 255),
           cleanText(city, 100),
           cleanText(state, 100),
-          cleanText(pincode, 6),
+          postalCode,
+          ...(withCountry ? [country.name] : []),
           cleanText(id_proof_type, 100),
           cleanText(id_proof_number, 100),
           certificatePath,
@@ -603,7 +641,7 @@ router.post("/register", uploadLimiter, upload.single("identity_certificate"), v
       {
         replacements: [
           newUserId,
-          `New registration request: ${name} (${normalizedEmail})${normalizedPhone ? ` | Phone: ${normalizedPhone}` : ""}${id_proof_type ? ` | ID: ${id_proof_type} - ${id_proof_number}` : ""}. Pending admin approval.`,
+          `New registration request: ${name} (${normalizedEmail}) | Country: ${country.name}${normalizedPhone ? ` | Phone: ${normalizedPhone}` : ""}${id_proof_type ? ` | ID: ${id_proof_type} - ${id_proof_number}` : ""}. Pending admin approval.`,
         ],
         transaction,
       }

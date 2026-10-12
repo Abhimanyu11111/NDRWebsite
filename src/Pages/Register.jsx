@@ -10,6 +10,7 @@ import {
   Eye,
   EyeOff,
   FileUp,
+  Globe,
   Hash,
   LockKeyhole,
   Mail,
@@ -24,6 +25,7 @@ import {
 } from "lucide-react";
 import styles from "../Component/Styles/Register.module.css";
 import { encryptPassword } from "../utils/passwordCrypto.js";
+import { COUNTRIES, DEFAULT_COUNTRY, findCountry } from "../utils/countries.js";
 
 const initialFormData = {
   name: "",
@@ -35,6 +37,7 @@ const initialFormData = {
   city: "",
   state: "",
   pincode: "",
+  country: DEFAULT_COUNTRY,
   id_proof_type: "",
   id_proof_number: "",
   identity_certificate: null,
@@ -88,6 +91,8 @@ function Register() {
   const navigate = useNavigate();
 
   const normalizedEmail = formData.email.trim().toLowerCase();
+  const selectedCountry = findCountry(formData.country) || findCountry(DEFAULT_COUNTRY);
+  const isIndia = selectedCountry.name === DEFAULT_COUNTRY;
   const emailVerified = Boolean(
     emailVerificationToken && verifiedEmail === normalizedEmail
   );
@@ -205,8 +210,14 @@ function Register() {
       return;
     }
 
-    if (!/^[6-9]\d{9}$/.test(formData.phone.replace(/\D/g, ""))) {
+    const phoneDigits = formData.phone.replace(/\D/g, "");
+    if (isIndia && !/^[6-9]\d{9}$/.test(phoneDigits)) {
       setError("Please enter a valid 10 digit Indian mobile number.");
+      return;
+    }
+    // Full per-country check happens on the server
+    if (!isIndia && (phoneDigits.length < 4 || phoneDigits.length > 15)) {
+      setError(`Please enter a valid phone number for ${selectedCountry.name}.`);
       return;
     }
 
@@ -234,7 +245,14 @@ function Register() {
       setSuccess(true);
       setTimeout(() => navigate("/login"), 4000);
     } catch (requestError) {
-      setError(requestError.response?.data?.msg || "Registration failed. Please try again.");
+      const { response } = requestError;
+      setError(
+        response?.data?.msg ||
+        response?.data?.message ||
+        (response
+          ? `Registration failed (error ${response.status}). Please try again or contact support.`
+          : "Could not reach the server. Please check your internet connection and try again.")
+      );
     } finally {
       setLoading(false);
     }
@@ -281,9 +299,21 @@ function Register() {
               <Field label="Email Address" required icon={Mail}>
                 <input type="email" name="email" value={formData.email} placeholder="your.email@example.com" onChange={handleChange} required />
               </Field>
+              <Field label="Country" required icon={Globe}>
+                <select name="country" value={formData.country} onChange={handleChange} required autoComplete="country-name">
+                  {COUNTRIES.map((c) => (
+                    <option key={c.name} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+                <ChevronDown className={styles.selectArrow} size={16} aria-hidden="true" />
+              </Field>
               <Field label="Phone Number" required icon={Phone}>
-                <span className={styles.phonePrefix}>+91</span>
-                <input className={styles.phoneInput} name="phone" value={formData.phone} placeholder="XXXXX XXXXX" onChange={handleChange} inputMode="numeric" pattern="[6-9][0-9]{9}" maxLength={10} required />
+                <span className={styles.phonePrefix}>+{selectedCountry.dial}</span>
+                {isIndia ? (
+                  <input className={styles.phoneInput} name="phone" value={formData.phone} placeholder="XXXXX XXXXX" onChange={handleChange} inputMode="numeric" pattern="[6-9][0-9]{9}" maxLength={10} required />
+                ) : (
+                  <input className={styles.phoneInput} name="phone" value={formData.phone} placeholder="Phone number" onChange={handleChange} inputMode="tel" maxLength={20} required />
+                )}
               </Field>
               <Field label="Password" required icon={LockKeyhole}>
                 <input type={showPassword ? "text" : "password"} name="password" value={formData.password} placeholder="Create a strong password" onChange={handleChange} minLength={12} required />
@@ -354,12 +384,18 @@ function Register() {
               <Field label="City" icon={Building2}>
                 <input name="city" value={formData.city} placeholder="Enter city" onChange={handleChange} />
               </Field>
-              <Field label="State" icon={Map}>
-                <input name="state" value={formData.state} placeholder="Enter state" onChange={handleChange} />
+              <Field label={isIndia ? "State" : "State / Province / Region"} icon={Map}>
+                <input name="state" value={formData.state} placeholder={isIndia ? "Enter state" : "Enter state, province or region"} onChange={handleChange} />
               </Field>
-              <Field label="Pincode" icon={Hash}>
-                <input name="pincode" value={formData.pincode} placeholder="6-digit pincode" onChange={handleChange} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} />
-              </Field>
+              {isIndia ? (
+                <Field label="Pincode" icon={Hash}>
+                  <input name="pincode" value={formData.pincode} placeholder="6-digit pincode" onChange={handleChange} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} />
+                </Field>
+              ) : (
+                <Field label="Postal / ZIP Code" icon={Hash}>
+                  <input name="pincode" value={formData.pincode} placeholder="Postal or ZIP code" onChange={handleChange} pattern="[A-Za-z0-9][A-Za-z0-9 \-]{1,9}" maxLength={10} title="Letters, numbers, spaces or hyphens (up to 10 characters)" />
+                </Field>
+              )}
             </div>
 
             <div className={styles.twoColumns}>

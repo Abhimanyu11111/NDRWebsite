@@ -5,6 +5,11 @@ export const BOOKING_TYPES = Object.freeze({
 
 export const EIGHT_HOUR_MINUTES = 8 * 60;
 
+// Room access is suspended 96h after first access (see bookingExpiryCron), so a
+// multi-day booking longer than this would be paid for but not usable.
+export const MAX_MULTI_DAY_DAYS = 4;
+const DAY_MINUTES = 24 * 60;
+
 export const BOOKING_DURATION_LABELS = Object.freeze({
   [BOOKING_TYPES.MULTI_DAY]: "24 Hours / Multi-day",
   [BOOKING_TYPES.EIGHT_HOUR]: "8 Hours",
@@ -46,6 +51,12 @@ export const resolveBookingWindow = ({ bookingType, startDatetime, endDatetime }
   }
 
   const durationMinutes = Math.floor((requestedEnd - start) / 60000);
+  if (durationMinutes < DAY_MINUTES) {
+    throw invalidWindow("A multi-day booking must be at least 24 hours long");
+  }
+  if (durationMinutes > MAX_MULTI_DAY_DAYS * DAY_MINUTES) {
+    throw invalidWindow(`A booking cannot be longer than ${MAX_MULTI_DAY_DAYS} days`);
+  }
   return { bookingType: type, start, end: requestedEnd, durationMinutes };
 };
 

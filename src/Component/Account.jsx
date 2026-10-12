@@ -204,6 +204,7 @@ export default function Account() {
               { label: "Full Name",     value: profile?.name },
               { label: "Email Address", value: profile?.email },
               { label: "Phone Number",  value: profile?.phone   || "N/A" },
+              { label: "Country",       value: profile?.country || "India" },
               { label: "Organisation",  value: profile?.company || "N/A" },
             ].map(({ label, value }) => (
               <div className={styles.profileItem} key={label}>

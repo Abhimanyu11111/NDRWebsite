@@ -7,7 +7,7 @@ import {
   BarChart3, Activity, Zap, AlertTriangle, X, Check, LogOut,
   ChevronLeft, ChevronRight, Search, Download, MoreHorizontal,
   Settings, User, CheckCircle, RotateCcw, UserPlus, ClipboardCheck,
-  Phone, Mail, Building, FileText
+  Phone, Mail, Building, FileText, Globe
 } from "lucide-react";
 import AdminNavbar from "/src/Component/AdminNavbar";
 import api from "../../api/axiosClient";
@@ -34,6 +34,7 @@ export default function AdminDashboard() {
   const [paymentAlerts, setPaymentAlerts] = useState([]);
   const [revenueData, setRevenueData] = useState([]);
   const [pendingRegistrations, setPendingRegistrations] = useState([]);
+  const [regCountryFilter, setRegCountryFilter] = useState("");
   const [approvingRegId, setApprovingRegId] = useState(null);
   const [rejectingRegId, setRejectingRegId] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -304,6 +305,14 @@ export default function AdminDashboard() {
   }, []);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  // Registrations from before the country field existed are Indian
+  const registrationCountries = [...new Set(pendingRegistrations.map((u) => u.country || "India"))].sort();
+  // Ignore a filter whose country has no pending registrations left
+  const activeRegCountry = registrationCountries.includes(regCountryFilter) ? regCountryFilter : "";
+  const visibleRegistrations = activeRegCountry
+    ? pendingRegistrations.filter((u) => (u.country || "India") === activeRegCountry)
+    : pendingRegistrations;
 
   const filteredBookings = recentBookings.filter((b) => {
     if (bookingFilter !== "ALL" && b.status !== bookingFilter) return false;
@@ -582,6 +591,19 @@ export default function AdminDashboard() {
                 <UserPlus size={20} style={{ marginRight: 8, color: "#3b82f6" }} />
                 Pending Registration Requests
                 <span style={styles.countBadge}>{pendingRegistrations.length}</span>
+                {registrationCountries.length > 1 && (
+                  <select
+                    value={activeRegCountry}
+                    onChange={(e) => setRegCountryFilter(e.target.value)}
+                    aria-label="Filter registrations by country"
+                    style={styles.regCountrySelect}
+                  >
+                    <option value="">All countries</option>
+                    {registrationCountries.map((c) => (
+                      <option key={c} value={c}>{c} ({pendingRegistrations.filter((u) => (u.country || "India") === c).length})</option>
+                    ))}
+                  </select>
+                )}
               </h2>
               <div style={styles.registrationTableWrap}>
                 <table style={styles.registrationTable}>
@@ -598,7 +620,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {pendingRegistrations.map((u) => (
+                    {visibleRegistrations.map((u) => (
                       <tr key={u.id} style={styles.regTableRow}>
                         <td style={styles.regTd}>
                           <div style={styles.regApplicant}>
@@ -622,6 +644,7 @@ export default function AdminDashboard() {
                           <div style={styles.regCellStack}>
                             <span style={styles.regPrimaryText}>{u.address || "—"}</span>
                             <span style={styles.regSecondaryText}>{[u.city, u.state, u.pincode].filter(Boolean).join(", ") || "Location not provided"}</span>
+                            <span style={styles.regIconText}><Globe size={13} />{u.country || "India"}</span>
                           </div>
                         </td>
                         <td style={styles.regTd}>
@@ -1240,6 +1263,7 @@ const styles = {
   sectionTitle: { fontSize: 18, fontWeight: 700, color: "#0f172a", marginBottom: 18, display: "flex", alignItems: "center" },
   sectionRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 12 },
   countBadge: { marginLeft: 10, background: "#3b82f6", color: "white", fontSize: 12, fontWeight: 700, padding: "2px 10px", borderRadius: 12 },
+  regCountrySelect: { marginLeft: "auto", padding: "6px 10px", fontSize: 13, fontWeight: 500, color: "#334155", border: "1px solid #cbd5e1", borderRadius: 8, background: "white", cursor: "pointer" },
 
   registrationTableWrap: { background: "white", borderRadius: 14, border: "1px solid #e2e8f0", overflowX: "auto", boxShadow: "0 2px 8px rgba(15, 23, 42, 0.05)" },
   registrationTable: { width: "100%", minWidth: 1380, borderCollapse: "collapse" },

@@ -1,4 +1,5 @@
 import sequelize from "../src/config/db.js";
+import { userLocationSchema } from "../src/config/userLocationSchema.js";
 
 /**
  * GET ALL USERS (Admin)
@@ -14,7 +15,7 @@ export const getAllUsersAdmin = async (req, res) => {
         phone,
         role,
         is_active,
-        company,
+        company,${userLocationSchema.countrySupported ? "\n        country," : ""}
         created_at
       FROM users
       ORDER BY id DESC

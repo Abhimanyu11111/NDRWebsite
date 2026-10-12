@@ -2,10 +2,12 @@
 .calendarWrapper {
   max-width: 100%;
   margin: 0 auto;
-  padding: 15px;
+  padding: 1.5rem;
+  box-sizing: border-box;
   background: white;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 /* Header */
@@ -23,9 +25,9 @@
 }
 
 .calendarTitle {
-  font-size: 1.3rem;
-  font-weight: 600;
-  color: #1f2937;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0f172a;
   margin: 0 0 4px 0;
 }
 
@@ -54,10 +56,10 @@
 /* Legend - Compact */
 .legend {
   display: flex;
-  gap: 10px;
+  gap: 8px 16px;
   flex-wrap: wrap;
-  margin-bottom: 10px;
-  padding: 8px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
   background: #f9fafb;
   border-radius: 6px;
 }
@@ -65,8 +67,9 @@
 .legendItem {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   font-size: 0.75rem;
+  color: #475569;
 }
 
 .legendBox {
@@ -82,7 +85,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
-  padding: 6px;
+  padding: 6px 8px;
   background: #f3f4f6;
   border-radius: 6px;
 }
@@ -101,6 +104,8 @@
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
   transition: all 0.2s;
 }
 
@@ -168,8 +173,9 @@
 }
 
 .dateDay {
-  font-size: 0.55rem;
+  font-size: 0.6rem;
   font-weight: 500;
+  opacity: 0.85;
   line-height: 1;
 }
 
@@ -212,14 +218,8 @@
   min-width: 28px;
   max-width: 28px;
   height: 32px;
-  transition: all 0.2s;
+  transition: box-shadow 0.15s;
   cursor: default;
-}
-
-.dateCell:hover {
-  transform: scale(1.15);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  z-index: 3;
 }
 
 /* STATUS COLORS */
@@ -259,9 +259,9 @@
   font-weight: 700;
 }
 
+/* Outline instead of scaling - scaling a table cell shifts the layout */
 .hovered {
-  transform: scale(1.2);
-  z-index: 4;
+  box-shadow: inset 0 0 0 2px #1e40af;
 }
 
 /* Holiday Indicator - ONLY H */
@@ -284,7 +284,7 @@
 
 /* Footer - Updated */
 .calendarFooter {
-  margin-top: 10px;
+  margin-top: 12px;
   padding: 8px;
   background: #eff6ff;
   border-radius: 6px;
@@ -339,4 +339,8 @@
     height: 28px;
     padding: 6px 1px;
   }
+}
+
+.selectable {
+  cursor: pointer;
 }

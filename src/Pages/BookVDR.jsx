@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import axios from "../api/axiosClient";
+import { startPayment } from "../api/ccavenue";
 import styles from "../Component/Styles/BookVDR.module.css";
 import AvailabilityCalendar from "./AvailabilityCalendar";
 import SearchableBlockDropdown from '../Component/SearchableBlockDropdown';
@@ -18,6 +19,11 @@ const MONTHS = [
 const DAYS_SHORT = ["S", "M", "T", "W", "T", "F", "S"];
 
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
+
+// Keep in sync with backend/utils/bookingRules.js and bookingDuration.js
+const MIN_ADVANCE_DAYS = 3;
+const MAX_ADVANCE_DAYS = 90;
+const MAX_MULTI_DAY_DAYS = 4;
 
 //  License Types
 const LICENSE_TYPES = [
@@ -38,11 +44,27 @@ const ROOM_TYPES = [
 ];
 
 /* ====================== HELPERS ====================== */
+// Calendar dates (startDate/endDate) are plain local dates used only for the
+// picker. They are converted to exact IST instants before any comparison with
+// bookings or any request to the backend.
 const sameDay = (a, b) =>
   a && b &&
   a.getFullYear() === b.getFullYear() &&
   a.getMonth() === b.getMonth() &&
   a.getDate() === b.getDate();
+
+const addDays = (date, days) => {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+};
+
+// Whole calendar days from a to b (DST-safe)
+const dayDiff = (a, b) =>
+  Math.round(
+    (Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()) -
+      Date.UTC(a.getFullYear(), a.getMonth(), a.getDate())) / 86400000
+  );
 
 const formatDisplay = (d) => {
   if (!d) return null;
@@ -72,6 +94,17 @@ const formatIndiaTime = (date) =>
     minute: "2-digit",
   });
 
+const formatIndiaDate = (date) =>
+  date?.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+const formatINR = (amount) =>
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
+
 // Uses the browser/device clock and displays that instant in the booking timezone.
 const getCurrentIndiaTimeValue = (now = new Date()) => {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -85,10 +118,16 @@ const getCurrentIndiaTimeValue = (now = new Date()) => {
   return `${hour}:${minute}`;
 };
 
+const clearSession = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("refreshToken");
+  sessionStorage.clear();
+};
+
 /* ====================== MINI CALENDAR ====================== */
 function MiniCalendar({
-  viewYear, viewMonth, minDate, checkIn, checkOut,
-  onDayClick, onPrev, onNext, isPrevDisabled, hoverDate, onDayHover,
+  viewYear, viewMonth, startDate, endDate, hoverDate, isDisabled,
+  onDayClick, onPrev, onNext, isPrevDisabled, isNextDisabled, onDayHover,
 }) {
   const firstDay = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -104,12 +143,9 @@ function MiniCalendar({
   for (let d = 1; d <= trailing; d++)
     cells.push({ date: new Date(viewYear, viewMonth + 1, d), overflow: true });
 
-  const isInRange = (date) => {
-    if (!checkIn || !date) return false;
-    const end = checkOut || hoverDate;
-    if (!end) return false;
-    return date >= checkIn && date <= end;
-  };
+  const rangeEnd = endDate || hoverDate;
+  const isInRange = (date) =>
+    !!startDate && !!rangeEnd && date >= startDate && date <= rangeEnd;
 
   return (
     <div className={styles.miniCal}>
@@ -118,7 +154,6 @@ function MiniCalendar({
           <span className={styles.calMonthTitle}>
             {MONTHS[viewMonth].slice(0, 3)} {viewYear}
           </span>
-          <span className={styles.calDropArrow}>∨</span>
         </div>
         <div className={styles.calNavBtns}>
           <button
@@ -126,11 +161,14 @@ function MiniCalendar({
             onClick={(e) => { e.stopPropagation(); onPrev(); }}
             disabled={isPrevDisabled}
             type="button"
+            aria-label="Previous month"
           >‹</button>
           <button
             className={styles.calNavBtn}
             onClick={(e) => { e.stopPropagation(); onNext(); }}
+            disabled={isNextDisabled}
             type="button"
+            aria-label="Next month"
           >›</button>
         </div>
       </div>
@@ -141,9 +179,9 @@ function MiniCalendar({
         ))}
 
         {cells.map(({ date, overflow }, idx) => {
-          const disabled = overflow || date < minDate;
-          const isStart = !overflow && checkIn && sameDay(date, checkIn);
-          const isEnd = !overflow && checkOut && sameDay(date, checkOut);
+          const disabled = overflow || isDisabled(date);
+          const isStart = !overflow && sameDay(date, startDate);
+          const isEnd = !overflow && sameDay(date, endDate);
           const inRange = !overflow && isInRange(date);
           const isToday = !overflow && sameDay(date, new Date());
 
@@ -165,9 +203,9 @@ function MiniCalendar({
               className={cls}
               onClick={(e) => {
                 e.stopPropagation();
-                if (!overflow && !disabled) onDayClick(date);
+                if (!disabled) onDayClick(date);
               }}
-              onMouseEnter={() => !overflow && !disabled && onDayHover(date)}
+              onMouseEnter={() => !disabled && onDayHover(date)}
             >
               {date.getDate()}
             </div>
@@ -213,19 +251,23 @@ export default function BookVDR() {
   const [roomType, setRoomType] = useState("GENERAL");
   const [blockNames, setBlockNames] = useState([]);
 
-  // Calendar -  FIX: Initialize with default values
-  const [checkIn, setCheckIn] = useState(null);
-  const [checkOut, setCheckOut] = useState(null);
+  // Calendar selection (local calendar dates; see helpers note)
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
   const [calOpen, setCalOpen] = useState(false);
   const [selectingFor, setSelectingFor] = useState("checkin");
   const [hoverDate, setHoverDate] = useState(null);
+  const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
+  const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
 
-  //  FIX: Initialize with current date values
-  const today = new Date();
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [bookingsByRoom, setBookingsByRoom] = useState({});
+  const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [holidays, setHolidays] = useState([]);
 
-  const [calendarBookings, setCalendarBookings] = useState([]);
+  const [preview, setPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+
   const [weekendNotice, setWeekendNotice] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
@@ -237,13 +279,20 @@ export default function BookVDR() {
   const inactivityTimerRef = useRef(null);
   const warningTimerRef = useRef(null);
 
-  /* --- Min bookable date: today + 3 days --- */
-  const minDate = React.useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() + 3);
-    return d;
+  /* --- Bookable range: today + 3 days ... today + 90 days --- */
+  const { minDate, maxDate } = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return {
+      minDate: addDays(today, MIN_ADVANCE_DAYS),
+      maxDate: addDays(today, MAX_ADVANCE_DAYS),
+    };
   }, []);
+
+  const holidayMap = useMemo(
+    () => new Map(holidays.map((h) => [h.date, h.name])),
+    [holidays]
+  );
 
   /* --- Init view month --- */
   useEffect(() => {
@@ -264,20 +313,33 @@ export default function BookVDR() {
     fetchProfile();
   }, []);
 
+  /* --- Fetch government holidays --- */
+  useEffect(() => {
+    const fetchHolidays = async () => {
+      try {
+        const res = await axios.get("/booking/holidays");
+        setHolidays(res.data.holidays || []);
+      } catch (err) {
+        console.error("Holiday fetch error:", err);
+      }
+    };
+    fetchHolidays();
+  }, []);
+
+  /* --- Logout --- */
+  const logout = useCallback(async (message) => {
+    try {
+      await axios.post("/auth/logout");
+    } catch {
+      // Continue client-side logout even if the session is already expired.
+    }
+    clearSession();
+    if (message) alert(message);
+    window.location.replace("/login");
+  }, []);
+
   /* --- Auto logout --- */
   useEffect(() => {
-    const handleLogout = async () => {
-      try {
-        await axios.post("/auth/logout");
-      } catch {
-        // Continue client-side logout even if the session is already expired.
-      }
-      localStorage.removeItem("token");
-      localStorage.removeItem("refreshToken");
-      sessionStorage.clear();
-      alert("You have been logged out due to inactivity.");
-      window.location.replace("/login");
-    };
     const showWarning = () => {
       const ok = window.confirm(
         "You've been inactive for 25 minutes. Click OK to stay logged in."
@@ -288,7 +350,10 @@ export default function BookVDR() {
       clearTimeout(inactivityTimerRef.current);
       clearTimeout(warningTimerRef.current);
       warningTimerRef.current = setTimeout(showWarning, 25 * 60 * 1000);
-      inactivityTimerRef.current = setTimeout(handleLogout, INACTIVITY_TIMEOUT);
+      inactivityTimerRef.current = setTimeout(
+        () => logout("You have been logged out due to inactivity."),
+        INACTIVITY_TIMEOUT
+      );
     };
     const events = ["mousedown", "mousemove", "keypress", "scroll", "touchstart", "click"];
     events.forEach((e) => document.addEventListener(e, resetTimer));
@@ -298,6 +363,28 @@ export default function BookVDR() {
       clearTimeout(inactivityTimerRef.current);
       clearTimeout(warningTimerRef.current);
     };
+  }, [logout]);
+
+  /* --- Bookings for all rooms (feeds both calendars and the overlap check) --- */
+  const loadBookings = useCallback(async (roomList) => {
+    if (!roomList.length) {
+      setBookingsLoading(false);
+      return;
+    }
+    setBookingsLoading(true);
+    const entries = await Promise.all(
+      roomList.map(async (room) => {
+        try {
+          const res = await axios.get(`/booking/calendar?room_id=${room.id}`);
+          return [String(room.id), res.data.bookings || []];
+        } catch (err) {
+          console.error(`Failed to load bookings for room ${room.id}:`, err);
+          return [String(room.id), []];
+        }
+      })
+    );
+    setBookingsByRoom(Object.fromEntries(entries));
+    setBookingsLoading(false);
   }, []);
 
   /* --- Fetch rooms --- */
@@ -307,38 +394,32 @@ export default function BookVDR() {
         const res = await axios.get("/rooms");
         const fetchedRooms = res.data.rooms || [];
         setRooms(fetchedRooms);
-        if (fetchedRooms.length) {
-          setRoomId(fetchedRooms[0].id);
-          setLicenseType(extractLicense(fetchedRooms[0]));
-        }
+        if (fetchedRooms.length) setRoomId(String(fetchedRooms[0].id));
+        loadBookings(fetchedRooms);
       } catch (err) {
         console.error("Failed to fetch rooms:", err);
         setError("Failed to load rooms. Please refresh the page.");
+        setBookingsLoading(false);
       }
     };
     fetchRooms();
-  }, []);
+  }, [loadBookings]);
+
+  /* --- Refresh availability when the user comes back to the tab --- */
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && rooms.length) loadBookings(rooms);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [rooms, loadBookings]);
+
+  const selectedRoom = rooms.find((r) => String(r.id) === String(roomId));
 
   /* --- Auto-fill license type on room change --- */
   useEffect(() => {
-    if (!roomId || !rooms.length) return;
-    const selectedRoom = rooms.find((r) => String(r.id) === String(roomId));
     setLicenseType(extractLicense(selectedRoom));
-  }, [roomId, rooms]);
-
-  /* --- Fetch calendar bookings --- */
-  const fetchCalendar = useCallback(async (room_id) => {
-    const res = await axios.get(`/booking/calendar?room_id=${room_id}`);
-    setCalendarBookings(res.data.bookings || []);
-  }, []);
-
-  useEffect(() => {
-    if (!roomId) return;
-    const load = async () => {
-      await fetchCalendar(roomId);
-    };
-    load();
-  }, [roomId, fetchCalendar]);
+  }, [selectedRoom]);
 
   /* --- Close calendar on outside click --- */
   useEffect(() => {
@@ -351,6 +432,49 @@ export default function BookVDR() {
     return () => document.removeEventListener("click", handler);
   }, []);
 
+  // Keep the automatic start time current while the user has not picked one.
+  useEffect(() => {
+    if (durationType !== "EIGHT_HOUR" || !useDeviceTime) return undefined;
+    const timer = window.setInterval(
+      () => setEightHourStartTime(getCurrentIndiaTimeValue()),
+      30 * 1000
+    );
+    return () => window.clearInterval(timer);
+  }, [durationType, useDeviceTime]);
+
+  /* --- Exact booking window (IST instants) --- */
+  const bookingWindow = useMemo(() => {
+    if (!startDate) return null;
+    if (durationType === "EIGHT_HOUR") {
+      const start = buildIndiaDateTime(startDate, eightHourStartTime);
+      return { start, end: addHours(start, 8) };
+    }
+    if (!endDate) return null;
+    // "To" date is inclusive: access runs until midnight IST after it.
+    return {
+      start: buildIndiaDateTime(startDate, "00:00"),
+      end: buildIndiaDateTime(addDays(endDate, 1), "00:00"),
+    };
+  }, [startDate, endDate, durationType, eightHourStartTime]);
+
+  const totalDays =
+    durationType === "MULTI_DAY" && startDate && endDate
+      ? dayDiff(startDate, endDate) + 1
+      : null;
+
+  /* --- Date rules for the picker --- */
+  const isStartDisabled = useCallback(
+    (date) => date < minDate || date > maxDate || holidayMap.has(toDateKey(date)),
+    [minDate, maxDate, holidayMap]
+  );
+
+  const isDayDisabled = (date) => {
+    if (durationType === "MULTI_DAY" && selectingFor === "checkout" && startDate && date >= startDate) {
+      return dayDiff(startDate, date) + 1 > MAX_MULTI_DAY_DAYS;
+    }
+    return isStartDisabled(date);
+  };
+
   /* --- Duration change: reset dates --- */
   const handleDurationChange = (val) => {
     setDurationType(val);
@@ -358,70 +482,32 @@ export default function BookVDR() {
       setEightHourStartTime(getCurrentIndiaTimeValue());
       setUseDeviceTime(true);
     }
-    setCheckIn(null);
-    setCheckOut(null);
+    setStartDate(null);
+    setEndDate(null);
+    setSelectingFor("checkin");
     setCalOpen(false);
     setError("");
   };
 
-  const setEightHourWindow = (date, time = eightHourStartTime) => {
-    const start = buildIndiaDateTime(date, time);
-    setCheckIn(start);
-    setCheckOut(addHours(start, 8));
-    setSelectingFor("checkin");
-    setCalOpen(false);
-  };
-
   const handleEightHourTimeChange = (event) => {
-    const time = event.target.value;
     setUseDeviceTime(false);
-    setEightHourStartTime(time);
-    if (checkIn) setEightHourWindow(checkIn, time);
+    setEightHourStartTime(event.target.value);
   };
 
   const syncWithDeviceTime = () => {
-    const currentTime = getCurrentIndiaTimeValue();
     setUseDeviceTime(true);
-    setEightHourStartTime(currentTime);
-    if (checkIn) setEightHourWindow(checkIn, currentTime);
+    setEightHourStartTime(getCurrentIndiaTimeValue());
   };
-
-  // Keep the automatic value current while the user has not selected a custom time.
-  useEffect(() => {
-    if (durationType !== "EIGHT_HOUR" || !useDeviceTime) return undefined;
-
-    const sync = () => {
-      const currentTime = getCurrentIndiaTimeValue();
-      setEightHourStartTime(currentTime);
-      if (checkIn) {
-        const start = buildIndiaDateTime(checkIn, currentTime);
-        if (start.getTime() !== checkIn.getTime()) {
-          setCheckIn(start);
-          setCheckOut(addHours(start, 8));
-        }
-      }
-    };
-
-    sync();
-    const timer = window.setInterval(sync, 30 * 1000);
-    return () => window.clearInterval(timer);
-  }, [durationType, useDeviceTime, checkIn]);
 
   /* --- Open calendar for checkin or checkout --- */
   const openCal = (for_, e) => {
     if (e) e.stopPropagation();
     setSelectingFor(for_);
+    setHoverDate(null);
     setCalOpen(true);
-    if (for_ === "checkout" && checkOut) {
-      setViewYear(checkOut.getFullYear());
-      setViewMonth(checkOut.getMonth());
-    } else if (for_ === "checkin" && checkIn) {
-      setViewYear(checkIn.getFullYear());
-      setViewMonth(checkIn.getMonth());
-    } else {
-      setViewYear(minDate.getFullYear());
-      setViewMonth(minDate.getMonth());
-    }
+    const focus = (for_ === "checkout" ? endDate || startDate : startDate) || minDate;
+    setViewYear(focus.getFullYear());
+    setViewMonth(focus.getMonth());
     setTimeout(() => {
       calDropdownRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }, 80);
@@ -429,16 +515,20 @@ export default function BookVDR() {
 
   /* --- Day click logic --- */
   const handleDayClick = (date) => {
+    setError("");
     if (durationType === "EIGHT_HOUR") {
-      setEightHourWindow(date);
+      setStartDate(date);
+      setEndDate(null);
+      setCalOpen(false);
       return;
     }
-    if (selectingFor === "checkin" || !checkIn || date <= checkIn) {
-      setCheckIn(date);
-      setCheckOut(null);
+    if (selectingFor === "checkin" || !startDate || date < startDate) {
+      setStartDate(date);
+      setEndDate(null);
       setSelectingFor("checkout");
     } else {
-      setCheckOut(date);
+      setEndDate(date);
+      setHoverDate(null);
       setCalOpen(false);
     }
   };
@@ -452,100 +542,125 @@ export default function BookVDR() {
     if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
     else setViewMonth(m => m + 1);
   };
+  const lastSelectable = addDays(maxDate, MAX_MULTI_DAY_DAYS - 1);
   const isPrevDisabled =
-    viewYear === minDate.getFullYear() && viewMonth <= minDate.getMonth();
+    viewYear * 12 + viewMonth <= minDate.getFullYear() * 12 + minDate.getMonth();
+  const isNextDisabled =
+    viewYear * 12 + viewMonth >= lastSelectable.getFullYear() * 12 + lastSelectable.getMonth();
 
-  /* --- Slot blocked check --- */
-  const isDateRangeBlocked = () => {
-    if (!checkIn || !checkOut) return false;
-    return calendarBookings.some(
+  /* --- Overlap with existing bookings for the selected room --- */
+  const isDateRangeBlocked = useMemo(() => {
+    if (!bookingWindow) return false;
+    return (bookingsByRoom[String(roomId)] || []).some(
       (b) =>
-        new Date(b.start_datetime) < checkOut &&
-        new Date(b.end_datetime) > checkIn
+        new Date(b.start_datetime) < bookingWindow.end &&
+        new Date(b.end_datetime) > bookingWindow.start
     );
-  };
+  }, [bookingWindow, bookingsByRoom, roomId]);
 
-  /* --- Booking summary values --- */
-  const diffDays =
-    durationType === "MULTI_DAY" && checkIn && checkOut
-      ? Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24))
-      : null;
-
-  /* --- Pricing --- */
-  const selectedRoom = rooms.find((r) => String(r.id) === String(roomId));
-  const pricePerDay = selectedRoom ? (parseFloat(selectedRoom.full_day_rate) || 5000) : 5000;
-  const hourlyRate = selectedRoom ? parseFloat(selectedRoom.hourly_rate) || 0 : 0;
-  const eightHourPrice = hourlyRate > 0 ? hourlyRate * 8 : pricePerDay / 3;
-  const totalPrice = durationType === "EIGHT_HOUR"
-    ? (checkIn && checkOut ? eightHourPrice : null)
-    : (diffDays ? diffDays * pricePerDay : null);
-
-  const formatINR = (amount) =>
-    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
-
-  const formatSummaryDates = (start, end) => {
-    if (!start || !end) return "";
-    if (durationType === "EIGHT_HOUR") {
-      return `${formatFull(start)}, ${formatIndiaTime(start)} - ${formatIndiaTime(end)}`;
+  /* --- Server-side price & rule preview (single source of truth) --- */
+  useEffect(() => {
+    if (!roomId || !bookingWindow) {
+      setPreview(null);
+      setPreviewError("");
+      setPreviewLoading(false);
+      return undefined;
     }
-    const s = start.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    const e = end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    return `${s} - ${e}`;
+    let cancelled = false;
+    setPreviewLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await axios.post("/booking/preview", {
+          room_id: Number(roomId),
+          bookingType: durationType,
+          start_datetime: bookingWindow.start.toISOString(),
+          end_datetime: bookingWindow.end.toISOString(),
+        });
+        if (!cancelled) {
+          setPreview(res.data.preview);
+          setPreviewError("");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setPreview(null);
+          setPreviewError(err.response?.data?.message || "Could not calculate the price. Please try again.");
+        }
+      } finally {
+        if (!cancelled) setPreviewLoading(false);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [roomId, durationType, bookingWindow]);
+
+  const pricing = preview?.pricing;
+  const totalPrice = pricing ? Number(pricing.estimatedTotal) : null;
+  const surcharge = pricing ? Number(pricing.workingDaySurcharge) : 0;
+  const priceMissing = !!pricing && !(Number(pricing.roomPrice) > 0);
+  const ruleWarnings = preview?.validationWarnings || [];
+  const needsWeekendNotice = !!preview?.hasWeekend;
+  const weekendNoticeMissing = needsWeekendNotice && !weekendNotice.trim();
+
+  const canProceed =
+    !!bookingWindow && !!preview && !previewLoading && !previewError &&
+    !isDateRangeBlocked && !priceMissing && ruleWarnings.length === 0 &&
+    !weekendNoticeMissing && !!roomType && !creating;
+
+  const formatSummaryDates = () => {
+    if (!bookingWindow) return "";
+    if (durationType === "EIGHT_HOUR") {
+      const { start, end } = bookingWindow;
+      const endDay = formatIndiaDate(end);
+      const sameIndiaDay = endDay === formatIndiaDate(start);
+      return `${formatIndiaDate(start)}, ${formatIndiaTime(start)} – ${sameIndiaDay ? "" : `${endDay}, `}${formatIndiaTime(end)} IST`;
+    }
+    return `${formatFull(startDate)} – ${formatFull(endDate)}`;
   };
 
-  const isReady = checkIn && checkOut && !isDateRangeBlocked() && roomType;
+  /* --- Selectable cells in the availability calendar --- */
+  const isSelectableDate = useCallback((date) => !isStartDisabled(date), [isStartDisabled]);
 
   /* --- Handle date selection from availability calendar --- */
-  const handleDateSelectFromCalendar = (selection) => {
-    setRoomId(selection.room.id);
-    const selectedDate = new Date(selection.date);
-    if (durationType === "EIGHT_HOUR") {
-      setEightHourWindow(selectedDate);
-    } else {
-      setCheckIn(selectedDate);
-      setCheckOut(null);
-      setSelectingFor("checkout");
-    }
-    if (bookingFormRef.current) {
-      bookingFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+  const handleDateSelectFromCalendar = ({ room, date }) => {
+    setRoomId(String(room.id));
+    setError("");
+    setStartDate(date);
+    setEndDate(null);
+    setSelectingFor(durationType === "MULTI_DAY" ? "checkout" : "checkin");
+    setViewYear(date.getFullYear());
+    setViewMonth(date.getMonth());
+    bookingFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   /* --- Create booking --- */
   const createBooking = async () => {
-    if (!isReady) return;
+    if (!canProceed) return;
     setCreating(true);
     setError("");
+    let bookingId = null;
     try {
       const bookingRes = await axios.post("/booking/create", {
-        room_id: roomId,
+        room_id: Number(roomId),
         bookingType: durationType,
-        start_datetime: checkIn.toISOString(),
-        end_datetime: checkOut.toISOString(),
-        weekendNotice,
+        start_datetime: bookingWindow.start.toISOString(),
+        end_datetime: bookingWindow.end.toISOString(),
+        weekendNotice: needsWeekendNotice ? weekendNotice.trim() : "",
         license_type: licenseType,
         room_type: roomType,
         block_name: blockNames.join(', '),
       });
-      const bookingId = bookingRes.data.booking_id;
-      const paymentRes = await axios.post("/payment/initiate", { booking_id: bookingId });
-      if (paymentRes.data.success) {
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = paymentRes.data.paymentUrl;
-        const enc = document.createElement("input");
-        enc.type = "hidden"; enc.name = "encRequest";
-        enc.value = paymentRes.data.encRequest;
-        form.appendChild(enc);
-        const ac = document.createElement("input");
-        ac.type = "hidden"; ac.name = "access_code";
-        ac.value = paymentRes.data.accessCode;
-        form.appendChild(ac);
-        document.body.appendChild(form);
-        form.submit();
-      }
+      bookingId = bookingRes.data.booking_id;
+      await startPayment(bookingId);
+      // Browser is navigating to the gateway; keep the button disabled.
     } catch (err) {
-      setError(err.response?.data?.message || "Booking failed");
+      if (bookingId) {
+        // Payment never started – release the hold so the slot (and a retry) is free.
+        axios.put(`/booking/cancel/${encodeURIComponent(bookingId)}`).catch(() => {});
+      }
+      if (err.response?.status === 409) loadBookings(rooms);
+      setError(err.response?.data?.message || err.message || "Booking failed");
       setCreating(false);
     }
   };
@@ -574,7 +689,7 @@ export default function BookVDR() {
               </p>
             </div>
           </div>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <div className={styles.headerActions}>
             <button
               className={styles.btnAccount}
               onClick={() => (window.location.href = "/account")}
@@ -587,15 +702,7 @@ export default function BookVDR() {
             </button>
             <button
               className={styles.btnLogout}
-              onClick={async () => {
-                try {
-                  await axios.post("/auth/logout");
-                } catch {
-                  // Continue client-side logout even if the session is already expired.
-                }
-                localStorage.removeItem("token");
-                window.location.replace("/login");
-              }}
+              onClick={() => logout()}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -610,7 +717,14 @@ export default function BookVDR() {
 
       {/* AVAILABILITY CALENDAR */}
       <div className={styles.availabilitySection}>
-        <AvailabilityCalendar onDateSelect={handleDateSelectFromCalendar} />
+        <AvailabilityCalendar
+          rooms={rooms}
+          bookingsByRoom={bookingsByRoom}
+          loading={bookingsLoading}
+          holidays={holidays}
+          isSelectableDate={isSelectableDate}
+          onDateSelect={handleDateSelectFromCalendar}
+        />
       </div>
 
       {/* BOOKING FORM SECTION */}
@@ -651,8 +765,8 @@ export default function BookVDR() {
                   className={`${styles.dateRangeInput} ${calOpen && selectingFor === "checkin" ? styles.dateRangeInputActive : ""}`}
                   onClick={(e) => openCal("checkin", e)}
                 >
-                  <span className={checkIn ? styles.dateRangeValue : styles.dateRangePlaceholder}>
-                    {checkIn ? formatDisplay(checkIn) : "Select Date"}
+                  <span className={startDate ? styles.dateRangeValue : styles.dateRangePlaceholder}>
+                    {startDate ? formatDisplay(startDate) : "Select Date"}
                   </span>
                   <svg className={styles.calIconSvg} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -664,14 +778,14 @@ export default function BookVDR() {
                 <span className={styles.fromToText}>{durationType === "EIGHT_HOUR" ? "Ends" : "To"}</span>
                 <div
                   className={`${styles.dateRangeInput} ${durationType === "MULTI_DAY" && calOpen && selectingFor === "checkout" ? styles.dateRangeInputActive : ""} ${durationType === "EIGHT_HOUR" ? styles.dateRangeInputReadonly : ""}`}
-                  onClick={(e) => { if (durationType === "MULTI_DAY" && checkIn) openCal("checkout", e); }}
+                  onClick={(e) => { if (durationType === "MULTI_DAY" && startDate) openCal("checkout", e); }}
                 >
-                  <span className={checkOut ? styles.dateRangeValue : styles.dateRangePlaceholder}>
-                    {checkOut
-                      ? durationType === "EIGHT_HOUR"
-                        ? `${formatDisplay(checkOut)} ${formatIndiaTime(checkOut)}`
-                        : formatDisplay(checkOut)
-                      : durationType === "EIGHT_HOUR" ? "Auto-calculated" : "Select Date"}
+                  <span className={(durationType === "EIGHT_HOUR" ? bookingWindow : endDate) ? styles.dateRangeValue : styles.dateRangePlaceholder}>
+                    {durationType === "EIGHT_HOUR"
+                      ? bookingWindow
+                        ? `${formatIndiaDate(bookingWindow.end)} ${formatIndiaTime(bookingWindow.end)}`
+                        : "Auto-calculated"
+                      : endDate ? formatDisplay(endDate) : "Select Date"}
                   </span>
                   <svg className={styles.calIconSvg} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -690,19 +804,26 @@ export default function BookVDR() {
                     <MiniCalendar
                       viewYear={viewYear}
                       viewMonth={viewMonth}
-                      minDate={minDate}
-                      checkIn={checkIn}
-                      checkOut={checkOut}
-                      hoverDate={hoverDate}
+                      startDate={startDate}
+                      endDate={durationType === "MULTI_DAY" ? endDate : null}
+                      hoverDate={durationType === "MULTI_DAY" && selectingFor === "checkout" ? hoverDate : null}
+                      isDisabled={isDayDisabled}
                       onDayClick={handleDayClick}
                       onDayHover={setHoverDate}
                       onPrev={prevMonth}
                       onNext={nextMonth}
                       isPrevDisabled={isPrevDisabled}
+                      isNextDisabled={isNextDisabled}
                     />
                   </div>
                 )}
               </div>
+
+              <p className={styles.fieldHint}>
+                Bookings open {MIN_ADVANCE_DAYS}–{MAX_ADVANCE_DAYS} days ahead
+                {durationType === "MULTI_DAY" && <>, up to {MAX_MULTI_DAY_DAYS} days (both dates included)</>}.
+                {" "}Government holidays can’t be a start date.
+              </p>
 
               {durationType === "EIGHT_HOUR" && (
                 <div className={styles.timeSelection}>
@@ -727,21 +848,18 @@ export default function BookVDR() {
             </div>
 
             {/* Duration info */}
-            {durationType === "EIGHT_HOUR" && checkIn && checkOut && (
+            {bookingWindow && (
               <div className={styles.durationInfo}>
-                <strong>8 Hours</strong> &nbsp;·&nbsp;
-                {formatFull(checkIn)}, {formatIndiaTime(checkIn)} → {formatIndiaTime(checkOut)} IST
-                {isDateRangeBlocked() && (
-                  <span className={styles.blockedWarning}> &nbsp; This time overlaps with an existing booking</span>
-                )}
-              </div>
-            )}
-            {durationType === "MULTI_DAY" && checkIn && checkOut && (
-              <div className={styles.durationInfo}>
-                <strong>{diffDays} {diffDays === 1 ? "Day" : "Days"}</strong> &nbsp;·&nbsp;
-                {formatFull(checkIn)} → {formatFull(checkOut)}
-                {isDateRangeBlocked() && (
-                  <span className={styles.blockedWarning}> &nbsp;⚠️ These dates overlap with an existing booking</span>
+                <strong>
+                  {durationType === "EIGHT_HOUR"
+                    ? "8 Hours"
+                    : `${totalDays} ${totalDays === 1 ? "Day" : "Days"}`}
+                </strong> &nbsp;·&nbsp;
+                {durationType === "EIGHT_HOUR"
+                  ? formatSummaryDates()
+                  : `${formatFull(startDate)} 00:00 → ${formatFull(endDate)} 23:59 IST`}
+                {isDateRangeBlocked && (
+                  <span className={styles.blockedWarning}> &nbsp;⚠️ This overlaps with an existing booking</span>
                 )}
               </div>
             )}
@@ -762,7 +880,7 @@ export default function BookVDR() {
                 >
                   <option value="" disabled>Select specific room....</option>
                   {rooms.map((r) => (
-                    <option key={r.id} value={r.id}>{r.title}</option>
+                    <option key={r.id} value={String(r.id)}>{r.title}</option>
                   ))}
                 </select>
               </div>
@@ -802,14 +920,12 @@ export default function BookVDR() {
               <p className={styles.summarySubtitle}>Review your selection</p>
             </div>
 
-            {isReady ? (
+            {bookingWindow && !isDateRangeBlocked ? (
               <>
                 {/* ROOM INFO */}
                 <div className={styles.summarySection}>
                   <div className={styles.summaryLabel}>Room Info</div>
-                  <div className={styles.summaryValue}>
-                    {rooms.find((r) => String(r.id) === String(roomId))?.title}
-                  </div>
+                  <div className={styles.summaryValue}>{selectedRoom?.title}</div>
                   {roomType && (
                     <div className={styles.summaryValueSub}>
                       {ROOM_TYPES.find((rt) => rt.value === roomType)?.label}
@@ -841,54 +957,83 @@ export default function BookVDR() {
                 <div className={styles.summaryDatesRow}>
                   <div>
                     <div className={styles.summaryLabel}>Dates</div>
-                    <div className={styles.summaryValue}>
-                      {formatSummaryDates(checkIn, checkOut)}
-                    </div>
+                    <div className={styles.summaryValue}>{formatSummaryDates()}</div>
                   </div>
                   <div className={styles.summaryDurationBlock}>
                     <div className={styles.summaryLabel}>Duration</div>
                     <div className={styles.summaryValue}>
                       {durationType === "EIGHT_HOUR"
                         ? "8 Hours"
-                        : `${diffDays} ${diffDays === 1 ? "Day" : "Days"}`}
+                        : `${totalDays} ${totalDays === 1 ? "Day" : "Days"}`}
                     </div>
                   </div>
                 </div>
 
                 <div className={styles.summaryDividerThick} />
 
-                {/* TOTAL */}
-                <div className={styles.summaryTotalRow}>
-                  <span className={styles.summaryTotalLabel}>Total Est.</span>
-                  <span className={styles.summaryTotalAmount}>{formatINR(totalPrice)}</span>
-                </div>
-                <p style={{ fontSize: "11px", color: "#94a3b8", margin: "4px 0 0", lineHeight: 1.4, display: durationType === "EIGHT_HOUR" ? "none" : "block" }}>
-                  + ₹50/working day beyond 3 working days (calculated at checkout)
-                </p>
+                {/* PRICE (from the server – this is exactly what will be charged) */}
+                {previewLoading ? (
+                  <p className={styles.summaryNote}>Calculating price…</p>
+                ) : pricing ? (
+                  <>
+                    <div className={styles.summaryPriceRow}>
+                      <span>Room charge</span>
+                      <span>{formatINR(Number(pricing.roomPrice))}</span>
+                    </div>
+                    {surcharge > 0 && (
+                      <div className={styles.summaryPriceRow}>
+                        <span>Working-day surcharge ({preview.workingDays} working days)</span>
+                        <span>{formatINR(surcharge)}</span>
+                      </div>
+                    )}
+                    <div className={styles.summaryTotalRow}>
+                      <span className={styles.summaryTotalLabel}>Total payable</span>
+                      <span className={styles.summaryTotalAmount}>{formatINR(totalPrice)}</span>
+                    </div>
+                  </>
+                ) : null}
 
                 <div className={styles.summaryDivider} />
 
-                {/* Weekend notice */}
-                <div className={styles.formGroup} style={{ marginTop: "1rem" }}>
-                  <label>Weekend Notice (if applicable)</label>
-                  <textarea
-                    className={styles.formSelect}
-                    placeholder="Reason for weekend booking..."
-                    value={weekendNotice}
-                    onChange={(e) => setWeekendNotice(e.target.value)}
-                    rows={3}
-                    style={{ resize: "vertical", fontFamily: "inherit" }}
-                  />
-                </div>
+                {/* Weekend notice – required by the server when the range includes a weekend */}
+                {needsWeekendNotice && (
+                  <div className={styles.formGroup} style={{ marginTop: "1rem" }}>
+                    <label htmlFor="weekend-notice">
+                      Weekend Notice <span className={styles.required}>*</span>
+                    </label>
+                    <textarea
+                      id="weekend-notice"
+                      className={styles.formTextarea}
+                      placeholder="Your dates include a weekend. Please give the reason for weekend access..."
+                      value={weekendNotice}
+                      onChange={(e) => setWeekendNotice(e.target.value)}
+                      maxLength={2000}
+                      rows={3}
+                    />
+                  </div>
+                )}
 
+                {previewError && <p className={styles.errorMessage}>{previewError}</p>}
+                {ruleWarnings.map((w) => (
+                  <p key={w} className={styles.errorMessage}>{w}</p>
+                ))}
+                {priceMissing && (
+                  <p className={styles.errorMessage}>
+                    Pricing is not configured for this room. Please contact support.
+                  </p>
+                )}
                 {error && <p className={styles.errorMessage}>{error}</p>}
 
                 <button
                   className={styles.btnProceed}
-                  disabled={creating}
+                  disabled={!canProceed}
                   onClick={createBooking}
                 >
-                  {creating ? "Processing..." : "Proceed to Payment →"}
+                  {creating
+                    ? "Processing..."
+                    : weekendNoticeMissing
+                      ? "Add weekend notice to continue"
+                      : "Proceed to Payment →"}
                 </button>
               </>
             ) : (
@@ -899,12 +1044,15 @@ export default function BookVDR() {
                   <line x1="8" y1="2" x2="8" y2="6"/>
                   <line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
-                <p className={styles.noPreviewTitle}>No dates selected yet</p>
+                <p className={styles.noPreviewTitle}>
+                  {isDateRangeBlocked ? "Dates unavailable" : "No dates selected yet"}
+                </p>
                 <p className={styles.noPreviewDesc}>
-                  {isDateRangeBlocked()
-                    ? "Selected dates are unavailable — they overlap with an existing booking"
+                  {isDateRangeBlocked
+                    ? "Selected dates overlap with an existing booking. Please choose different dates or another room."
                     : "Select dates and room type to see your detailed booking summary and estimate costs."}
                 </p>
+                {error && <p className={styles.errorMessage}>{error}</p>}
               </div>
             )}
           </div>

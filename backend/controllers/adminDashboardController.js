@@ -6,6 +6,7 @@ import Notification from "../models/Notification.js";
 import DatasetLock from "../models/DatasetLock.js";
 import { Op } from "sequelize";
 import sequelize from "../src/config/db.js";
+import { userLocationSchema } from "../src/config/userLocationSchema.js";
 import fs from "fs";
 import path from "path";
 import { toBoundedInt, isInEnum, isPositiveInt, isOptionalBoundedString, isNonEmptyString, validationError } from "../utils/validators.js";
@@ -270,6 +271,15 @@ export const getPendingRegistrations = async (req, res) => {
 
     const where = { approval_status: 'PENDING', is_active: false };
 
+    // Optional ?country= filter (admins decide who is allowed in)
+    const countrySupported = userLocationSchema.countrySupported;
+    if (req.query.country !== undefined && req.query.country !== "") {
+      if (!isOptionalBoundedString(req.query.country, 100)) {
+        return res.status(400).json(validationError("country must be at most 100 characters"));
+      }
+      if (countrySupported) where.country = req.query.country;
+    }
+
     const { count, rows } = await User.findAndCountAll({
       where,
       limit,
@@ -277,7 +287,8 @@ export const getPendingRegistrations = async (req, res) => {
       order:  [["created_at", "DESC"]],
       attributes: [
         "id", "name", "email", "phone", "company", "address",
-        "city", "state", "pincode", "id_proof_type", "id_proof_number",
+        "city", "state", "pincode", ...(countrySupported ? ["country"] : []),
+        "id_proof_type", "id_proof_number",
         "identity_certificate",
         "is_active", "approval_status", "created_at",
       ],

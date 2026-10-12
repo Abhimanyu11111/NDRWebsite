@@ -34,9 +34,10 @@
 
 /* ===================== CONTAINER ===================== */
 .bookingContainer {
-  max-width: 1260px;
-  margin: 0 auto;
-  padding: 2.5rem 2rem;
+  /* Full-bleed background; content column capped at ~1200px */
+  width: 100%;
+  box-sizing: border-box;
+  padding: 2.5rem max(2rem, calc((100% - 1200px) / 2));
   background: var(--bg);
   min-height: 100vh;
   font-family: 'Segoe UI', sans-serif;
@@ -101,13 +102,15 @@
   font-weight: 800;
   color: white;
   letter-spacing: -0.02em;
-  margin-bottom: 0.5rem;
+  margin: 0 0 0.35rem;
+  line-height: 1.2;
   text-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .bookingHeader p {
   color: rgba(255,255,255,0.8);
   font-size: 1em;
+  margin: 0;
 }
 
 .bookingHeader p strong {
@@ -117,7 +120,9 @@
 
 .headerActions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .btnAccount,
@@ -160,7 +165,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
-  margin-bottom: 0;
+  margin-bottom: 1.5rem;
 }
 
 .roomGrid .formGroup {
@@ -175,33 +180,16 @@
   margin-bottom: 1.75rem;
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
-  transition: var(--transition);
+  transition: box-shadow 0.2s ease;
   position: relative;
-  /* ✅ FIX: overflow removed - was clipping calendar */
-  /* overflow: hidden; */ 
+  /* overflow must stay visible - the date dropdown extends past the card */
 }
 
-.card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 0;
-  background: var(--accent);
-  transition: height 0.3s ease;
-  border-radius: var(--radius) 0 0 var(--radius);
-  z-index: 1;
-}
-
-.card:hover {
+/* Lift the card holding an open dropdown above its siblings */
+.card:hover,
+.card:focus-within {
   box-shadow: var(--shadow-lg);
-  transform: translateY(-3px);
   z-index: 10;
-}
-
-.card:hover::before {
-  height: 100%;
 }
 
 .cardTitle {
@@ -256,6 +244,8 @@
 
 .formSelect {
   width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
   padding: 0.9rem 1rem;
   border: 2px solid var(--border);
   border-radius: 8px;
@@ -280,24 +270,30 @@
 
 .formTextarea {
   width: 100%;
-  padding: 1rem;
+  box-sizing: border-box;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--input);
+  padding: 0.75rem 1rem;
   border: 2px solid var(--border);
   border-radius: 8px;
   font-size: 0.95em;
   line-height: 1.6;
   resize: vertical;
-  min-height: 120px;
+  min-height: 84px;
   transition: var(--transition);
 }
 
 .formTextarea:hover {
   border-color: var(--accent);
+  background: white;
 }
 
 .formTextarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(249,115,22,0.1);
+  background: white;
 }
 
 .charCount {
@@ -319,6 +315,8 @@
   border: 2px solid var(--border);
   border-radius: 8px;
   background: var(--input);
+  color: var(--text);
+  font-family: inherit;
   font-weight: 700;
   cursor: pointer;
   transition: var(--transition);
@@ -331,11 +329,12 @@
 .durationTab:hover {
   border-color: var(--accent);
   background: white;
-  transform: translateY(-2px);
 }
 
-.durationTabActive {
-  background: linear-gradient(135deg, var(--accent) 0%, #ea580c 100%);
+/* Active state must win over :hover, otherwise white text sits on a white background */
+.durationTabActive,
+.durationTabActive:hover {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
   border-color: var(--accent);
   color: white;
   box-shadow: 0 4px 12px rgba(249,115,22,0.3);
@@ -350,7 +349,7 @@
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
-  opacity: 0.75;
+  opacity: 0.85;
 }
 
 /* ===================== DATE PICKER ===================== */
@@ -382,6 +381,7 @@
 .dateRangeInput {
   flex: 1;
   min-width: 140px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -403,15 +403,18 @@
   box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
 }
 
-.dateRangeInputReadonly {
+.dateRangeInputReadonly,
+.dateRangeInputReadonly:hover {
   cursor: default;
   background: #f8fafc;
+  border-color: var(--border);
 }
 
 .timeSelection {
   margin-top: 14px;
   padding: 12px 14px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   border: 1px solid var(--border);
@@ -556,6 +559,37 @@
   font-size: 0.75em;
   color: var(--text-light);
   margin-top: 4px;
+}
+
+.fieldHint {
+  margin: 8px 0 0;
+  font-size: 0.78em;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.durationInfo {
+  margin-top: 0.5rem;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 0.88em;
+  line-height: 1.5;
+}
+
+.blockedWarning {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.summaryPriceRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.85em;
+  color: #555;
+  padding: 0.2rem 0;
 }
 
 /* ===================== CALENDAR DROPDOWN ===================== */
@@ -858,6 +892,13 @@
   cursor: not-allowed;
 }
 
+.summaryNote {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
 /* keep old names used elsewhere */
 .previewDetails {
   background: var(--input);
@@ -999,7 +1040,8 @@
   .bookingContainer { padding: 1.5rem 1rem; }
   .bookingHeader { padding: 1.5rem; }
   .bookingHeader h1 { font-size: 1.5em; }
-  .headerContent { flex-direction: column; align-items: flex-start; }
+  .headerContent { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  .roomGrid { grid-template-columns: 1fr; }
   .card { padding: 1.5rem; }
   .durationTabs { flex-direction: column; }
   .timeSelection { align-items: flex-start; flex-direction: column; }

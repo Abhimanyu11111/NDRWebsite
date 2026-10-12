@@ -130,9 +130,22 @@ const hasUnsafeInput = (value, depth = 0, skipCharCheck = false) => {
   return false;
 };
 
+// Name of the first top-level body field that fails the check, so the user can
+// be told which field to correct. Only simple field names are echoed back.
+const findUnsafeField = (body) => {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+  const key = Object.keys(body).find((k) => hasUnsafeInput({ [k]: body[k] }));
+  return key && /^\w{1,50}$/.test(key) ? key : null;
+};
+
 export const validateRequestPayload = (req, res, next) => {
   if (hasUnsafeInput(req.body) || hasUnsafeInput(req.query) || hasUnsafeInput(req.params)) {
-    return res.status(400).json({ success: false, message: "Invalid request payload" });
+    const field = findUnsafeField(req.body);
+    const msg = field
+      ? `The "${field.replace(/_/g, " ")}" field contains characters that are not allowed (< > { } ").`
+      : "Your request contains characters that are not allowed (< > { } \").";
+    // `msg` is what the frontend forms display; `message` kept for existing callers.
+    return res.status(400).json({ success: false, msg, message: "Invalid request payload" });
   }
   next();
 };

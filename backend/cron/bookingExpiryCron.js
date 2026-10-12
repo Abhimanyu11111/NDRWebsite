@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import Booking from "../models/Booking.js";
 import DatasetLock from "../models/DatasetLock.js";
+import Payment from "../models/Payment.js";
 import { Op } from "sequelize";
 
 const MAX_CONTINUOUS_ACCESS_HOURS = 96; // 4 days
@@ -33,8 +34,16 @@ const expireCompletedBookings = async () => {
 };
 
 // ─── 2. Expire PENDING bookings (no payment within 15 min) ───────────────────
+// A hold normally lasts 15 minutes. If the user started a payment in the last
+// 15 minutes they may still be on the gateway, so the hold is extended – but
+// never beyond HARD_HOLD_LIMIT, so a slot can't be held indefinitely by retrying.
+const UNPAID_HOLD_MINUTES = 15;
+const HARD_HOLD_LIMIT_MINUTES = 45;
+
 const expireUnpaidBookings = async () => {
-  const cutoff = new Date(Date.now() - 15 * 60 * 1000); // 15 minutes ago
+  const now = Date.now();
+  const cutoff     = new Date(now - UNPAID_HOLD_MINUTES * 60 * 1000);
+  const hardCutoff = new Date(now - HARD_HOLD_LIMIT_MINUTES * 60 * 1000);
 
   const unpaid = await Booking.findAll({
     where: {
@@ -43,13 +52,26 @@ const expireUnpaidBookings = async () => {
     },
   });
 
+  let expired = 0;
   for (const booking of unpaid) {
+    if (booking.created_at > hardCutoff) {
+      const paymentInProgress = await Payment.count({
+        where: {
+          booking_id: booking.booking_id,
+          status:     "INITIATED",
+          created_at: { [Op.gte]: cutoff },
+        },
+      });
+      if (paymentInProgress) continue;
+    }
+
     booking.status = "EXPIRED";
     await booking.save();
+    expired++;
     console.log(`[ExpiryJob] Unpaid booking expired: ${booking.booking_id}`);
   }
 
-  return unpaid.length;
+  return expired;
 };
 
 // ─── 3. Enforce 4-day continuous access window ────────────────────────────────

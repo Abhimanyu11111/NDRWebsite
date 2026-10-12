@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import { userLocationSchema } from '../src/config/userLocationSchema.js';
 import Booking from '../models/Booking.js';
 import Payment from '../models/Payment.js';
 import Room from '../models/Room.js';
@@ -9,7 +10,10 @@ export const getUserProfile = async (req, res) => {
     console.log('📝 Fetching profile for user:', req.user.id);
 
     const user = await User.findByPk(req.user.id, {
-      attributes: ['id', 'name', 'email', 'phone', 'company', 'role', 'created_at']
+      attributes: [
+        'id', 'name', 'email', 'phone', 'company', 'role', 'created_at',
+        ...(userLocationSchema.countrySupported ? ['country'] : []),
+      ]
     });
 
     if (!user) {

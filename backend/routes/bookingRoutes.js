@@ -52,6 +52,13 @@ router.get(
   bookingController.getBookingCalendar
 );
 
+// Government holiday list used by the booking calendars
+router.get(
+  "/holidays",
+  authMiddleware,
+  bookingController.getHolidays
+);
+
 // Cancel booking (must be the owning user, or an admin)
 router.put(
   "/cancel/:booking_id",

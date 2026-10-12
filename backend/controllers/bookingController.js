@@ -26,6 +26,7 @@ import {
   hasWeekendInRange,
   validateBookingRequest,
   getHolidaySet,
+  GOVT_HOLIDAYS,
 } from "../utils/bookingRules.js";
 import {
   isPositiveInt,
@@ -268,6 +269,25 @@ export const createBooking = async (req, res) => {
       });
     }
 
+    // Release this user's own unpaid holds on the same slot. Otherwise a retry
+    // after an abandoned/failed payment is blocked by their own PENDING booking
+    // until the expiry cron runs. If a payment for the released hold still
+    // succeeds later, confirmBookingAfterPayment re-checks the slot.
+    await Booking.update(
+      { status: "CANCELLED" },
+      {
+        where: {
+          user_id:        userId,
+          room_id,
+          status:         "PENDING",
+          payment_status: { [Op.ne]: "SUCCESS" },
+          start_datetime: { [Op.lt]: end },
+          end_datetime:   { [Op.gt]: start },
+        },
+        transaction: t,
+      }
+    );
+
     // Conflict check
     const conflict = await Booking.findOne({
       where: {
@@ -292,6 +312,14 @@ export const createBooking = async (req, res) => {
     const roomPrice           = calculateRoomPrice({ ...window, room });
     const totalPrice          = roomPrice + workingDaySurcharge;
     const finalStatus         = "PENDING";
+
+    if (!(roomPrice > 0)) {
+      await t.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Pricing is not configured for this room. Please contact support.",
+      });
+    }
 
     const booking = await Booking.create(
       {
@@ -339,7 +367,7 @@ export const createBooking = async (req, res) => {
       totalPrice,
       workingDays,
       workingDaySurcharge,
-      message: "Booking confirmed! Please complete payment.",
+      message: "Booking created. Please complete payment within 15 minutes to confirm it.",
     });
   } catch (err) {
     await t.rollback();
@@ -489,12 +517,15 @@ export const getBookingCalendar = async (req, res) => {
       return res.status(400).json(validationError("room_id must be a positive integer"));
     }
 
+    // Any logged-in user can read this, so expose only what the calendar needs
+    // (no user details) and skip bookings that have already ended.
     const bookings = await Booking.findAll({
       where: {
         room_id,
-        status: { [Op.in]: ["PENDING", "CONFIRMED"] },
+        status:       { [Op.in]: ["PENDING", "CONFIRMED"] },
+        end_datetime: { [Op.gt]: new Date() },
       },
-      include: [{ model: User, as: "user", attributes: ["name"] }],
+      attributes: ["start_datetime", "end_datetime", "status", "booking_type"],
       order:   [["start_datetime", "ASC"]],
     });
 
@@ -503,6 +534,13 @@ export const getBookingCalendar = async (req, res) => {
     console.error("Calendar error:", err);
     res.status(500).json({ success: false, message: "Failed to load calendar" });
   }
+};
+
+/* =====================================================
+   HOLIDAYS (single source for the frontend calendars)
+===================================================== */
+export const getHolidays = (req, res) => {
+  res.json({ success: true, holidays: GOVT_HOLIDAYS });
 };
 
 /* =====================================================
@@ -569,16 +607,50 @@ export const cancelBooking = async (req, res) => {
    CONFIRM BOOKING AFTER PAYMENT
 ===================================================== */
 export const confirmBookingAfterPayment = async (bookingId, transaction) => {
+  const existing = await Booking.findOne({
+    where: { booking_id: bookingId },
+    attributes: ["room_id"],
+    transaction,
+  });
+  if (!existing) throw new Error(`Booking ${bookingId} not found`);
+
+  // Lock the room first (same order as createBooking) so a concurrent booking
+  // for this room can't slip in while we decide.
+  await Room.findByPk(existing.room_id, { lock: transaction.LOCK.UPDATE, transaction });
+
   const booking = await Booking.findOne({
     where: { booking_id: bookingId },
     lock:  transaction.LOCK.UPDATE,
     transaction,
   });
 
-  if (!booking) throw new Error(`Booking ${bookingId} not found`);
+  // Another order already paid for this booking: this payment is a duplicate.
+  // Checked under the booking lock so two concurrent callbacks can't both win.
+  if (booking.payment_status === "SUCCESS") return { booking, alreadyPaid: true };
 
   // Idempotency: skip only if fully confirmed AND datasets already locked
-  if (booking.status === "CONFIRMED" && booking.dataset_locked) return booking;
+  if (booking.status === "CONFIRMED" && booking.dataset_locked) return { booking, alreadyPaid: false };
+
+  // The hold may have expired (or been released) while the user was on the
+  // payment gateway. Only revive it if the slot is still free and not over.
+  if (booking.status !== "PENDING" && booking.status !== "CONFIRMED") {
+    const conflict = await Booking.findOne({
+      where: {
+        id:             { [Op.ne]: booking.id },
+        room_id:        booking.room_id,
+        status:         { [Op.in]: ["PENDING", "CONFIRMED"] },
+        start_datetime: { [Op.lt]: booking.end_datetime },
+        end_datetime:   { [Op.gt]: booking.start_datetime },
+      },
+      transaction,
+    });
+
+    if (conflict || new Date(booking.end_datetime) <= new Date()) {
+      const error = new Error(`Slot for booking ${bookingId} is no longer available`);
+      error.code = "SLOT_UNAVAILABLE";
+      throw error;
+    }
+  }
 
   booking.status         = "CONFIRMED";
   booking.payment_status = "SUCCESS";
@@ -586,7 +658,7 @@ export const confirmBookingAfterPayment = async (bookingId, transaction) => {
   await booking.save({ transaction });
 
   await lockDatasetsForBooking(booking, transaction);
-  return booking;
+  return { booking, alreadyPaid: false };
 };
 
 
@@ -633,8 +705,7 @@ export const getUserBookingStats = async (req, res) => {
     console.error('Get user booking stats error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch booking statistics',
-      error: error.message
+      message: 'Failed to fetch booking statistics'
     });
   }
 };

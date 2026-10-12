@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Users, UserCheck, UserX, Search, Eye, X,
-  Mail, Phone, Shield, Calendar, Hash, Activity
+  Mail, Phone, Shield, Calendar, Hash, Activity, Globe
 } from "lucide-react";
 import AdminNavbar from "/src/Component/AdminNavbar";
 import api from "../../api/axiosClient";
@@ -10,6 +10,7 @@ export default function ManageUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [countryFilter, setCountryFilter] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
   const [error, setError] = useState(null);
 
@@ -36,12 +37,19 @@ export default function ManageUsers() {
     fetchUsers();
   }, []);
 
+  // Users registered before the country field existed are Indian
+  const countryOf = (u) => u.country || "India";
+  const countries = [...new Set(users.map(countryOf))].sort();
+
   const filteredUsers = users.filter(
     (u) =>
-      u.name?.toLowerCase().includes(search.toLowerCase()) ||
-      u.email?.toLowerCase().includes(search.toLowerCase()) ||
-      u.phone?.includes(search)
+      (!countryFilter || countryOf(u) === countryFilter) &&
+      (u.name?.toLowerCase().includes(search.toLowerCase()) ||
+        u.email?.toLowerCase().includes(search.toLowerCase()) ||
+        u.phone?.includes(search) ||
+        countryOf(u).toLowerCase().includes(search.toLowerCase()))
   );
+  const hasFilters = Boolean(search || countryFilter);
 
   if (loading) {
     return (
@@ -103,12 +111,12 @@ export default function ManageUsers() {
           </div>
 
           {/* Search */}
-          <div style={searchCard}>
-            <div style={searchWrapper}>
+          <div style={{ ...searchCard, display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ ...searchWrapper, flex: "1 1 280px" }}>
               <Search size={18} strokeWidth={2.5} style={searchIconStyle} />
               <input
                 type="text"
-                placeholder="Search by name, email, or phone..."
+                placeholder="Search by name, email, phone or country..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 style={searchInput}
@@ -119,6 +127,19 @@ export default function ManageUsers() {
                 </button>
               )}
             </div>
+            {countries.length > 1 && (
+              <select
+                value={countryFilter}
+                onChange={(e) => setCountryFilter(e.target.value)}
+                aria-label="Filter users by country"
+                style={countrySelect}
+              >
+                <option value="">All countries</option>
+                {countries.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Table */}
@@ -127,9 +148,9 @@ export default function ManageUsers() {
               <div style={emptyState}>
                 <Users size={64} strokeWidth={1.5} style={{ color: "#94a3b8", marginBottom: "16px" }} />
                 <h3 style={emptyTitle}>No users found</h3>
-                <p style={emptyText}>{search ? "Try adjusting your search criteria" : "No users registered yet"}</p>
-                {search && (
-                  <button onClick={() => setSearch("")} style={clearFiltersButton}>Clear Search</button>
+                <p style={emptyText}>{hasFilters ? "Try adjusting your search or filters" : "No users registered yet"}</p>
+                {hasFilters && (
+                  <button onClick={() => { setSearch(""); setCountryFilter(""); }} style={clearFiltersButton}>Clear Filters</button>
                 )}
               </div>
             ) : (
@@ -142,6 +163,7 @@ export default function ManageUsers() {
                         <th style={tableHeader}>Name</th>
                         <th style={tableHeader}>Email</th>
                         <th style={tableHeader}>Phone</th>
+                        <th style={tableHeader}>Country</th>
                         <th style={tableHeader}>Role</th>
                         <th style={tableHeader}>Status</th>
                         <th style={tableHeader}>Actions</th>
@@ -186,6 +208,7 @@ export default function ManageUsers() {
               <DetailRow label="Name" value={selectedUser.name} icon={Users} />
               <DetailRow label="Email" value={selectedUser.email} icon={Mail} />
               <DetailRow label="Phone" value={selectedUser.phone || "—"} icon={Phone} />
+              <DetailRow label="Country" value={selectedUser.country || "India"} icon={Globe} />
               <DetailRow label="Role" value={selectedUser.role} icon={Shield} />
               <DetailRow label="Company" value={selectedUser.company || "—"} icon={Activity} />
               <DetailRow
@@ -255,6 +278,7 @@ function UserRow({ user, onView, isEven }) {
       <td style={tableCell}><span style={userNameStyle}>{user.name || "—"}</span></td>
       <td style={tableCell}><span style={userEmailStyle}>{user.email || "—"}</span></td>
       <td style={tableCell}><span style={userPhoneStyle}>{user.phone || "—"}</span></td>
+      <td style={tableCell}><span style={userPhoneStyle}>{user.country || "India"}</span></td>
       <td style={tableCell}>
         <span style={{
           fontSize: 12, fontWeight: 700, padding: "3px 8px", borderRadius: 5,
@@ -317,6 +341,7 @@ const statLabel = { fontSize: "14px", color: "#64748b", fontWeight: "500", margi
 const statValue = { fontSize: "32px", fontWeight: "700", margin: 0 };
 const searchCard = { backgroundColor: "white", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "24px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" };
 const searchWrapper = { position: "relative", display: "flex", alignItems: "center" };
+const countrySelect = { flex: "0 0 auto", minWidth: "180px", padding: "12px 14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "15px", color: "#334155", backgroundColor: "white", cursor: "pointer" };
 const searchIconStyle = { position: "absolute", left: "12px", color: "#94a3b8", pointerEvents: "none" };
 const searchInput = { width: "100%", padding: "12px 40px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "15px", outline: "none" };
 const clearButton = { position: "absolute", right: "12px", background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: "4px", display: "flex", alignItems: "center" };

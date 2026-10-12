@@ -16,6 +16,7 @@ import { rateLimit } from "./middleware/rateLimit.js";
 
 import { startBookingExpiryCron } from "./cron/bookingExpiryCron.js";
 import sequelize from "./src/config/db.js";
+import { ensureUserLocationSchema } from "./src/config/userLocationSchema.js";
 import './models/associations.js';
 
 // ROUTES
@@ -109,6 +110,9 @@ const startServer = async () => {
 
     await sequelize.sync();
     console.log(" Models synced successfully");
+
+    // Must run before serving requests: adds users.country / widens pincode
+    await ensureUserLocationSchema(sequelize);
 
     // Start cron job
     startBookingExpiryCron();

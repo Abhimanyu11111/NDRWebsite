@@ -1,62 +1,5 @@
-import React, { useEffect, useState } from "react";
-import axios from "../api/axiosClient";
+import React, { useMemo, useState } from "react";
 import styles from "../Component/Styles/AvailabilityCalendar.module.css";
-
-/* ====================== DGH HOLIDAYS 2026 ====================== */
-const DGH_HOLIDAYS_2026 = {
-  // Government Holidays (GH) - YE ACTUAL HOLIDAYS HAIN
-  govtHolidays: [
-    { date: "2026-01-26", name: "Republic Day" },
-    { date: "2026-03-04", name: "Holi" },
-    { date: "2026-03-21", name: "Id-ul-Fitr" },
-    { date: "2026-03-26", name: "Ram Navami" },
-    { date: "2026-03-31", name: "Mahavir Jayanti" },
-    { date: "2026-04-03", name: "Good Friday" },
-    { date: "2026-05-01", name: "Budhha Purnima" },
-    { date: "2026-05-27", name: "Id-ul-Zuha (Bakrid)" },
-    { date: "2026-06-26", name: "Muharram" },
-    { date: "2026-08-15", name: "Independence Day" },
-    { date: "2026-08-26", name: "Milad-Un-Nabi" },
-    { date: "2026-09-04", name: "Janmashtami" },
-    { date: "2026-10-02", name: "Gandhi Jayanti" },
-    { date: "2026-10-20", name: "Dussehra" },
-    { date: "2026-11-08", name: "Deepawali" },
-    { date: "2026-11-24", name: "Guru Nanak B'day" },
-    { date: "2026-12-25", name: "Christmas Day" },
-  ],
-  // Restricted Holidays (RH) - YE WORKING DAYS HAIN (but not shown)
-  restrictedHolidays: [
-    { date: "2026-01-01", name: "New Year's Day" },
-    { date: "2026-01-03", name: "Hazarat Ali's Birthday" },
-    { date: "2026-01-14", name: "Magh Bihu/Makar Sankrti" },
-    { date: "2026-01-23", name: "Basant Panchami" },
-    { date: "2026-02-01", name: "Guru Ravi Das's B'day" },
-    { date: "2026-02-12", name: "Swami Dayanad Jayanti" },
-    { date: "2026-02-19", name: "Maha Shivratri" },
-    { date: "2026-03-03", name: "Shiva ji Jayanti" },
-    { date: "2026-03-19", name: "Dolyatra / Holika Dahan" },
-    { date: "2026-04-05", name: "Gudi Parva / Ugadi" },
-    { date: "2026-03-20", name: "Jamat-Ul-Vida" },
-    { date: "2026-04-14", name: "Vaisakhi / Vishu/Meshadi" },
-    { date: "2026-04-15", name: "Bahag Bihu (Assam)" },
-    { date: "2026-05-09", name: "Guru Ravindranath B'day" },
-    { date: "2026-07-16", name: "Rath Yatra" },
-    { date: "2026-08-15", name: "Parsi New Year" },
-    { date: "2026-08-26", name: "Onam / Thiru Onam Day" },
-    { date: "2026-08-28", name: "Raksha Bandhan" },
-    { date: "2026-09-14", name: "Ganesh Chaturthi" },
-    { date: "2026-09-18", name: "Dussehra (Saptami)" },
-    { date: "2026-09-19", name: "Dussehra (Mahashtami)" },
-    { date: "2026-10-26", name: "Maharishi Valmiki's B'day" },
-    { date: "2026-10-29", name: "Karwa Chouth" },
-    { date: "2026-11-08", name: "Naraka Chaturdasi" },
-    { date: "2026-11-09", name: "Govardhan Puja" },
-    { date: "2026-11-11", name: "Bhai Duj" },
-    { date: "2026-11-15", name: "Chhatt Puja" },
-    { date: "2026-12-23", name: "Hazarat Ali's Birthday" },
-    { date: "2026-12-24", name: "Christmas Eve" },
-  ],
-};
 
 /* ====================== HELPER FUNCTIONS ====================== */
 const MONTHS = [
@@ -65,10 +8,6 @@ const MONTHS = [
 ];
 
 const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-const isGovtHoliday = (dateStr) => {
-  return DGH_HOLIDAYS_2026.govtHolidays.find((h) => h.date === dateStr);
-};
 
 const isWeekend = (date) => {
   const day = date.getDay();
@@ -83,56 +22,29 @@ const formatDateKey = (date) => {
 };
 
 /* ====================== MAIN COMPONENT ====================== */
-export default function AvailabilityCalendar() {
-  const [rooms, setRooms] = useState([]);
-  const [bookings, setBookings] = useState({});
-  const [loading, setLoading] = useState(true);
+// Display-only: rooms, bookings and holidays are loaded by the parent (BookVDR)
+// so this view and the booking form always agree on availability.
+export default function AvailabilityCalendar({
+  rooms = [],
+  bookingsByRoom = {},
+  loading = false,
+  holidays = [],
+  isSelectableDate,
+  onDateSelect,
+}) {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [hoveredCell, setHoveredCell] = useState(null);
 
-  /* --- Fetch rooms --- */
-  useEffect(() => {
-    const fetchRooms = async () => {
-      try {
-        const res = await axios.get("/rooms");
-        setRooms(res.data.rooms || []);
-      } catch (err) {
-        console.error("Failed to fetch rooms:", err);
-      }
-    };
-    fetchRooms();
-  }, []);
-
-  /* --- Fetch bookings for ALL rooms --- */
-  useEffect(() => {
-    const fetchBookings = async () => {
-      if (rooms.length === 0) return;
-
-      setLoading(true);
-      try {
-        const allBookings = {};
-        
-        // Fetch bookings for each room
-        for (const room of rooms) {
-          const res = await axios.get(`/booking/calendar?room_id=${room.id}`);
-          allBookings[room.id] = res.data.bookings || [];
-        }
-        
-        setBookings(allBookings);
-      } catch (err) {
-        console.error("Failed to fetch bookings:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBookings();
-  }, [rooms, currentMonth, currentYear]);
+  const holidayMap = useMemo(
+    () => new Map(holidays.map((h) => [h.date, h])),
+    [holidays]
+  );
+  const isGovtHoliday = (dateStr) => holidayMap.get(dateStr);
 
   /* --- Check if a date is booked for a room --- */
   const getDateBookingStatus = (roomId, date) => {
-    const roomBookings = bookings[roomId] || [];
+    const roomBookings = bookingsByRoom[String(roomId)] || [];
     let hasPartialBooking = false;
     const dayStart = new Date(date);
     dayStart.setHours(0, 0, 0, 0);
@@ -231,10 +143,10 @@ export default function AvailabilityCalendar() {
       <div className={styles.calendarHeader}>
         <div className={styles.headerLeft}>
           <h2 className={styles.calendarTitle}>
-            Room Availability Calender
+            Room Availability Calendar
           </h2>
           <p className={styles.calendarSubtitle}>
-            View all rooms availability use booking from below to select dates
+            View availability for all rooms. Use the booking form below to select your dates.
           </p>
         </div>
         <div className={styles.headerRight}>
@@ -290,7 +202,8 @@ export default function AvailabilityCalendar() {
       </div>
 
       {/* TABLE LAYOUT - ROOMS IN ROWS, DATES IN COLUMNS */}
-      {loading ? (
+      {/* Only show the loader on first load so month navigation doesn't flash */}
+      {loading && Object.keys(bookingsByRoom).length === 0 ? (
         <div className={styles.loading}>Loading availability...</div>
       ) : (
         <div className={styles.tableContainer}>
@@ -322,11 +235,15 @@ export default function AvailabilityCalendar() {
                     const todayDate = isToday(date);
                     const cellKey = `${room.id}-${date.getTime()}`;
                     const isHovered = hoveredCell === cellKey;
+                    const selectable =
+                      !!onDateSelect && !past && status !== "booked" &&
+                      (!isSelectableDate || isSelectableDate(date));
 
                     let cellClass = `${styles.dateCell} ${styles[status]}`;
                     if (past) cellClass += ` ${styles.past}`;
                     if (todayDate) cellClass += ` ${styles.today}`;
-                    if (isHovered) cellClass += ` ${styles.hovered}`;
+                    if (selectable) cellClass += ` ${styles.selectable}`;
+                    if (isHovered && selectable) cellClass += ` ${styles.hovered}`;
 
                     let tooltipText = "";
                     if (past) {
@@ -351,7 +268,8 @@ export default function AvailabilityCalendar() {
                         className={cellClass}
                         onMouseEnter={() => setHoveredCell(cellKey)}
                         onMouseLeave={() => setHoveredCell(null)}
-                        title={tooltipText}
+                        onClick={selectable ? () => onDateSelect({ room, date }) : undefined}
+                        title={selectable ? `${tooltipText} – click to start a booking` : tooltipText}
                       >
                         {govtHoliday && <span className={styles.holidayMark}>H</span>}
                       </td>
@@ -364,10 +282,9 @@ export default function AvailabilityCalendar() {
         </div>
       )}
 
-      {/* Info Footer - UPDATED */}
       <div className={styles.calendarFooter}>
         <p className={styles.footerNote}>
-          <strong>Note:</strong> This calendar is for viewing only. Use the booking form below to select your dates.
+          <strong>Tip:</strong> Click an open date to start a booking for that room, or use the form below.
         </p>
       </div>
     </div>

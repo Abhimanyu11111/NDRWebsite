@@ -7,6 +7,7 @@ export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const bookingId = searchParams.get("booking_id");
   const orderId = searchParams.get("order_id");
+  const isDuplicate = searchParams.get("duplicate") === "1";
 
   return (
     <div className={styles.container}>
@@ -16,7 +17,14 @@ export default function PaymentSuccess() {
         <p className={styles.message}>
           Your booking has been confirmed successfully. We will get back to you with the room access details shortly.
         </p>
-        
+
+        {isDuplicate && (
+          <p className={styles.reasonText}>
+            This booking had already been paid for. The extra payment for this order has been
+            flagged and will be refunded to you.
+          </p>
+        )}
+
         <div className={styles.details}>
           <div className={styles.detailRow}>
             <span>Booking ID:</span>

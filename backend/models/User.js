@@ -38,7 +38,11 @@ const User = sequelize.define('User', {
   address: { type: DataTypes.STRING(255), allowNull: true },
   city: { type: DataTypes.STRING(100), allowNull: true },
   state: { type: DataTypes.STRING(100), allowNull: true },
-  pincode: { type: DataTypes.STRING(6), allowNull: true },
+  // Holds Indian pincodes and international postal codes. The column is widened
+  // on start-up by src/config/userLocationSchema.js.
+  pincode: { type: DataTypes.STRING(12), allowNull: true },
+  // Removed at start-up if the column could not be added (see userLocationSchema.js)
+  country: { type: DataTypes.STRING(100), allowNull: true },
   id_proof_type: { type: DataTypes.STRING(100), allowNull: true },
   id_proof_number: { type: DataTypes.STRING(100), allowNull: true },
   identity_certificate: { type: DataTypes.STRING(500), allowNull: true },

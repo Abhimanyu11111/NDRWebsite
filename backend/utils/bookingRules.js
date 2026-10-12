@@ -72,24 +72,42 @@ export const violatesMaxAdvanceRule = (startDatetime) => {
 };
 
 // ─── Holiday calendar ─────────────────────────────────────────────────────────
-const STATIC_HOLIDAYS = new Set([
-  "2025-01-26",
-  "2025-03-17",
-  "2025-04-14",
-  "2025-04-18",
-  "2025-05-01",
-  "2025-08-15",
-  "2025-10-02",
-  "2025-10-20",
-  "2025-10-21",
-  "2025-11-05",
-  "2025-12-25",
-  "2026-01-01",
-  "2026-01-26",
-  "2026-08-15",
-  "2026-10-02",
-  "2026-12-25",
+// Single source of truth for gazetted (GH) holidays. The frontend calendar
+// reads this list from GET /api/booking/holidays. Restricted holidays (RH) are
+// working days and must NOT be listed here. Add next year's DGH list before it starts.
+export const GOVT_HOLIDAYS = Object.freeze([
+  { date: "2025-01-26", name: "Republic Day" },
+  { date: "2025-03-17", name: "Government Holiday" },
+  { date: "2025-04-14", name: "Government Holiday" },
+  { date: "2025-04-18", name: "Good Friday" },
+  { date: "2025-05-01", name: "Government Holiday" },
+  { date: "2025-08-15", name: "Independence Day" },
+  { date: "2025-10-02", name: "Gandhi Jayanti" },
+  { date: "2025-10-20", name: "Government Holiday" },
+  { date: "2025-10-21", name: "Government Holiday" },
+  { date: "2025-11-05", name: "Government Holiday" },
+  { date: "2025-12-25", name: "Christmas Day" },
+
+  { date: "2026-01-26", name: "Republic Day" },
+  { date: "2026-03-04", name: "Holi" },
+  { date: "2026-03-21", name: "Id-ul-Fitr" },
+  { date: "2026-03-26", name: "Ram Navami" },
+  { date: "2026-03-31", name: "Mahavir Jayanti" },
+  { date: "2026-04-03", name: "Good Friday" },
+  { date: "2026-05-01", name: "Budhha Purnima" },
+  { date: "2026-05-27", name: "Id-ul-Zuha (Bakrid)" },
+  { date: "2026-06-26", name: "Muharram" },
+  { date: "2026-08-15", name: "Independence Day" },
+  { date: "2026-08-26", name: "Milad-Un-Nabi" },
+  { date: "2026-09-04", name: "Janmashtami" },
+  { date: "2026-10-02", name: "Gandhi Jayanti" },
+  { date: "2026-10-20", name: "Dussehra" },
+  { date: "2026-11-08", name: "Deepawali" },
+  { date: "2026-11-24", name: "Guru Nanak B'day" },
+  { date: "2026-12-25", name: "Christmas Day" },
 ]);
+
+const STATIC_HOLIDAYS = new Set(GOVT_HOLIDAYS.map((h) => h.date));
 
 let _cachedHolidays = null;
 let _cacheExpiry    = null;
@@ -158,7 +176,7 @@ export const validateBookingRequest = async ({
   // 3. Public holiday — BLOCK karo
   const holiday = await isHoliday(start, HolidayModel);
   if (holiday) {
-    errors.push(`${start.toISOString().slice(0, 10)} is a public holiday. Please choose another date.`);
+    errors.push(`${formatIndiaDateKey(start)} is a public holiday. Please choose another start date.`);
   }
 
   return { valid: errors.length === 0, errors };
