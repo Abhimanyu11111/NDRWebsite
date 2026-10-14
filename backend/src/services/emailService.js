@@ -106,6 +106,65 @@ const sendRegistrationOtpEmail = async ({ email, otp, expiresMinutes }) => {
   );
 };
 
+const plainName = (name) => String(name || "User").replace(/[\r\n]/g, " ");
+
+const sendRegistrationApprovedEmail = async ({ email, name, loginUrl }) => {
+  const safeName = escapeHtml(name || "User");
+  const safeLoginUrl = escapeHtml(loginUrl);
+
+  return sendMail(
+    {
+      from: mailFrom,
+      to: email,
+      subject: "Your NDR registration has been approved",
+      text: `Dear ${plainName(name)},\n\nYour National Data Repository registration has been approved. You can now log in with your registered email address and password.\n\nLogin: ${loginUrl}\n\nRegards,\nNDR Support Team`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#172033;line-height:1.6">
+          <h2 style="color:#1858a5">Registration approved</h2>
+          <p>Dear ${safeName},</p>
+          <p>Your National Data Repository registration has been <strong>approved</strong>. You can now log in with your registered email address and password.</p>
+          <p style="margin:24px 0">
+            <a href="${safeLoginUrl}" style="display:inline-block;padding:12px 22px;background:#1858a5;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:700">Log in to NDR</a>
+          </p>
+          <p style="color:#6f7d90;font-size:13px">If the button does not work, open this link: ${safeLoginUrl}</p>
+          <p>Regards,<br/>NDR Support Team</p>
+        </div>
+      `,
+    },
+    `Registration approval email sent to ${email}`,
+    "Error sending registration approval email:"
+  );
+};
+
+const sendRegistrationRejectedEmail = async ({ email, name, reason, registerUrl }) => {
+  const safeName = escapeHtml(name || "User");
+  const safeReason = escapeHtml(reason);
+  const safeRegisterUrl = escapeHtml(registerUrl);
+  const textReason = reason ? `\n\nReason: ${String(reason).replace(/[\r\n]+/g, " ")}` : "";
+
+  return sendMail(
+    {
+      from: mailFrom,
+      to: email,
+      subject: "Update on your NDR registration request",
+      text: `Dear ${plainName(name)},\n\nWe were unable to approve your National Data Repository registration request.${textReason}\n\nYou are welcome to submit a new registration with corrected details: ${registerUrl}\n\nFor any questions, reply to this email.\n\nRegards,\nNDR Support Team`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#172033;line-height:1.6">
+          <h2 style="color:#1858a5">Registration request not approved</h2>
+          <p>Dear ${safeName},</p>
+          <p>We were unable to approve your National Data Repository registration request.</p>
+          ${reason ? `<div style="margin:18px 0;padding:14px 16px;border-left:4px solid #d97706;background:#fffbeb;border-radius:6px"><strong>Reason:</strong> ${safeReason}</div>` : ""}
+          <p>You are welcome to <a href="${safeRegisterUrl}" style="color:#1858a5;font-weight:700">submit a new registration</a> with corrected details.</p>
+          <p>For any questions, reply to this email.</p>
+          <p>Regards,<br/>NDR Support Team</p>
+        </div>
+      `,
+    },
+    `Registration rejection email sent to ${email}`,
+    "Error sending registration rejection email:"
+  );
+};
+
 /**
  * Send booking confirmation email
  * @param {Object} data - { email, name, bookingId, room, startDate, endDate, durationLabel, totalPrice }
@@ -260,6 +319,8 @@ const sendBookingCancellation = async (data) => {
 
 export {
   sendRegistrationOtpEmail,
+  sendRegistrationApprovedEmail,
+  sendRegistrationRejectedEmail,
   sendPasswordResetEmail,
   sendBookingConfirmation,
   sendBookingPaymentConfirmation,

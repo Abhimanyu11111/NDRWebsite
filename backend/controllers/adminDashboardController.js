@@ -4,7 +4,9 @@ import Room from "../models/Room.js";
 import Payment from "../models/Payment.js";
 import Notification from "../models/Notification.js";
 import DatasetLock from "../models/DatasetLock.js";
+import RegistrationOtp from "../models/RegistrationOtp.js";
 import { Op } from "sequelize";
+import { sendRegistrationApprovedEmail, sendRegistrationRejectedEmail } from "../src/services/emailService.js";
 import sequelize from "../src/config/db.js";
 import { userLocationSchema } from "../src/config/userLocationSchema.js";
 import fs from "fs";
@@ -379,6 +381,13 @@ export const approveRegistration = async (req, res) => {
       is_active: true,
     });
 
+    // Tell the applicant by email (non-blocking – approval already saved)
+    sendRegistrationApprovedEmail({
+      email:    user.email,
+      name:     user.name,
+      loginUrl: `${process.env.FRONTEND_URL || ""}/login`,
+    }).catch((e) => console.error("Approval email error:", e));
+
     res.json({
       success: true,
       message: `${user.name}'s account has been approved successfully`,
@@ -393,6 +402,7 @@ export const approveRegistration = async (req, res) => {
    PATCH /admin/registrations/:userId/reject
 ===================================================== */
 export const rejectRegistration = async (req, res) => {
+  let transaction = null;
   try {
     const { userId } = req.params;
     const { reason } = req.body;
@@ -418,27 +428,64 @@ export const rejectRegistration = async (req, res) => {
       });
     }
 
-    // Keep user inactive and mark as rejected
-    user.is_active = false;
-    user.approval_status = 'REJECTED';
-    await user.save();
+    const { email, name, identity_certificate: certificate } = user;
 
-    // Create rejection notification
-    await Notification.create({
-      user_id:   user.id,
-      message:   `Your registration request has been rejected.${reason ? ` Reason: ${reason}` : " Please contact support for more information."}`,
-      type:      "SYSTEM",
-      is_read:   false,
-      is_active: true,
-    });
+    // An account with booking/payment history (e.g. a previously active user
+    // who was later deactivated) is never deleted – only marked rejected.
+    const [bookingCount, paymentCount, lockCount] = await Promise.all([
+      Booking.count({ where: { user_id: user.id } }),
+      Payment.count({ where: { user_id: user.id } }),
+      DatasetLock.count({ where: { user_id: user.id } }),
+    ]);
+    const canDelete = bookingCount + paymentCount + lockCount === 0;
+
+    if (canDelete) {
+      // Remove the request entirely so the applicant can register again with the same email
+      transaction = await sequelize.transaction();
+      await Notification.destroy({ where: { user_id: user.id }, transaction });
+      await RegistrationOtp.destroy({ where: { email }, transaction });
+      await user.destroy({ transaction });
+      await transaction.commit();
+      transaction = null;
+      removeCertificateFile(certificate);
+    } else {
+      user.is_active = false;
+      user.approval_status = 'REJECTED';
+      await user.save();
+    }
+
+    sendRegistrationRejectedEmail({
+      email,
+      name,
+      reason:      reason ? String(reason).trim() : "",
+      registerUrl: `${process.env.FRONTEND_URL || ""}/Register`,
+    }).catch((e) => console.error("Rejection email error:", e));
 
     res.json({
       success: true,
-      message: `${user.name}'s registration has been rejected`,
+      removed: canDelete,
+      message: canDelete
+        ? `${name}'s registration has been rejected. They can register again with the same email.`
+        : `${name}'s registration has been rejected`,
     });
   } catch (err) {
+    if (transaction) await transaction.rollback().catch(() => {});
     console.error("Reject registration error:", err);
     res.status(500).json({ success: false, message: "Failed to reject registration" });
+  }
+};
+
+// Deletes an uploaded identity certificate, only if it lives in the upload folder.
+const removeCertificateFile = (storedPath) => {
+  if (!storedPath) return;
+  try {
+    const certificateRoot = path.resolve("uploads", "identity_certificates");
+    const certificatePath = path.resolve(storedPath);
+    if (certificatePath.startsWith(`${certificateRoot}${path.sep}`) && fs.existsSync(certificatePath)) {
+      fs.unlinkSync(certificatePath);
+    }
+  } catch (err) {
+    console.error("Certificate cleanup error:", err);
   }
 };
 

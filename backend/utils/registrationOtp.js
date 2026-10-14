@@ -46,3 +46,21 @@ export const isRegistrationVerificationValid = (record, tokenHash, now = Date.no
   && new Date(record.verification_expires_at).getTime() > now
   && safeHashEquals(record.verification_token_hash, tokenHash)
 );
+
+// True when this verification token was consumed by a registration within its
+// validity window – i.e. the request is a retry of an already-saved submission.
+export const wasVerificationJustUsed = (record, tokenHash, now = Date.now()) => Boolean(
+  record?.consumed_at
+  && record?.verification_token_hash
+  && now - new Date(record.consumed_at).getTime() < REGISTRATION_OTP_TTL_MS
+  && safeHashEquals(record.verification_token_hash, tokenHash)
+);
+
+// A pending or rejected applicant may submit again (after proving the email via
+// OTP); an approved or admin account may not.
+export const canReapply = (user) => Boolean(
+  user
+  && user.role !== "ADMIN"
+  && !Number(user.is_active)
+  && (user.approval_status === "PENDING" || user.approval_status === "REJECTED")
+);

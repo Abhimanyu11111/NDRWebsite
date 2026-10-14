@@ -246,6 +246,15 @@ function Register() {
       setTimeout(() => navigate("/login"), 4000);
     } catch (requestError) {
       const { response } = requestError;
+      if (response?.data?.code === "EMAIL_VERIFICATION_REQUIRED") {
+        // Let the user request a fresh OTP right away instead of being stuck
+        setEmailVerificationToken("");
+        setVerifiedEmail("");
+        setOtp("");
+        setOtpSent(false);
+        setResendCountdown(0);
+        setNotice("");
+      }
       setError(
         response?.data?.msg ||
         response?.data?.message ||

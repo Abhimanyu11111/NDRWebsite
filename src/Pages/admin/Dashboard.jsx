@@ -212,7 +212,7 @@ export default function AdminDashboard() {
       await api.patch(`/admin/dashboard/registrations/${userId}/approve`);
       setPendingRegistrations((prev) => prev.filter((u) => u.id !== userId));
       setStats((prev) => ({ ...prev, pendingRegistrations: Math.max(0, prev.pendingRegistrations - 1) }));
-      setSuccessMsg(`${userName}'s account has been approved!`);
+      setSuccessMsg(`${userName}'s account has been approved! The applicant will be notified by email.`);
       fetchAll(true);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to approve registration");
@@ -226,12 +226,12 @@ export default function AdminDashboard() {
     try {
       setRejectingRegId(userId);
       setPauseRefresh(true);
-      await api.patch(`/admin/dashboard/registrations/${userId}/reject`, {
+      const res = await api.patch(`/admin/dashboard/registrations/${userId}/reject`, {
         reason: rejectReason || undefined,
       });
       setPendingRegistrations((prev) => prev.filter((u) => u.id !== userId));
       setStats((prev) => ({ ...prev, pendingRegistrations: Math.max(0, prev.pendingRegistrations - 1) }));
-      setSuccessMsg(`${userName}'s registration has been rejected.`);
+      setSuccessMsg(res.data?.message || `${userName}'s registration has been rejected.`);
       setShowRejectModal(null);
       setRejectReason("");
       fetchAll(true);
@@ -411,8 +411,11 @@ export default function AdminDashboard() {
                 <h3 style={styles.modalTitle}>Reject Registration</h3>
                 <button onClick={() => { setShowRejectModal(null); setRejectReason(""); }} style={styles.modalClose}><X size={18} /></button>
               </div>
-              <p style={styles.modalDesc}>Rejecting <strong>{showRejectModal.name}</strong> ({showRejectModal.email}). Optionally provide a reason:</p>
-              <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Reason for rejection (optional)..." style={styles.modalTextarea} rows={3} />
+              <p style={styles.modalDesc}>
+                Rejecting <strong>{showRejectModal.name}</strong> ({showRejectModal.email}). The application will be removed and the applicant
+                will be emailed, so they can register again with corrected details. The reason below is included in the email (optional):
+              </p>
+              <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Reason for rejection (optional)..." style={styles.modalTextarea} rows={3} maxLength={500} />
               <div style={styles.modalActions}>
                 <button onClick={() => { setShowRejectModal(null); setRejectReason(""); }} style={styles.modalCancelBtn}>Cancel</button>
                 <button onClick={() => handleRejectRegistration(showRejectModal.id, showRejectModal.name)} style={styles.modalRejectBtn} disabled={rejectingRegId === showRejectModal.id}>

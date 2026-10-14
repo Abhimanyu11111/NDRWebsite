@@ -13,6 +13,8 @@ import { createCaptchaChallenge, verifyCaptchaChallenge } from "../utils/captcha
 import { clearActiveSession, setActiveSession } from "../utils/sessionStore.js";
 import { sendPasswordResetEmail, sendRegistrationOtpEmail } from "../src/services/emailService.js";
 import {
+  canReapply,
+  wasVerificationJustUsed,
   generateRegistrationOtp,
   generateRegistrationVerificationToken,
   hashRegistrationOtp,
@@ -170,12 +172,14 @@ router.post("/registration-otp/send", registrationOtpSendLimiter, async (req, re
   }
 
   try {
+    // Pending/rejected applicants get an OTP like a new applicant so they can
+    // submit again; only an approved account is turned away.
     const [existingUser] = await sequelize.query(
-      "SELECT id FROM users WHERE email = ? LIMIT 1",
+      "SELECT id, role, is_active, approval_status FROM users WHERE email = ? LIMIT 1",
       { replacements: [email] }
     );
-    if (existingUser.length > 0) {
-      return res.status(400).json({ success: false, msg: "This email is already registered" });
+    if (existingUser.length > 0 && !canReapply(existingUser[0])) {
+      return res.status(400).json(ALREADY_REGISTERED_RESPONSE);
     }
 
     const existingOtp = await RegistrationOtp.findOne({ where: { email } });
@@ -361,6 +365,29 @@ const upload = multer({
   },
 });
 
+// Deletes a stored identity certificate, only if it lives in the upload folder.
+const deleteCertificateFile = (storedPath) => {
+  if (!storedPath) return;
+  try {
+    const resolvedPath = path.resolve(storedPath);
+    const certificateRoot = path.resolve(uploadDir);
+    if (resolvedPath.startsWith(`${certificateRoot}${path.sep}`) && fs.existsSync(resolvedPath)) {
+      fs.unlinkSync(resolvedPath);
+    }
+  } catch (cleanupError) {
+    console.error("Registration certificate cleanup error:", cleanupError);
+  }
+};
+
+const REGISTRATION_SUBMITTED_MSG =
+  "Registration submitted successfully. Your account is pending admin approval. You will be able to login once approved.";
+
+const ALREADY_REGISTERED_RESPONSE = Object.freeze({
+  success: false,
+  code: "ALREADY_REGISTERED",
+  msg: "This email is already registered. Please log in, or use Forgot Password if you don't remember your password.",
+});
+
 // Run multer ourselves so upload errors (wrong type, too large) come back as a
 // readable 400 instead of falling through to the generic 500 handler.
 const UPLOAD_ERROR_MESSAGES = {
@@ -536,39 +563,39 @@ router.post("/register", uploadLimiter, uploadIdentityCertificate, validateReque
   let certificatePath = null;
   let transaction = null;
 
-  const removeSavedCertificate = () => {
-    if (!certificatePath) return;
-    try {
-      const resolvedPath = path.resolve(certificatePath);
-      const certificateRoot = path.resolve(uploadDir);
-      if (resolvedPath.startsWith(`${certificateRoot}${path.sep}`) && fs.existsSync(resolvedPath)) {
-        fs.unlinkSync(resolvedPath);
-      }
-    } catch (cleanupError) {
-      console.error("Registration certificate cleanup error:", cleanupError);
-    }
-  };
+  const removeSavedCertificate = () => deleteCertificateFile(certificatePath);
 
   try {
     const verificationTokenHash = hashRegistrationVerificationToken(email_verification_token);
     const verification = await RegistrationOtp.findOne({ where: { email: normalizedEmail } });
+
+    // Retry of a submission that was saved but whose response never reached
+    // the browser (timeout, dropped connection): confirm instead of erroring.
+    if (wasVerificationJustUsed(verification, verificationTokenHash)) {
+      const [pending] = await sequelize.query(
+        "SELECT id FROM users WHERE email = ? AND approval_status = 'PENDING' AND is_active = 0 LIMIT 1",
+        { replacements: [normalizedEmail] }
+      );
+      if (pending.length > 0) {
+        return res.status(200).json({ success: true, alreadySubmitted: true, msg: REGISTRATION_SUBMITTED_MSG });
+      }
+    }
+
     if (!isRegistrationVerificationValid(verification, verificationTokenHash)) {
       return res.status(400).json({
         success: false,
+        code: "EMAIL_VERIFICATION_REQUIRED",
         msg: "Email verification is invalid or expired. Please verify your email again.",
       });
     }
 
     const [existing] = await sequelize.query(
-      "SELECT id FROM users WHERE email = ? LIMIT 1",
+      "SELECT id, role, is_active, approval_status FROM users WHERE email = ? LIMIT 1",
       { replacements: [normalizedEmail] }
     );
 
-    if (existing.length > 0) {
-      return res.status(400).json({
-        success: false,
-        msg: "This email is already registered",
-      });
+    if (existing.length > 0 && !canReapply(existing[0])) {
+      return res.status(400).json(ALREADY_REGISTERED_RESPONSE);
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -588,50 +615,71 @@ router.post("/register", uploadLimiter, uploadIdentityCertificate, validateReque
       removeSavedCertificate();
       return res.status(400).json({
         success: false,
-        msg: "Email verification has already been used or has expired.",
+        code: "EMAIL_VERIFICATION_REQUIRED",
+        msg: "Email verification has already been used or has expired. Please verify your email again.",
       });
     }
 
-    const [duplicateInsideTransaction] = await sequelize.query(
-      "SELECT id FROM users WHERE email = ? LIMIT 1 FOR UPDATE",
+    const [existingInsideTransaction] = await sequelize.query(
+      "SELECT id, role, is_active, approval_status, identity_certificate FROM users WHERE email = ? LIMIT 1 FOR UPDATE",
       { replacements: [normalizedEmail], transaction }
     );
-    if (duplicateInsideTransaction.length > 0) {
+    const previousApplication = existingInsideTransaction[0] || null;
+    if (previousApplication && !canReapply(previousApplication)) {
       await transaction.rollback();
       transaction = null;
       removeSavedCertificate();
-      return res.status(400).json({ success: false, msg: "This email is already registered" });
+      return res.status(400).json(ALREADY_REGISTERED_RESPONSE);
     }
 
-    //  Insert user with approval_status = PENDING, is_active = 0
-    // User cannot login until admin approves
     const withCountry = userLocationSchema.countrySupported;
-    const [result] = await sequelize.query(
-      `INSERT INTO users
-        (name, email, phone, password, address, city, state, pincode,${withCountry ? " country," : ""}
-         id_proof_type, id_proof_number, identity_certificate, company, role, is_active, approval_status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?,${withCountry ? " ?," : ""} ?, ?, ?, ?, 'USER', 0, 'PENDING', NOW(), NOW())`,
-      {
-        replacements: [
-          cleanText(name, 100),
-          normalizedEmail,
-          normalizedPhone,
-          hashedPassword,
-          cleanText(address, 255),
-          cleanText(city, 100),
-          cleanText(state, 100),
-          postalCode,
-          ...(withCountry ? [country.name] : []),
-          cleanText(id_proof_type, 100),
-          cleanText(id_proof_number, 100),
-          certificatePath,
-          cleanText(company, 255),
-        ],
-        transaction,
-      }
-    );
+    const userFields = [
+      ["name", cleanText(name, 100)],
+      ["phone", normalizedPhone],
+      ["password", hashedPassword],
+      ["address", cleanText(address, 255)],
+      ["city", cleanText(city, 100)],
+      ["state", cleanText(state, 100)],
+      ["pincode", postalCode],
+      ...(withCountry ? [["country", country.name]] : []),
+      ["id_proof_type", cleanText(id_proof_type, 100)],
+      ["id_proof_number", cleanText(id_proof_number, 100)],
+      ["identity_certificate", certificatePath],
+      ["company", cleanText(company, 255)],
+    ];
 
-    const newUserId = result?.insertId || result;
+    let newUserId;
+    if (previousApplication) {
+      // Same email already has a pending (or previously rejected) application:
+      // replace it with the new details instead of blocking the applicant.
+      // Ownership of the email was just proven via OTP.
+      await sequelize.query(
+        `UPDATE users SET ${userFields.map(([column]) => `${column} = ?`).join(", ")},
+           role = 'USER', is_active = 0, approval_status = 'PENDING', created_at = NOW(), updated_at = NOW()
+         WHERE id = ?`,
+        { replacements: [...userFields.map(([, value]) => value), previousApplication.id], transaction }
+      );
+      newUserId = previousApplication.id;
+      // Drop the old request notification so admins see a single entry
+      await sequelize.query(
+        "DELETE FROM notifications WHERE user_id = ? AND type = 'REGISTRATION'",
+        { replacements: [newUserId], transaction }
+      );
+    } else {
+      //  Insert user with approval_status = PENDING, is_active = 0
+      // User cannot login until admin approves
+      const columns = ["email", ...userFields.map(([column]) => column)];
+      const [result] = await sequelize.query(
+        `INSERT INTO users
+          (${columns.join(", ")}, role, is_active, approval_status, created_at, updated_at)
+         VALUES (${columns.map(() => "?").join(", ")}, 'USER', 0, 'PENDING', NOW(), NOW())`,
+        {
+          replacements: [normalizedEmail, ...userFields.map(([, value]) => value)],
+          transaction,
+        }
+      );
+      newUserId = result?.insertId || result;
+    }
 
     //  Create admin notification with full user details
     await sequelize.query(
@@ -641,23 +689,26 @@ router.post("/register", uploadLimiter, uploadIdentityCertificate, validateReque
       {
         replacements: [
           newUserId,
-          `New registration request: ${name} (${normalizedEmail}) | Country: ${country.name}${normalizedPhone ? ` | Phone: ${normalizedPhone}` : ""}${id_proof_type ? ` | ID: ${id_proof_type} - ${id_proof_number}` : ""}. Pending admin approval.`,
+          `${previousApplication ? "Updated registration request (re-submitted)" : "New registration request"}: ${name} (${normalizedEmail}) | Country: ${country.name}${normalizedPhone ? ` | Phone: ${normalizedPhone}` : ""}${id_proof_type ? ` | ID: ${id_proof_type} - ${id_proof_number}` : ""}. Pending admin approval.`,
         ],
         transaction,
       }
     );
 
+    // consumed_at blocks any reuse of the token; its hash is kept only so a
+    // retry of this same submission can be recognised (wasVerificationJustUsed).
     lockedVerification.consumed_at = new Date();
-    lockedVerification.verification_token_hash = null;
     lockedVerification.verification_expires_at = new Date();
     await lockedVerification.save({ transaction });
     await transaction.commit();
     transaction = null;
 
-    return res.status(201).json({
-      success: true,
-      msg: "Registration submitted successfully. Your account is pending admin approval. You will be able to login once approved.",
-    });
+    // The re-submission replaced the old certificate
+    if (previousApplication?.identity_certificate && previousApplication.identity_certificate !== certificatePath) {
+      deleteCertificateFile(previousApplication.identity_certificate);
+    }
+
+    return res.status(201).json({ success: true, msg: REGISTRATION_SUBMITTED_MSG });
   } catch (err) {
     if (transaction && !transaction.finished) await transaction.rollback();
     removeSavedCertificate();
